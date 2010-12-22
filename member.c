@@ -57,7 +57,7 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 		if (member->dtmf_switch)
 		{
 			ast_mutex_lock( &member->lock ) ;
-			switch (f->subclass) {
+			switch (CASTCLASS2INT(f->subclass)) {
 			case '0' :member->req_id=0;
 				break;
 			case '1' :member->req_id=1;
@@ -115,9 +115,9 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 				member->type,
 				member->chan->uniqueid,
 				member->chan->name,
-				member->chan->cid.cid_num ? member->chan->cid.cid_num : "unknown",
-				member->chan->cid.cid_name ? member->chan->cid.cid_name : "unknown",
-				f->subclass,
+				CALLERIDNUM(member),
+				CALLERIDNAME(member),
+				CASTCLASS2INT(f->subclass),
 				conf->membercount,
 				member->flags,
 				member->mute_audio
@@ -214,9 +214,9 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 		if (
 			member->dsp != NULL
 #ifndef	AC_USE_G722
-			&& f->subclass == AST_FORMAT_SLINEAR
+			&& CASTCLASS2INT(f->subclass) == AST_FORMAT_SLINEAR
 #else
-			&& f->subclass == AST_FORMAT_SLINEAR16
+			&& CASTCLASS2INT(f->subclass) == AST_FORMAT_SLINEAR16
 #endif
 			&& f->datalen == AST_CONF_FRAME_DATA_SIZE
 			)
@@ -292,7 +292,7 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 #endif
 	else if (
 		f->frametype == AST_FRAME_CONTROL
-		&& f->subclass == AST_CONTROL_HANGUP
+		&& CASTCLASS2INT(f->subclass) == AST_CONTROL_HANGUP
 		)
 	{
 		// hangup received
@@ -306,7 +306,7 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 #ifdef	VIDEO
 	else if (
 		f->frametype == AST_FRAME_CONTROL
-		&& f->subclass == AST_CONTROL_VIDUPDATE
+		&& CASTCLASS2INT(f->subclass) == AST_CONTROL_VIDUPDATE
 		)
 	{
 		// say we have switched to cause a FIR to
@@ -761,8 +761,8 @@ int member_exec( struct ast_channel* chan, void* data )
 		member->id,
 		member->flags,
 		member->chan->name,
-		member->chan->cid.cid_num ? member->chan->cid.cid_num : "unknown",
-		member->chan->cid.cid_name ? member->chan->cid.cid_name: "unknown",
+		CALLERIDNUM(member),
+		CALLERIDNAME(member),
 		conf->stats.moderators,
 		conf->membercount
 	) ;
@@ -1446,7 +1446,7 @@ struct ast_conf_member* create_member( struct ast_channel *chan, const char* dat
 	// finish up
 	//
 
-	DEBUG("created member, type => %s, priority => %d, readformat => %d\n", member->type, member->priority, chan->readformat) ;
+	DEBUG("created member, type => %s, priority => %d, readformat => %d\n", member->type, member->priority, (int)chan->readformat) ;
 
 	return member ;
 }
@@ -2797,10 +2797,10 @@ int ast_packer_feed(struct ast_packer *s, const struct ast_frame *f)
 		return -1;
 	}
 	if (!s->format) {
-		s->format = f->subclass;
+		s->format = CASTCLASS2INT(f->subclass);
 		s->samples=0;
-	} else if (s->format != f->subclass) {
-		ast_log(LOG_WARNING, "Packer was working on %d format frames, now trying to feed %d?\n", s->format, f->subclass);
+	} else if (s->format != CASTCLASS2INT(f->subclass)) {
+		ast_log(LOG_WARNING, "Packer was working on %d format frames, now trying to feed %d?\n", s->format, CASTCLASS2INT(f->subclass));
 		return -1;
 	}
 	if (s->len + f->datalen > PACKER_SIZE) {
@@ -2849,7 +2849,7 @@ struct ast_frame *ast_packer_read(struct ast_packer *s)
 		len = s->len;
 	/* Make frame */
 	s->f.frametype = AST_FRAME_VOICE;
-	s->f.subclass = s->format;
+	SETCLASS2INT(s->f.subclass,s->format);
 	SETDATA2PTR(s->f.data, s->framedata + AST_FRIENDLY_OFFSET);
 	s->f.offset = AST_FRIENDLY_OFFSET;
 	s->f.datalen = len;

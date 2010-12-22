@@ -189,3 +189,6 @@ command line: make CACHE_CONTROL_BLOCKS=0.
 
 Changed the conference event privilege to user to reduce the number of events
 an application has to monitor to support a conference.
+
+Fix for compiling module with Asterisk 1.8. This fix is compatible with prior
+Asterisk releases 1.4 and 1.6.
