@@ -1,5 +1,5 @@
 /*
- * app_conference
+ * app_konference
  *
  * A channel independent conference application for Asterisk
  *

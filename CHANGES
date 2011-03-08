@@ -192,3 +192,11 @@ an application has to monitor to support a conference.
 
 Fix for compiling module with Asterisk 1.8. This fix is compatible with prior
 Asterisk releases 1.4 and 1.6.
+
+Deleted the RCS identifiers at the top of the module files because we're using
+subversion. Deleted the TODO file since it's not being used to track future
+enhancements. Fixed the Makefile clean target so that the module shared object
+gets deleted with the other object files and deleted the distclean target.
+Fixed the Makefile so that the module is compiled whenever an include file is
+modified.
+

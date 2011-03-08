@@ -1,5 +1,3 @@
-# $Id: Makefile 889 2007-08-09 14:42:48Z sbalea $
-
 #
 # Makefile, based on the Asterisk Makefile, Coypright (C) 1999, Mark Spencer
 #
@@ -56,6 +54,7 @@ SILDET := 2
 #
 
 OBJS = app_conference.o conference.o member.o frame.o cli.o
+INCS = app_conference.h  cli.h  conf_frame.h  conference.h  frame.h  member.h
 TARGET = app_konference.so
 
 
@@ -133,6 +132,7 @@ endif
 
 ifeq ($(SILDET), 2)
 OBJS += libspeex/preprocess.o libspeex/misc.o libspeex/smallft.o
+INCS += libspeex/speex_preprocess.h libspeex/smallft.h libspeex/misc.h
 CPPFLAGS += -Ilibspeex -DSILDET=2
 endif
 
@@ -157,11 +157,9 @@ all: $(TARGET)
 
 .PHONY: clean
 clean:
-	$(RM) $(OBJS) $(DEPS)
+	$(RM) $(TARGET) $(OBJS) $(DEPS)
 
-.PHONY: distclean
-distclean: clean
-	$(RM) $(TARGET)
+$(OBJS): $(INCS)
 
 $(TARGET): $(OBJS)
 	$(CC) -pg $(SOLINK) -o $@ $(OBJS)

@@ -1,8 +1,5 @@
-
-// $Id: frame.h 746 2006-12-11 20:12:12Z sbalea $
-
 /*
- * app_conference
+ * app_konference
  *
  * A channel independent conference application for Asterisk
  *

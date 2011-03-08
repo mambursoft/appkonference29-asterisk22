@@ -1,8 +1,5 @@
-
-// $Id: conference.c 886 2007-08-06 14:33:34Z bcholew $
-
 /*
- * app_conference
+ * app_konference
  *
  * A channel independent conference application for Asterisk
  *

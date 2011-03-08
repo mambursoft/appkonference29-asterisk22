@@ -1,8 +1,5 @@
-
-// $Id: cli.h 880 2007-04-25 15:23:59Z jpgrayson $
-
 /*
- * app_conference
+ * app_konference
  *
  * A channel independent conference application for Asterisk
  *

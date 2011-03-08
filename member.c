@@ -1,8 +1,5 @@
-
-// $Id: member.c 885 2007-06-27 15:41:18Z sbalea $
-
 /*
- * app_conference
+ * app_konference
  *
  * A channel independent conference application for Asterisk
  *
