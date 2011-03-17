@@ -318,7 +318,7 @@ static void conference_exec( struct ast_conference *conf )
 			//---------------//
 
 			// mix frames and get batch of outgoing frames
-			if ( (send_frames = (spoken_frames ? mix_frames(spoken_frames, speaker_count, listener_count, conf->volume, conf->membercount) : NULL)) )
+			if ( (send_frames = (spoken_frames ? mix_frames(spoken_frames, speaker_count, listener_count, conf->membercount, conf->volume) : NULL)) )
 			{
 				//DEBUG("base => %ld.%ld %d\n", base.tv_sec, base.tv_usec, ( int )( base.tv_usec / 1000 )) ;
 
@@ -1008,6 +1008,20 @@ static void add_member( struct ast_conf_member *member, struct ast_conference *c
 	// acquire the conference lock
 	ast_rwlock_wrlock( &conf->lock ) ;
 
+	//
+	// if spying, setup spyer/spyee
+	//
+	if ( member->spyee_channel_name != NULL )
+	{
+		struct ast_conf_member *spyee = find_member(member->spyee_channel_name, 0);
+		if ( spyee != NULL && spyee->spy_partner == NULL )
+		{
+			spyee->spy_partner = member;
+			member->spy_partner = spyee;
+			member->spyer = 1;
+		}
+	}
+
 	// update conference stats
 	conf->membercount++;
 
@@ -1265,6 +1279,17 @@ void remove_member( struct ast_conf_member* member, struct ast_conference* conf,
 		}
 	}
 #endif
+	//
+	// if spying sever connection to spyee
+	//
+	if ( member->spy_partner != NULL )
+	{
+		member->spy_partner->spy_partner = NULL;
+		member->spy_partner->spyer = 0;
+		member->spy_partner = NULL;
+		member->spyer = 0;
+	}
+
 	ast_rwlock_unlock( &conf->lock );
 
 	DEBUG("removed member from conference %s, remaining members => %d\n", conf_name, membercount) ;
@@ -2088,7 +2113,7 @@ int get_conference_stats_by_name( ast_conference_stats* stats, const char* name 
 	return ( stats == NULL ) ? 0 : 1 ;
 }
 
-struct ast_conf_member *find_member( const char *chan )
+struct ast_conf_member *find_member( const char *chan, const char lock )
 {
 	struct ast_conf_member *member ;
 	struct channel_bucket *bucket = &( channel_table[hash(chan) % CHANNEL_TABLE_SIZE] ) ;
@@ -2097,8 +2122,11 @@ struct ast_conf_member *find_member( const char *chan )
 
 	AST_LIST_TRAVERSE ( bucket, member, hash_entry )
 		if (!strcmp (member->chan->name, chan) ) {
-			ast_mutex_lock (&member->lock) ;
-			member->use_count++ ;
+			if (lock)
+			{
+				ast_mutex_lock (&member->lock) ;
+				member->use_count++ ;
+			}
 			break ;
 		}
 
@@ -3042,7 +3070,7 @@ int play_sound_channel(int fd, const char *channel, char **file, int mute, int t
 	ast_cli(fd, "Playing sound %s to member %s %s\n",
 		      *file, channel, mute ? "with mute" : "");
 
-	member = find_member(channel);
+	member = find_member(channel, 1);
 	if( !member )
 	{
 		ast_cli(fd, "Member %s not found\n", channel);
@@ -3081,7 +3109,7 @@ int stop_sound_channel(int fd, const char *channel)
 
 	ast_cli( fd, "Stopping sounds to member %s\n", channel);
 
-	member = find_member(channel);
+	member = find_member(channel, 1);
 	if ( !member )
 	{
 		ast_cli(fd, "Member %s not found\n", channel);
@@ -3113,7 +3141,7 @@ int start_moh_channel(int fd, const char *channel)
 
 	ast_cli( fd, "Starting moh to member %s\n", channel);
 
-	member = find_member(channel);
+	member = find_member(channel, 1);
 	if ( !member )
 	{
 		ast_cli(fd, "Member %s not found\n", channel);
@@ -3136,7 +3164,7 @@ int stop_moh_channel(int fd, const char *channel)
 
 	ast_cli( fd, "Stopping moh to member %s\n", channel);
 
-	member = find_member(channel);
+	member = find_member(channel, 1);
 	if ( !member )
 	{
 		ast_cli(fd, "Member %s not found\n", channel);
@@ -3162,7 +3190,7 @@ int talk_volume_channel(int fd, const char *channel, int up)
 
 	ast_cli( fd, "Adjusting talk volume level %s for member %s\n", up ? "up" : "down", channel);
 
-	member = find_member(channel);
+	member = find_member(channel, 1);
 	if ( !member )
 	{
 		ast_cli(fd, "Member %s not found\n", channel);
@@ -3184,7 +3212,7 @@ int listen_volume_channel(int fd, const char *channel, int up)
 
 	ast_cli( fd, "Adjusting listen volume level %s for member %s\n", up ? "up" : "down", channel);
 
-	member = find_member(channel);
+	member = find_member(channel, 1);
 	if ( !member )
 	{
 		ast_cli(fd, "Member %s not found\n", channel);

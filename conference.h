@@ -151,8 +151,8 @@ struct ast_conference* join_conference( struct ast_conf_member* member, char* co
 
 int end_conference( const char *name, int hangup ) ;
 
-// Find a particular member, locked if found.
-struct ast_conf_member *find_member( const char *chan ) ;
+// Find a particular member, locked if lock flag set.
+struct ast_conf_member *find_member( const char *chan, const char lock ) ;
 
 int queue_frame_for_listener( struct ast_conference* conf, struct ast_conf_member* member, conf_frame* frame ) ;
 int queue_frame_for_speaker( struct ast_conference* conf, struct ast_conf_member* member, conf_frame* frame ) ;

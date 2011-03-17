@@ -702,34 +702,6 @@ int member_exec( struct ast_channel* chan, void* data )
 		return (max_users_flag ? 0 : -1 ) ;
 	}
 
-	//
-	// if spying, setup spyer/spyee
-	//
-	struct ast_conf_member *spyee = NULL;
-
-	if ( member->spyee_channel_name != NULL )
-	{
-		spyee = member->spy_partner = find_member(member->spyee_channel_name);	
-		if ( spyee != NULL && spyee->spy_partner == NULL )
-		{
-			spyee->spy_partner = member;
-			ast_mutex_unlock( &spyee->lock ) ;
-
-			//DEBUG("Start spyer %s, spyee is %s\n", member->chan->name, member->spyee_channel_name) ;
-		} else
-		{
-			if ( spyee != NULL ) {
-				if ( !--spyee->use_count && spyee->delete_flag )
-					ast_cond_signal ( &spyee->delete_var ) ;
-				ast_mutex_unlock( &spyee->lock ) ;
-			}
-			pbx_builtin_setvar_helper(member->chan, "KONFERENCE", "SPYFAILED" );
-			//DEBUG("Failed to start spyer %s, spyee is %s\n", member->chan->name, member->spyee_channel_name) ;
-			remove_member( member, conf, conf_name ) ;
-			return 0 ;
-		}
-	} 
-
 	// add member to channel table
 	member->bucket = &(channel_table[hash(member->chan->name) % CHANNEL_TABLE_SIZE]);
 
@@ -763,6 +735,14 @@ int member_exec( struct ast_channel* chan, void* data )
 		conf->stats.moderators,
 		conf->membercount
 	) ;
+
+	// if spyer setup failed, set variable and exit conference
+	if ( member->spyee_channel_name && !member->spyer )
+	{
+		remove_member( member, conf, conf_name ) ;
+		pbx_builtin_setvar_helper(member->chan, "KONFERENCE", "SPYFAILED" );
+		return 0 ;
+	}
 
 	//
 	// process loop for new member ( this runs in it's own thread )
@@ -865,22 +845,6 @@ int member_exec( struct ast_channel* chan, void* data )
 //	end = ast_tvnow();
 //	int expected_frames = ( int )( floor( (double)( msecdiff( &end, &start ) / AST_CONF_FRAME_INTERVAL ) ) ) ;
 //	DEBUG("expected_frames => %d\n", expected_frames) ;
-
-	//
-	// if spying sever connection to spyee
-	//
-	if ( spyee != NULL )
-	{
-		ast_mutex_lock ( &spyee->lock ) ;
-		spyee->spy_partner = NULL;
-
-		if ( !--spyee->use_count && spyee->delete_flag )
-			ast_cond_signal ( &spyee->delete_var ) ;
-
-		ast_mutex_unlock ( &spyee->lock ) ;
-
-		//DEBUG("End spyer %s, spyee is %s\n", member->chan->name, member->spyee_channel_name) ;
-	}
 
 	remove_member( member, conf, conf_name ) ;
 	return 0 ;
@@ -3243,7 +3207,7 @@ void member_process_outgoing_frames(struct ast_conference* conf,
 	else
 	{
 		// either a spyer or a spyee
-		if ( member->spyee_channel_name != NULL )
+		if ( member->spyer != 0 )
 		{
 			// spyer -- always use member translator
 			queue_frame_for_speaker( conf, member, send_frames ) ;

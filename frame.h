@@ -41,7 +41,7 @@
 //
 
 // mixing
-conf_frame* mix_frames( conf_frame* frames_in, int speaker_count, int listener_count, int volume, int membercount ) ;
+conf_frame* mix_frames( conf_frame* frames_in, int speaker_count, int listener_count, int membercount, int volume ) ;
 
 conf_frame* mix_multiple_speakers( conf_frame* frames_in, int speakers, int listeners, int volume ) ;
 conf_frame* mix_single_speaker( conf_frame* frames_in, int volume, int membercount ) ;
@@ -62,6 +62,7 @@ struct ast_frame* create_text_frame(const char *text, int copy);
 // slinear frame functions
 struct ast_frame* create_slinear_frame( char* data ) ;
 void mix_slinear_frames( char* dst, const char* src, int samples ) ;
+void unmix_slinear_frame( char* dst, const char* src1, const char* src2, int samples ) ;
 
 // silent frame functions
 conf_frame* get_silent_frame( void ) ;

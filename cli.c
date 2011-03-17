@@ -400,7 +400,7 @@ char *conference_kickchannel(struct ast_cli_entry *e, int cmd, struct ast_cli_ar
 
 	const char *channel = argv[2];
 
-	struct ast_conf_member *member = find_member(channel);
+	struct ast_conf_member *member = find_member(channel, 1);
 	if(!member) {
 	    ast_cli(fd, "Member %s not found\n", channel);
 	    return FAILURE;
@@ -524,7 +524,7 @@ char *conference_mutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_ar
 
 	const char *channel = argv[2];
 
-	struct ast_conf_member *member = find_member(channel);
+	struct ast_conf_member *member = find_member(channel, 1);
 	if(!member) {
 	    ast_cli(fd, "Member %s not found\n", channel);
 	    return FAILURE;
@@ -737,7 +737,7 @@ char *conference_unmutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_
 
 	const char *channel = argv[2];
 
-	struct ast_conf_member *member = find_member(channel);
+	struct ast_conf_member *member = find_member(channel, 1);
 	if(!member) {
 	    ast_cli(fd, "Member %s not found\n", channel);
 	    return FAILURE;

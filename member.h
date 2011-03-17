@@ -70,6 +70,7 @@ struct ast_conf_member
 	char flags[MEMBER_FLAGS_LEN + 1] ;	// raw member-type flags
 	char type[MEMBER_TYPE_LEN + 1] ;		// conference type
 	char *spyee_channel_name ; // spyee  channel name
+	char spyer ; // spyer flag
 	int max_users ; // zero or max users for this conference
 #if ( SILDET == 2 )
 	// voice flags
@@ -251,6 +252,8 @@ struct ast_conf_member
 
 	// spyer pointer to spyee or vice versa
 	struct ast_conf_member* spy_partner ;
+	// spyee pointer to whisper frame
+	struct conf_frame* whisper_frame ;
 
 	// accounting values
 	unsigned long frames_in ;

@@ -28,12 +28,12 @@
 #include "asterisk/autoconfig.h"
 #include "frame.h"
 
-conf_frame* mix_frames( conf_frame* frames_in, int speaker_count, int listener_count, int volume, int membercount )
+conf_frame* mix_frames( conf_frame* frames_in, int speaker_count, int listener_count, int member_count, int volume )
 {
 	if ( speaker_count == 1 )
 	{
 		// pass-through frames
-		return mix_single_speaker( frames_in, volume, membercount ) ;
+		return mix_single_speaker( frames_in, volume, member_count ) ;
 		//printf("mix single speaker\n");
 	}
 
@@ -83,7 +83,7 @@ conf_frame* mix_frames( conf_frame* frames_in, int speaker_count, int listener_c
 
 }
 
-conf_frame* mix_single_speaker( conf_frame* frames_in, int volume, int membercount )
+conf_frame* mix_single_speaker( conf_frame* frames_in, int volume, int member_count )
 {
 #ifdef APP_KONFERENCE_DEBUG
 	//DEBUG("returning single spoken frame\n") ;
@@ -139,8 +139,8 @@ conf_frame* mix_single_speaker( conf_frame* frames_in, int volume, int membercou
 	else
 	{
 		// speaker is either a spyee or a spyer
-		if ( frames_in->member->spyee_channel_name == NULL
-			&& membercount > 2 )
+		if ( frames_in->member->spyer == 0
+			&& member_count > 2 )
 		{
 			conf_frame *spy_frame = copy_conf_frame(frames_in);
 
@@ -159,7 +159,9 @@ conf_frame* mix_single_speaker( conf_frame* frames_in, int volume, int membercou
 			frames_in->member = NULL ;
 		}
 		else
+		{
 			frames_in->member = frames_in->member->spy_partner ;
+		}
 	}
 
 	return frames_in ;
@@ -193,139 +195,106 @@ conf_frame* mix_multiple_speakers(
 #endif // APP_KONFERENCE_DEBUG
 
 	//
-	// at this point we know that there is more than one frame,
-	// and that the frames need to be converted to pcm to be mixed
-	//
-	// now, if there are only two frames and two members,
-	// we can swap them. ( but we'll get to that later. )
-	//
-
-	//
-	// loop through the spoken frames, making a list of spoken members,
-	// and converting gsm frames to slinear frames so we can mix them.
+	// mix the audio
 	//
 
 	// pointer to the spoken frames list
 	conf_frame* cf_spoken = frames_in ;
+
+	// allocate a mix buffer large enough to hold a frame
+	char* listenerBuffer = calloc( AST_CONF_BUFFER_SIZE, sizeof(char) ) ;
+
+	while ( cf_spoken != NULL )
+	{
+
+		if ( !(cf_spoken->fr = convert_frame( cf_spoken->member->to_slinear, cf_spoken->fr)) )
+		{
+			ast_log( LOG_ERROR, "mix_multiple_speakers: unable to convert frame to slinear\n" ) ;
+			return NULL;
+		}
+
+		if (( cf_spoken->member->talk_volume != 0 ) || (volume != 0))
+		{
+			ast_frame_adjust_volume(cf_spoken->fr, cf_spoken->member->talk_volume + volume);
+		}
+
+		if ( cf_spoken->member->spyer == 0 )
+		{
+			// add the speaker's voice
+			mix_slinear_frames( listenerBuffer + AST_FRIENDLY_OFFSET, CASTDATA2PTR(cf_spoken->fr->data, char), AST_CONF_BLOCK_SAMPLES);
+		} 
+		else
+		{
+			cf_spoken->member->spy_partner->whisper_frame = cf_spoken;
+		}
+
+		cf_spoken = cf_spoken->next;
+	}
+
+	//
+	// create the send frame list
+	//
+
+	// reset the send list pointer
+	cf_spoken = frames_in ;
 
 	// pointer to the new list of mixed frames
 	conf_frame* cf_sendFrames = NULL ;
 
 	while ( cf_spoken != NULL )
 	{
-		//
-		// while we're looping through the spoken frames, we'll
-		// convert the frame to a format suitable for mixing
-		//
-		// if the frame fails to convert, drop it and treat
-		// the speaking member like a listener by not adding
-		// them to the cf_sendFrames list
-		//
-
-		if ( cf_spoken->member == NULL )
+		if ( cf_spoken->member->spyer == 0 )
 		{
-			ast_log( LOG_WARNING, "unable to determine frame member\n" ) ;
+			// allocate a mix buffer large enough to hold a frame
+			char* speakerBuffer = calloc( AST_CONF_BUFFER_SIZE, sizeof(char) ) ;
+
+			cf_sendFrames = create_conf_frame(cf_spoken->member, cf_sendFrames, NULL);
+
+			cf_sendFrames->mixed_buffer = speakerBuffer + AST_FRIENDLY_OFFSET ;
+
+			// subtract the speaker's voice
+			unmix_slinear_frame(cf_sendFrames->mixed_buffer, listenerBuffer + AST_FRIENDLY_OFFSET, CASTDATA2PTR(cf_spoken->fr->data, char), AST_CONF_BLOCK_SAMPLES);
+
+			if ( cf_spoken->member->spy_partner && cf_spoken->member->spy_partner->local_speaking_state != 0 )
+			{
+				// add whisper voice
+				mix_slinear_frames( cf_sendFrames->mixed_buffer, CASTDATA2PTR(cf_spoken->member->whisper_frame->fr->data, char), AST_CONF_BLOCK_SAMPLES);
+			}
+
+			cf_sendFrames->fr = create_slinear_frame( cf_sendFrames->mixed_buffer ) ;
 		}
-		else
+		else if ( cf_spoken->member->spy_partner->local_speaking_state == 0 )
 		{
-			//DEBUG("converting frame to slinear, channel => %s\n", cf_spoken->member->channel_name) ;
-			if ( !(cf_spoken->fr = convert_frame( cf_spoken->member->to_slinear, cf_spoken->fr)) )
-			{
-				ast_log( LOG_WARNING, "mix_multiple_speakers: unable to convert frame to slinear\n" ) ;
-				continue;
-			}
+			// allocate a mix buffer large enough to hold a frame
+			char* whisperBuffer = malloc( AST_CONF_BUFFER_SIZE ) ;
+			memcpy(whisperBuffer,listenerBuffer,AST_CONF_BUFFER_SIZE);
 
-			if (( cf_spoken->member->talk_volume != 0 ) || (volume != 0))
-			{
-				ast_frame_adjust_volume(cf_spoken->fr, cf_spoken->member->talk_volume + volume);
-			}
+			cf_sendFrames = create_conf_frame( cf_spoken->member->spy_partner, cf_sendFrames, NULL ) ;
 
-			if ( cf_spoken->member->spyee_channel_name == NULL )
-			{
-				// create new conf frame with last frame as 'next'
-				cf_sendFrames = create_conf_frame( cf_spoken->member, cf_sendFrames, NULL ) ;
-			}
-			else if ( cf_spoken->member->spy_partner->local_speaking_state == 0 )
-			{
-				cf_sendFrames = create_conf_frame( cf_spoken->member->spy_partner, cf_sendFrames, NULL ) ;
-			}
+			cf_sendFrames->mixed_buffer = whisperBuffer + AST_FRIENDLY_OFFSET ;
+
+			// add the whisper voice
+			mix_slinear_frames( whisperBuffer + AST_FRIENDLY_OFFSET, CASTDATA2PTR(cf_spoken->fr->data, char), AST_CONF_BLOCK_SAMPLES);
+
+			cf_sendFrames->fr = create_slinear_frame( cf_sendFrames->mixed_buffer ) ;
 		}
 
-		// point to the next spoken frame
-		cf_spoken = cf_spoken->next ;
+		cf_spoken = cf_spoken->next;
 	}
 
-	// if necessary, add a frame with a null member pointer.
-	// this frame will hold the audio mixed for all listeners
+	//
+	// if necessary, add a frame for listeners
+	//
+
 	if ( listeners > 0 )
 	{
 		cf_sendFrames = create_conf_frame( NULL, cf_sendFrames, NULL ) ;
+		cf_sendFrames->mixed_buffer = listenerBuffer + AST_FRIENDLY_OFFSET ;
+		cf_sendFrames->fr = create_slinear_frame( cf_sendFrames->mixed_buffer ) ;
 	}
-
-	//
-	// mix the audio
-	//
-
-	// convenience pointer that skips over the friendly offset
-	char* cp_listenerData ;
-
-	// pointer to the send frames list
-	conf_frame* cf_send = NULL ;
-
-	for ( cf_send = cf_sendFrames ; cf_send != NULL ; cf_send = cf_send->next )
+	else
 	{
-		// allocate a mix buffer which fill large enough memory to
-		// hold a frame, and reset it's memory so we don't get noise
-		char* cp_listenerBuffer = malloc( AST_CONF_BUFFER_SIZE ) ;
-		memset( cp_listenerBuffer, 0x0, AST_CONF_BUFFER_SIZE ) ;
-
-		// point past the friendly offset right to the data
-		cp_listenerData = cp_listenerBuffer + AST_FRIENDLY_OFFSET ;
-
-		// reset the spoken list pointer
-		cf_spoken = frames_in ;
-
-		// really mix the audio
-		for ( ; cf_spoken != NULL ; cf_spoken = cf_spoken->next )
-		{
-			//
-			// if the members are equal, and they
-			// are not null, do not mix them.
-			//
-			if (
-				( cf_spoken->member == cf_send->member )
-				|| ( cf_spoken->member->spyee_channel_name != NULL
-					&& cf_spoken->member->spy_partner != cf_send->member)
-			)
-			{
-				// don't mix this frame
-			}
-			else if ( cf_spoken->fr == NULL )
-			{
-				ast_log( LOG_WARNING, "unable to mix conf_frame with null ast_frame\n" ) ;
-			}
-			else
-			{
-				// mix the new frame in with the existing buffer
-				mix_slinear_frames( cp_listenerData, CASTDATA2PTR(cf_spoken->fr->data, char), AST_CONF_BLOCK_SAMPLES);//XXX NAS cf_spoken->fr->samples ) ;
-			}
-		}
-
-		// copy a pointer to the frame data to the conf_frame
-		cf_send->mixed_buffer = cp_listenerData ;
-	}
-
-	//
-	// copy the mixed buffer to a new frame
-	//
-
-	// reset the send list pointer
-	cf_send = cf_sendFrames ;
-
-	while ( cf_send != NULL )
-	{
-		cf_send->fr = create_slinear_frame( cf_send->mixed_buffer ) ;
-		cf_send = cf_send->next ;
+		free(listenerBuffer);
 	}
 
 	//
@@ -340,7 +309,7 @@ conf_frame* mix_multiple_speakers(
 	{
 		struct ast_conf_member *spy_partner = cf_spoken->member->spy_partner ;
 
-		if ( spy_partner == NULL || cf_spoken->member->spyee_channel_name != NULL )
+		if ( spy_partner == NULL || cf_spoken->member->spyer != 0 )
 		{
 			// delete the frame
 			cf_spoken = delete_conf_frame( cf_spoken ) ;
@@ -588,29 +557,48 @@ struct ast_frame* create_slinear_frame( char* data )
 
 void mix_slinear_frames( char *dst, const char *src, int samples )
 {
-	if ( dst == NULL ) return ;
-	if ( src == NULL ) return ;
-
 	int i, val ;
 
 	for ( i = 0 ; i < samples ; ++i )
 	{
 		val = ( (short*)dst )[i] + ( (short*)src )[i] ;
 
-		if ( val > 0x7fff )
+		if ( val > 32767 )
 		{
-			( (short*)dst )[i] = 0x7fff - 1 ;
-			continue ;
+			( (short*)dst )[i] = 32767 ;
 		}
-		else if ( val < -0x7fff )
+		else if ( val < -32768 )
 		{
-			( (short*)dst )[i] = -0x7fff + 1 ;
-			continue ;
+			( (short*)dst )[i] = -32768 ;
 		}
 		else
 		{
 			( (short*)dst )[i] = val ;
-	   		continue ;
+		}
+	}
+
+	return ;
+}
+
+void unmix_slinear_frame( char *dst, const char *src1, const char *src2, int samples )
+{
+	int i, val ;
+
+	for ( i = 0 ; i < samples ; ++i )
+	{
+		val = ( (short*)src1 )[i] - ( (short*)src2 )[i] ;
+
+		if ( val > 32767 )
+		{
+			( (short*)dst )[i] = 32767 ;
+		}
+		else if ( val < -32768 )
+		{
+			( (short*)dst )[i] = -32768 ;
+		}
+		else
+		{
+			( (short*)dst )[i] = val ;
 		}
 	}
 

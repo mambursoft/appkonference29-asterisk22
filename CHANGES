@@ -200,3 +200,9 @@ gets deleted with the other object files and deleted the distclean target.
 Fixed the Makefile so that the module is compiled whenever an include file is
 modified.
 
+Changed the frame mixing algorithm to reduce calls to the buffer mixing
+routine: First, the new algorithm loops over the input frames to create a mix
+buffer for listeners. Then, speaker buffers are created by subtracting their
+voice from the listener buffer. As a result, frame mixing is O(n) with respect
+to invocations of the mix buffer routine which should be a considerable
+improvement.
