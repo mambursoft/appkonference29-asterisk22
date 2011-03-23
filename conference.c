@@ -301,6 +301,9 @@ static void conference_exec( struct ast_conference *conf )
 			// reset dtmf source
 			dtmf_source_member = NULL;
 #endif
+			// reset listener frame
+			conf->listener_frame = NULL ;
+
 			// loop over member list to retrieve queued frames
 			while ( member != NULL )
 			{
@@ -318,7 +321,7 @@ static void conference_exec( struct ast_conference *conf )
 			//---------------//
 
 			// mix frames and get batch of outgoing frames
-			if ( (send_frames = (spoken_frames ? mix_frames(spoken_frames, speaker_count, listener_count, conf->membercount, conf->volume) : NULL)) )
+			if ( (send_frames = (spoken_frames ? mix_frames(conf, spoken_frames, speaker_count, listener_count) : NULL)) )
 			{
 				//DEBUG("base => %ld.%ld %d\n", base.tv_sec, base.tv_usec, ( int )( base.tv_usec / 1000 )) ;
 
@@ -335,7 +338,7 @@ static void conference_exec( struct ast_conference *conf )
 			//
 			for ( member = conf->memberlist ; member != NULL ; member = member->next )
 			{
-				member_process_outgoing_frames(conf, member, send_frames);
+				member_process_outgoing_frames(conf, member);
 			}
 #ifdef	VIDEO
 			//-------//
@@ -717,6 +720,7 @@ static struct ast_conference* create_conf( char* name, struct ast_conf_member* m
 	conf->next = NULL ;
 	conf->prev = NULL ;
 	conf->memberlist = NULL ;
+	conf->listener_frame = NULL ;
 #ifndef	VIDEO
 	conf->memberlast = NULL ;
 #endif

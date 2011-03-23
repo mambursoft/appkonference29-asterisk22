@@ -65,6 +65,8 @@ struct ast_conf_member
 	char delete_flag ; // delete flag
 	int use_count ; // use count
 
+	conf_frame *speaker_frame ; // member speaker frame
+
 	// values passed to create_member () via *data
 	int priority ;	// highest priority gets the channel
 	char flags[MEMBER_FLAGS_LEN + 1] ;	// raw member-type flags
@@ -386,8 +388,7 @@ void member_process_spoken_frames(struct ast_conference* conf,
 				 int *speaker_count);
 
 void member_process_outgoing_frames(struct ast_conference* conf,
-				    struct ast_conf_member *member,
-				    struct conf_frame *send_frames);
+				    struct ast_conf_member *member);
 
 #ifdef	VIDEO
 int is_video_eligible(struct ast_conf_member *member);

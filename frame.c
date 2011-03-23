@@ -28,12 +28,12 @@
 #include "asterisk/autoconfig.h"
 #include "frame.h"
 
-conf_frame* mix_frames( conf_frame* frames_in, int speaker_count, int listener_count, int member_count, int volume )
+conf_frame* mix_frames( struct ast_conference* conf, conf_frame* frames_in, int speaker_count, int listener_count )
 {
 	if ( speaker_count == 1 )
 	{
 		// pass-through frames
-		return mix_single_speaker( frames_in, volume, member_count ) ;
+		return mix_single_speaker( conf, frames_in ) ;
 		//printf("mix single speaker\n");
 	}
 
@@ -50,7 +50,7 @@ conf_frame* mix_frames( conf_frame* frames_in, int speaker_count, int listener_c
 			ast_log( LOG_WARNING, "mix_frames: unable to convert frame to slinear\n" ) ;
 			return NULL ;
 		} 
-		if ( (frames_in->talk_volume = volume + frames_in->member->talk_volume) )
+		if ( (frames_in->talk_volume = conf->volume + frames_in->member->talk_volume) )
 		{
 			ast_frame_adjust_volume(frames_in->fr, frames_in->talk_volume);
 		}
@@ -64,7 +64,7 @@ conf_frame* mix_frames( conf_frame* frames_in, int speaker_count, int listener_c
 			ast_log( LOG_WARNING, "mix_frames: unable to convert frame to slinear\n" ) ;
 			return NULL ;
 		}
-		if ( (frames_in->next->talk_volume = volume + frames_in->next->member->talk_volume) )
+		if ( (frames_in->next->talk_volume = conf->volume + frames_in->next->member->talk_volume) )
 		{
 			ast_frame_adjust_volume(frames_in->next->fr, frames_in->next->talk_volume);
 		}
@@ -74,16 +74,19 @@ conf_frame* mix_frames( conf_frame* frames_in, int speaker_count, int listener_c
 		frames_in->member = frames_in->next->member ;
 		frames_in->next->member = mbr ;
 
+		frames_in->member->speaker_frame = frames_in ;
+		frames_in->next->member->speaker_frame = frames_in->next ;
+
 		return frames_in ;
 	}
 
 	// mix spoken frames for sending
 	// ( note: this call also releases us from free'ing spoken_frames )
-	return mix_multiple_speakers( frames_in, speaker_count, listener_count, volume ) ;
+	return mix_multiple_speakers( conf, frames_in, speaker_count, listener_count ) ;
 
 }
 
-conf_frame* mix_single_speaker( conf_frame* frames_in, int volume, int member_count )
+conf_frame* mix_single_speaker( struct ast_conference* conf, conf_frame* frames_in )
 {
 #ifdef APP_KONFERENCE_DEBUG
 	//DEBUG("returning single spoken frame\n") ;
@@ -125,7 +128,7 @@ conf_frame* mix_single_speaker( conf_frame* frames_in, int volume, int member_co
 		return NULL ;
 	}
 
-	if ( (frames_in->talk_volume = frames_in->member->talk_volume + volume) )
+	if ( (frames_in->talk_volume = frames_in->member->talk_volume + conf->volume) )
 	{
 		ast_frame_adjust_volume(frames_in->fr, frames_in->talk_volume);
 	}
@@ -135,12 +138,14 @@ conf_frame* mix_single_speaker( conf_frame* frames_in, int volume, int member_co
 		// speaker is neither a spyee nor a spyer
 		// set the frame's member to null ( i.e. all listeners )
 		frames_in->member = NULL ;
+
+		conf->listener_frame = frames_in ;
 	}
 	else
 	{
 		// speaker is either a spyee or a spyer
 		if ( frames_in->member->spyer == 0
-			&& member_count > 2 )
+			&& conf->membercount > 2 )
 		{
 			conf_frame *spy_frame = copy_conf_frame(frames_in);
 
@@ -154,13 +159,19 @@ conf_frame* mix_single_speaker( conf_frame* frames_in, int volume, int member_co
 
 				spy_frame->converted[ frames_in->member->read_format_index ]
 					= ast_frdup( frames_in->converted[ frames_in->member->read_format_index ] ) ;
+
+				spy_frame->member->speaker_frame = spy_frame ;
 			}
 
 			frames_in->member = NULL ;
+
+			conf->listener_frame = frames_in ;
 		}
 		else
 		{
 			frames_in->member = frames_in->member->spy_partner ;
+
+			frames_in->member->speaker_frame = frames_in ;
 		}
 	}
 
@@ -168,10 +179,10 @@ conf_frame* mix_single_speaker( conf_frame* frames_in, int volume, int member_co
 }
 
 conf_frame* mix_multiple_speakers(
+	struct ast_conference* conf,	
 	conf_frame* frames_in,
 	int speakers,
-	int listeners,
-	int volume
+	int listeners
 )
 {
 #ifdef APP_KONFERENCE_DEBUG
@@ -213,9 +224,9 @@ conf_frame* mix_multiple_speakers(
 			return NULL;
 		}
 
-		if (( cf_spoken->member->talk_volume != 0 ) || (volume != 0))
+		if (( cf_spoken->member->talk_volume != 0 ) || (conf->volume != 0))
 		{
-			ast_frame_adjust_volume(cf_spoken->fr, cf_spoken->member->talk_volume + volume);
+			ast_frame_adjust_volume(cf_spoken->fr, cf_spoken->member->talk_volume + conf->volume);
 		}
 
 		if ( cf_spoken->member->spyer == 0 )
@@ -262,6 +273,8 @@ conf_frame* mix_multiple_speakers(
 			}
 
 			cf_sendFrames->fr = create_slinear_frame( cf_sendFrames->mixed_buffer ) ;
+
+			cf_sendFrames->member->speaker_frame = cf_sendFrames ;
 		}
 		else if ( cf_spoken->member->spy_partner->local_speaking_state == 0 )
 		{
@@ -277,6 +290,8 @@ conf_frame* mix_multiple_speakers(
 			mix_slinear_frames( whisperBuffer + AST_FRIENDLY_OFFSET, CASTDATA2PTR(cf_spoken->fr->data, char), AST_CONF_BLOCK_SAMPLES);
 
 			cf_sendFrames->fr = create_slinear_frame( cf_sendFrames->mixed_buffer ) ;
+
+			cf_sendFrames->member->speaker_frame = cf_sendFrames ;
 		}
 
 		cf_spoken = cf_spoken->next;
@@ -291,6 +306,8 @@ conf_frame* mix_multiple_speakers(
 		cf_sendFrames = create_conf_frame( NULL, cf_sendFrames, NULL ) ;
 		cf_sendFrames->mixed_buffer = listenerBuffer + AST_FRIENDLY_OFFSET ;
 		cf_sendFrames->fr = create_slinear_frame( cf_sendFrames->mixed_buffer ) ;
+
+		conf->listener_frame = cf_sendFrames ;
 	}
 	else
 	{
@@ -298,7 +315,7 @@ conf_frame* mix_multiple_speakers(
 	}
 
 	//
-	// clean up the spoken frames we were passed
+	// move any spyee frames to sendFrame list and delete the remaining frames
 	// ( caller will only be responsible for free'ing returns frames )
 	//
 
@@ -317,7 +334,7 @@ conf_frame* mix_multiple_speakers(
 		else
 		{
 			// move the unmixed frame to sendFrames
-			//  and indicate who it's for
+			//  and indicate which spyer it's for
 			conf_frame *spy_frame = cf_spoken ;
 
 			cf_spoken = cf_spoken->next;
@@ -331,6 +348,8 @@ conf_frame* mix_multiple_speakers(
 			spy_frame->member = spy_partner;
 
 			cf_sendFrames = spy_frame;
+
+			cf_sendFrames->member->speaker_frame = cf_sendFrames ;
 		}
 	}
 

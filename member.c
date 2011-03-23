@@ -2862,8 +2862,7 @@ void ast_packer_free(struct ast_packer *s)
 
 int queue_frame_for_listener(
 	struct ast_conference* conf,
-	struct ast_conf_member* member,
-	conf_frame* frame
+	struct ast_conf_member* member
 )
 {
 #ifdef	APP_KONFERENCE_DEBUG
@@ -2883,26 +2882,11 @@ int queue_frame_for_listener(
 		return -1 ;
 	}
 #endif
-	//
-	// loop over spoken frames looking for member's appropriate match
-	//
-
-	short found_flag = 0 ;
 	struct ast_frame* qf ;
+	struct conf_frame* frame = conf->listener_frame ;
 
-	for ( ; frame != NULL ; frame = frame->next )
+	if ( frame )
 	{
-		// look for the listener's frame
-		if ( frame->member != NULL )
-			continue ;
-
-#ifdef	APP_KONFERENCE_DEBUG
-		if ( frame->fr == NULL )
-		{
-			DEBUG("unknown error queueing frame for listener, frame->fr == NULL\n") ;
-			continue ;
-		}
-#endif
 		// first, try for a pre-converted frame
 		qf = (!member->listen_volume && !frame->talk_volume ? frame->converted[member->write_format_index] : 0);
 
@@ -2920,7 +2904,8 @@ int queue_frame_for_listener(
 			if ( qf == NULL )
 			{
 				ast_log( LOG_WARNING, "unable to duplicate frame\n" ) ;
-				continue ;
+				queue_silent_frame( conf, member ) ;
+				return 0 ;
 			}
 
 			// convert using the conference's translation path
@@ -2963,16 +2948,11 @@ int queue_frame_for_listener(
 			ast_log( LOG_WARNING, "unable to translate outgoing listener frame, channel => %s\n", member->chan->name ) ;
 		}
 
-		// set found flag
-		found_flag = 1 ;
-
-		// break from for loop
-		break ;
 	}
-
-	// queue a silent frame
-	if ( found_flag == 0 )
+	else
+	{
 		queue_silent_frame( conf, member ) ;
+	}
 
 	return 0 ;
 }
@@ -2980,8 +2960,7 @@ int queue_frame_for_listener(
 
 int queue_frame_for_speaker(
 	struct ast_conference* conf,
-	struct ast_conf_member* member,
-	conf_frame* frame
+	struct ast_conf_member* member
 )
 {
 #ifdef	APP_KONFERENCE_DEBUG
@@ -3001,26 +2980,11 @@ int queue_frame_for_speaker(
 		return -1 ;
 	}
 #endif
-	//
-	// loop over spoken frames looking for member's appropriate match
-	//
-
-	short found_flag = 0 ;
 	struct ast_frame* qf ;
+	conf_frame* frame = member->speaker_frame ;
 
-	for ( ; frame != NULL ; frame = frame->next )
+	if ( frame )
 	{
-		if ( frame->member != member )
-		{
-			continue ;
-		}
-#ifdef	APP_KONFERENCE_DEBUG
-		if ( frame->fr == NULL )
-		{
-			DEBUG("unable to queue speaker frame with null data\n" ) ;
-			continue ;
-		}
-#endif
 		//
 		// convert and queue frame
 		//
@@ -3060,17 +3024,11 @@ int queue_frame_for_speaker(
 				ast_log( LOG_WARNING, "unable to translate outgoing speaker frame, channel => %s\n", member->chan->name ) ;
 			}
 		}
-
-		// set found flag
-		found_flag = 1 ;
-
-		// we found the frame, skip to the next member
-		break ;
 	}
-
-	// queue a silent frame
-	if ( found_flag == 0 )
+	else
+	{
 		queue_silent_frame( conf, member ) ;
+	}
 
 	return 0 ;
 }
@@ -3177,8 +3135,7 @@ int queue_silent_frame(
 
 
 void member_process_outgoing_frames(struct ast_conference* conf,
-				  struct ast_conf_member *member,
-				  struct conf_frame *send_frames)
+				  struct ast_conf_member *member)
 {
 	ast_mutex_lock(&member->lock);
 
@@ -3196,12 +3153,12 @@ void member_process_outgoing_frames(struct ast_conference* conf,
 		if ( member->local_speaking_state == 0 ) 
 		{
 			// queue listener frame
-			queue_frame_for_listener( conf, member, send_frames ) ;
+			queue_frame_for_listener( conf, member ) ;
 		}
 		else
 		{
 			// queue speaker frame
-			queue_frame_for_speaker( conf, member, send_frames ) ;
+			queue_frame_for_speaker( conf, member ) ;
 		}
 	}
 	else
@@ -3210,18 +3167,18 @@ void member_process_outgoing_frames(struct ast_conference* conf,
 		if ( member->spyer != 0 )
 		{
 			// spyer -- always use member translator
-			queue_frame_for_speaker( conf, member, send_frames ) ;
+			queue_frame_for_speaker( conf, member ) ;
 		}
 		else
 		{
 			// spyee -- use member translator if spyee speaking or spyer whispering to spyee
 			if ( member->local_speaking_state == 1 || member->spy_partner->local_speaking_state == 1 )
 			{
-				queue_frame_for_speaker( conf, member, send_frames ) ;
+				queue_frame_for_speaker( conf, member ) ;
 			}
 			else
 			{
-				queue_frame_for_listener( conf, member, send_frames ) ;
+				queue_frame_for_listener( conf, member ) ;
 			}
 		}
 	}
@@ -3298,6 +3255,9 @@ void member_process_spoken_frames(struct ast_conference* conf,
 
 	// acquire member mutex
 	ast_mutex_lock( &member->lock ) ;
+
+	// reset speaker frame
+	member->speaker_frame = NULL ;
 
 	// tell member the number of frames we're going to need ( used to help dropping algorithm )
 	member->inFramesNeeded = ( time_diff / AST_CONF_FRAME_INTERVAL ) - 1 ;

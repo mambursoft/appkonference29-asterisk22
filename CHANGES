@@ -206,3 +206,11 @@ buffer for listeners. Then, speaker buffers are created by subtracting their
 voice from the listener buffer. As a result, frame mixing is O(n) with respect
 to invocations of the mix buffer routine which should be a considerable
 improvement.
+
+Changed the frame queueing routines for both speakers and listeners so they are
+more efficient.  Specifically, the sequential search through the send frame
+list to find the frame to queue to the input member is replaced with a fetch of
+the appropriate frame pointer from either the member control block for speakers
+or the conference control block for listeners. These pointers are steup when
+the spoken frames are processed in the conference thread loop. 
+
