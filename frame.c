@@ -28,6 +28,88 @@
 #include "asterisk/autoconfig.h"
 #include "frame.h"
 
+#ifndef	NOVECTORS
+
+typedef short v4si __attribute__ ((vector_size (16))); 
+
+static inline void mix_slinear_frames( char *dst, const char *src, int samples )
+{
+	int i ;
+
+	for ( i = 0 ; i < samples / 8 ; ++i )
+	{
+		((v4si *)dst)[i] = ((v4si *)dst)[i] + ((v4si *)src)[i];
+	}
+
+	return ;
+}
+
+static inline void unmix_slinear_frame( char *dst, const char *src1, const char *src2, int samples )
+{
+	int i ;
+
+	for ( i = 0 ; i < samples / 8 ; ++i )
+	{
+		((v4si *)dst)[i] = ((v4si *)src1)[i] - ((v4si *)src2)[i];
+	}
+
+	return ;
+}
+
+#else
+
+static void mix_slinear_frames( char *dst, const char *src, int samples )
+{
+	int i, val ;
+
+	for ( i = 0 ; i < samples ; ++i )
+	{
+		val = ( (short*)dst )[i] + ( (short*)src )[i] ;
+
+		if ( val > 32767 )
+		{
+			( (short*)dst )[i] = 32767 ;
+		}
+		else if ( val < -32768 )
+		{
+			( (short*)dst )[i] = -32768 ;
+		}
+		else
+		{
+			( (short*)dst )[i] = val ;
+		}
+	}
+
+	return ;
+}
+
+static void unmix_slinear_frame( char *dst, const char *src1, const char *src2, int samples )
+{
+	int i, val ;
+
+	for ( i = 0 ; i < samples ; ++i )
+	{
+		val = ( (short*)src1 )[i] - ( (short*)src2 )[i] ;
+
+		if ( val > 32767 )
+		{
+			( (short*)dst )[i] = 32767 ;
+		}
+		else if ( val < -32768 )
+		{
+			( (short*)dst )[i] = -32768 ;
+		}
+		else
+		{
+			( (short*)dst )[i] = val ;
+		}
+	}
+
+	return ;
+}
+
+#endif
+
 conf_frame* mix_frames( struct ast_conference* conf, conf_frame* frames_in, int speaker_count, int listener_count )
 {
 	if ( speaker_count == 1 )
@@ -572,56 +654,6 @@ struct ast_frame* create_slinear_frame( char* data )
 	f->src = NULL ;
 
 	return f ;
-}
-
-void mix_slinear_frames( char *dst, const char *src, int samples )
-{
-	int i, val ;
-
-	for ( i = 0 ; i < samples ; ++i )
-	{
-		val = ( (short*)dst )[i] + ( (short*)src )[i] ;
-
-		if ( val > 32767 )
-		{
-			( (short*)dst )[i] = 32767 ;
-		}
-		else if ( val < -32768 )
-		{
-			( (short*)dst )[i] = -32768 ;
-		}
-		else
-		{
-			( (short*)dst )[i] = val ;
-		}
-	}
-
-	return ;
-}
-
-void unmix_slinear_frame( char *dst, const char *src1, const char *src2, int samples )
-{
-	int i, val ;
-
-	for ( i = 0 ; i < samples ; ++i )
-	{
-		val = ( (short*)src1 )[i] - ( (short*)src2 )[i] ;
-
-		if ( val > 32767 )
-		{
-			( (short*)dst )[i] = 32767 ;
-		}
-		else if ( val < -32768 )
-		{
-			( (short*)dst )[i] = -32768 ;
-		}
-		else
-		{
-			( (short*)dst )[i] = val ;
-		}
-	}
-
-	return ;
 }
 
 //

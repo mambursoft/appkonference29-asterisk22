@@ -214,3 +214,6 @@ the appropriate frame pointer from either the member control block for speakers
 or the conference control block for listeners. These pointers are steup when
 the spoken frames are processed in the conference thread loop. 
 
+Changed the frame mixing routines to use SIMD instructions for processing
+samples which should be much more efficient than processing the samples
+serially.
