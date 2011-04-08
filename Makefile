@@ -10,7 +10,7 @@
 #
 
 # asterisk source directory
-ASTERISK_SRC_DIR = /usr/src/asterisk-1.4.30
+ASTERISK_SRC_DIR =
 
 # asterisk release or subversion working copy
 ASTERISK_SRC_VERSION = $(shell if [ -e $(ASTERISK_SRC_DIR)/.version ] ; then echo release; elif [ -e $(ASTERISK_SRC_DIR)/.svn ] ; then echo subversion; else echo wtf; fi)
