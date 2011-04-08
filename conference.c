@@ -1018,7 +1018,7 @@ static void add_member( struct ast_conf_member *member, struct ast_conference *c
 	if ( member->spyee_channel_name != NULL )
 	{
 		struct ast_conf_member *spyee = find_member(member->spyee_channel_name, 0);
-		if ( spyee != NULL && spyee->spy_partner == NULL )
+		if ( spyee != NULL && spyee->spy_partner == NULL && spyee->conf == conf )
 		{
 			spyee->spy_partner = member;
 			member->spy_partner = spyee;
@@ -1124,6 +1124,7 @@ static void add_member( struct ast_conf_member *member, struct ast_conference *c
 		conf->memberlast = member ;
 	}
 #endif
+	member->conf = conf ;
 
 	// release the conference lock
 	ast_rwlock_unlock( &conf->lock ) ;
@@ -1328,8 +1329,13 @@ void remove_member( struct ast_conf_member* member, struct ast_conference* conf,
 		member->id,
 		member->flags,
 		member->chan->name,
-		CALLERIDNUM(member),
-		CALLERIDNAME(member),
+#if	ASTERISK == 14 || ASTERISK == 16
+		member->chan->cid.cid_num ? member->chan->cid.cid_num : "unknown",
+		member->chan->cid.cid_name ? member->chan->cid.cid_name : "unknown",
+#else
+		member->chan->caller.id.number.str ? member->chan->caller.id.number.str : "unknown",
+		member->chan->caller.id.name.str ? member->chan->caller.id.name.str: "unknown",
+#endif
 		tt,
 		moderators,
 		membercount
@@ -3065,7 +3071,11 @@ static void do_video_switching(struct ast_conference *conf, int new_id, int lock
 		ast_rwlock_unlock( &conf->lock );
 }
 #endif
+#if	ASTERISK == 14 || ASTERISK == 16
 int play_sound_channel(int fd, const char *channel, char **file, int mute, int tone, int n)
+#else
+int play_sound_channel(int fd, const char *channel, const char * const *file, int mute, int tone, int n)
+#endif
 {
 	struct ast_conf_member *member;
 	struct ast_conf_soundq *newsound;
@@ -3314,7 +3324,11 @@ int hash(const char *name)
 	return h;
 }
 
+#if	ASTERISK == 14
 int count_exec( struct ast_channel* chan, void* data )
+#else
+int count_exec( struct ast_channel* chan, const char* data )
+#endif
 {
 	int res = 0;
 	struct ast_conference *conf;

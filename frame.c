@@ -314,7 +314,11 @@ conf_frame* mix_multiple_speakers(
 		if ( cf_spoken->member->spyer == 0 )
 		{
 			// add the speaker's voice
-			mix_slinear_frames( listenerBuffer + AST_FRIENDLY_OFFSET, CASTDATA2PTR(cf_spoken->fr->data, char), AST_CONF_BLOCK_SAMPLES);
+#if	ASTERISK == 14
+			mix_slinear_frames( listenerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data, AST_CONF_BLOCK_SAMPLES);
+#else
+			mix_slinear_frames( listenerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
+#endif
 		} 
 		else
 		{
@@ -346,12 +350,20 @@ conf_frame* mix_multiple_speakers(
 			cf_sendFrames->mixed_buffer = speakerBuffer + AST_FRIENDLY_OFFSET ;
 
 			// subtract the speaker's voice
-			unmix_slinear_frame(cf_sendFrames->mixed_buffer, listenerBuffer + AST_FRIENDLY_OFFSET, CASTDATA2PTR(cf_spoken->fr->data, char), AST_CONF_BLOCK_SAMPLES);
+#if	ASTERISK == 14
+			unmix_slinear_frame(cf_sendFrames->mixed_buffer, listenerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data, AST_CONF_BLOCK_SAMPLES);
+#else
+			unmix_slinear_frame(cf_sendFrames->mixed_buffer, listenerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
+#endif
 
 			if ( cf_spoken->member->spy_partner && cf_spoken->member->spy_partner->local_speaking_state != 0 )
 			{
 				// add whisper voice
-				mix_slinear_frames( cf_sendFrames->mixed_buffer, CASTDATA2PTR(cf_spoken->member->whisper_frame->fr->data, char), AST_CONF_BLOCK_SAMPLES);
+#if	ASTERISK == 14
+				mix_slinear_frames( cf_sendFrames->mixed_buffer, cf_spoken->member->whisper_frame->fr->data, AST_CONF_BLOCK_SAMPLES);
+#else
+				mix_slinear_frames( cf_sendFrames->mixed_buffer, cf_spoken->member->whisper_frame->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
+#endif
 			}
 
 			cf_sendFrames->fr = create_slinear_frame( cf_sendFrames->mixed_buffer ) ;
@@ -369,7 +381,11 @@ conf_frame* mix_multiple_speakers(
 			cf_sendFrames->mixed_buffer = whisperBuffer + AST_FRIENDLY_OFFSET ;
 
 			// add the whisper voice
-			mix_slinear_frames( whisperBuffer + AST_FRIENDLY_OFFSET, CASTDATA2PTR(cf_spoken->fr->data, char), AST_CONF_BLOCK_SAMPLES);
+#if	ASTERISK == 14
+			mix_slinear_frames( whisperBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data, AST_CONF_BLOCK_SAMPLES);
+#else
+			mix_slinear_frames( whisperBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
+#endif
 
 			cf_sendFrames->fr = create_slinear_frame( cf_sendFrames->mixed_buffer ) ;
 
@@ -616,7 +632,11 @@ struct ast_frame* create_text_frame(const char *text, int copy)
 	f->mallocd = AST_MALLOCD_HDR;
 	if ( copy ) f->mallocd |= AST_MALLOCD_DATA;
 	f->datalen = strlen(t) + 1;
-	SETDATA2PTR(f->data, t);
+#if	ASTERISK == 14
+	f->data = t;
+#else
+	f->data.ptr = t;
+#endif
 	f->src = NULL;
 
 	return f;
@@ -640,17 +660,28 @@ struct ast_frame* create_slinear_frame( char* data )
 
 	f->frametype = AST_FRAME_VOICE ;
 #ifndef	AC_USE_G722
-	SETCLASS2INT(f->subclass,AST_FORMAT_SLINEAR) ;
+#if	ASTERISK == 14 || ASTERISK == 16
+	f->subclass = AST_FORMAT_SLINEAR ;
 #else
-	SETCLASS2INT(f->subclass,AST_FORMAT_SLINEAR16) ;
+	f->subclass.integer = AST_FORMAT_SLINEAR ;
+#endif
+#else
+#if	ASTERISK == 14 || ASTERISK == 16
+	f->subclass = AST_FORMAT_SLINEAR16 ;
+#else
+	f->subclass.integer = AST_FORMAT_SLINEAR16 ;
+#endif
 #endif
 	f->samples = AST_CONF_BLOCK_SAMPLES ;
 	f->offset = AST_FRIENDLY_OFFSET ;
 	f->mallocd = AST_MALLOCD_HDR | AST_MALLOCD_DATA ;
 
 	f->datalen = AST_CONF_FRAME_DATA_SIZE ;
-	SETDATA2PTR(f->data, data);
-
+#if	ASTERISK == 14
+	f->data = data;
+#else
+	f->data.ptr = data;
+#endif
 	f->src = NULL ;
 
 	return f ;

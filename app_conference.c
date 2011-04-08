@@ -60,7 +60,11 @@ static char *app2 = "KonferenceCount";
 static char *synopsis2 = "Channel Independent Conference Count";
 static char *descrip2 = "Channel Independent Conference Count Application";
 
+#if	ASTERISK == 14 || ASTERISK == 16
 static int app_konference_main(struct ast_channel* chan, void* data)
+#else
+static int app_konference_main(struct ast_channel* chan, const char* data)
+#endif
 {
 	int res ;
 	struct ast_module_user *u ;
@@ -75,7 +79,11 @@ static int app_konference_main(struct ast_channel* chan, void* data)
 	return res ;
 }
 
+#if	ASTERISK == 14 || ASTERISK == 16
 static int app_konferencecount_main(struct ast_channel* chan, void* data)
+#else
+static int app_konferencecount_main(struct ast_channel* chan, const char* data)
+#endif
 {
 	int res ;
 	struct ast_module_user *u ;

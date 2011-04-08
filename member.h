@@ -61,6 +61,8 @@ struct ast_conf_member
 
 	struct ast_channel* chan ; // member's channel
 
+	struct ast_conference* conf ; // member's conference
+
 	ast_cond_t delete_var ; // delete cv
 	char delete_flag ; // delete flag
 	int use_count ; // use count
@@ -329,7 +331,11 @@ struct conf_member
 // function declarations
 //
 
+#if	ASTERISK == 14
 int member_exec( struct ast_channel* chan, void* data ) ;
+#else
+int member_exec( struct ast_channel* chan, const char* data ) ;
+#endif
 
 struct ast_conf_member* check_active_video( int id, struct ast_conference *conf );
 

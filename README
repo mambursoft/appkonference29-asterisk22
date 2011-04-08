@@ -58,8 +58,8 @@ app_konference is available via SVN from its own home on sourceforge:
 
 Compiling app_konference
 
-    * Checkout sources
-    * Modify Makefile to point to your Asterisk include directory
+    * download asterisk source
+    * modify Makefile to point to your source directory
     * make
     * sudo make install 
 

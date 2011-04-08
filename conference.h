@@ -148,7 +148,11 @@ struct ast_conference
 
 int hash( const char *channel_name ) ;
 
+#if	ASTERISK == 14
 int count_exec( struct ast_channel* chan, void* data ) ;
+#else
+int count_exec( struct ast_channel* chan, const char* data ) ;
+#endif
 
 struct ast_conference* join_conference( struct ast_conf_member* member, char* conf_name, char* max_users_flag ) ;
 
@@ -226,7 +230,12 @@ int drive(const char *conference, int src_member_id, int dst_member_id);
 int drive_channel(const char *conference, const char *src_channel, const char *dst_channel);
 #endif
 
+#if	ASTERISK == 14 || ASTERISK == 16
 int play_sound_channel(int fd, const char *channel, char **file, int mute, int tone, int n);
+#else
+int play_sound_channel(int fd, const char *channel, const char * const *file, int mute, int tone, int n);
+#endif
+
 int stop_sound_channel(int fd, const char *channel);
 
 int start_moh_channel(int fd, const char *channel);

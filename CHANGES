@@ -217,3 +217,11 @@ the spoken frames are processed in the conference thread loop.
 Changed the frame mixing routines to use SIMD instructions for processing
 samples which should be much more efficient than processing the samples
 serially.
+
+Fixed some compiler warnings by changing the Makefile to set the asterisk
+version in a preprocessor flag and changed the source so that code is generated
+for the for the appropriate asterisk version. The asterisk version can by
+setting the new source directory variable on the command line: make
+ASTERISK_SRC_DIRECTORY or by modifying the variable in the Makefile.
+
+Changed the Makefile so that compiler optimizations are enabled by default.

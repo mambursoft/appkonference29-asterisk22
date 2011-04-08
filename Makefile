@@ -9,18 +9,36 @@
 # distributed under the terms of the GNU Public License.
 #
 
-.EXPORT_ALL_VARIABLES:
+# asterisk source directory
+ASTERISK_SRC_DIR = /usr/src/asterisk-1.4.30
 
-#
-# app_konference defines which can be passed on the command-line
-#
+# asterisk release or subversion working copy
+ASTERISK_SRC_VERSION = $(shell if [ -e $(ASTERISK_SRC_DIR)/.version ] ; then echo release; elif [ -e $(ASTERISK_SRC_DIR)/.svn ] ; then echo subversion; else echo wtf; fi)
 
-INSTALL_PREFIX :=
-INSTALL_MODULES_DIR := $(INSTALL_PREFIX)/usr/lib/asterisk/modules
+# asterisk release version or subversion branch
+ifeq ($(ASTERISK_SRC_VERSION),release)
+ ASTERISK = $(shell cat $(ASTERISK_SRC_DIR)/.version | cut -d "." -f1,2 | sed -e 's/\.//')
+else
+ ifeq ($(ASTERISK_SRC_VERSION),subversion)
+  ASTERISK = $(shell svn info $(ASTERISK_SRC_DIR) | grep URL | sed -e 's:^.*/::' | cut -d "." -f 1,2 | sed -e 's/\.//')
+ else
+  $(warning Asterisk source not found in directory: $(ASTERISK_SRC_DIR).)
+  $(error Set your asterisk source directory in the Makefile or on the command line.)
+ endif
+endif
 
-ASTERISK_INCLUDE_DIR ?= ../asterisk/include
+# asterisk include directory
+ASTERISK_INCLUDE_DIR = $(ASTERISK_SRC_DIR)/include
 
+# asterisk module directory
+INSTALL_MODULES_DIR = /usr/lib/asterisk/modules
+
+# module revision
 REVISION = $(shell svnversion -n .)
+
+#
+# defines which can be passed on the command-line
+#
 
 # turn app_konference debugging on or off ( 0 == OFF, 1 == ON )
 APP_KONFERENCE_DEBUG ?= 0
@@ -50,39 +68,48 @@ DTMF ?= 0
 SILDET := 2
 
 #
-# app_konference objects to build
+# objects to build
 #
 
 OBJS = app_conference.o conference.o member.o frame.o cli.o
 INCS = app_conference.h  cli.h  conf_frame.h  conference.h  frame.h  member.h
 TARGET = app_konference.so
 
-
 #
-# standard compile settings
+# compiler settings
 #
 
-PROC = $(shell uname -m)
+#PROC = $(shell uname -m)
 INSTALL = install
 
 INCLUDE = -I$(ASTERISK_INCLUDE_DIR)
 DEBUG := -g
 
+#
+# compiler flags
+#
+
 CFLAGS = -pipe -Wall -Wmissing-prototypes -Wmissing-declarations -MD -MP $(DEBUG)
-CPPFLAGS = $(INCLUDE) -D_REENTRANT -D_GNU_SOURCE -DREVISION=\"$(REVISION)\"
-#CFLAGS += -O2
 #CFLAGS += -O3 -march=pentium3 -msse -mfpmath=sse,387 -ffast-math
 # PERF: below is 10% faster than -O2 or -O3 alone.
 #CFLAGS += -O3 -ffast-math -funroll-loops
 # below is another 5% faster or so.
-#CFLAGS += -O3 -ffast-math -funroll-all-loops -fsingle-precision-constant
+CFLAGS += -O3 -ffast-math -funroll-all-loops -fsingle-precision-constant
 #CFLAGS += -mcpu=7450 -faltivec -mabi=altivec -mdynamic-no-pic
 # adding -msse -mfpmath=sse has little effect.
 #CFLAGS += -O3 -msse -mfpmath=sse
 #CFLAGS += $(shell if $(CC) -march=$(PROC) -S -o /dev/null -xc /dev/null >/dev/null 2>&1; then echo "-march=$(PROC)"; fi)
 CFLAGS += $(shell if uname -m | grep -q ppc; then echo "-fsigned-char"; fi)
 CFLAGS += -fPIC
-CPPFLAGS += -DCRYPTO
+
+#
+# preprocessor flags
+#
+
+CPPFLAGS = $(INCLUDE) -D_REENTRANT -D_GNU_SOURCE
+CPPFLAGS += -DREVISION=\"$(REVISION)\"
+CPPFLAGS += -DASTERISK=$(ASTERISK)
+#CPPFLAGS += -DCRYPTO
 CPPFLAGS += -DCHANNEL_TABLE_SIZE=$(CHANNEL_TABLE_SIZE)
 CPPFLAGS += -DCONFERENCE_TABLE_SIZE=$(CONFERENCE_TABLE_SIZE)
 CPPFLAGS += -DONEMIXTHREAD
@@ -91,16 +118,19 @@ CPPFLAGS += -DONEMIXTHREAD
 # Uncomment this if you want G.729A support (need to have the actual codec installed)
 #
 # CPPFLAGS += -DAC_USE_G729A
+#
 
 #
-# Uncomment this if you want G.722 support (requires asterisk 1.6)
+# Uncomment this if you want G.722 support (requires asterisk 1.6 or 1.8)
 #
 # CPPFLAGS += -DAC_USE_G722
+#
 
 #
 # Uncomment this if you want SPEEX support (need to have the actual codec installed)
 #
 # CPPFLAGS += -DAC_USE_SPEEX
+#
 
 ifeq ($(APP_KONFERENCE_DEBUG), 1)
 CPPFLAGS += -DAPP_KONFERENCE_DEBUG

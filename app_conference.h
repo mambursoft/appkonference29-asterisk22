@@ -276,20 +276,6 @@
 
 #define EVENT_FLAG_CONF EVENT_FLAG_USER
 
-#define SETDATA2PTR(data,ptr) data = (typeof(data))((void*)ptr)
-#define CASTDATA2PTR(data, type) (type*)(*((long *)&(data)))
-
-#define SETCLASS2INT(class,value) class = (typeof(class))((int)value)
-#define CASTCLASS2INT(class) *(int*)&(class)
-
-#ifndef AST_DATA_HANDLER_VERSION
-#define CALLERIDNUM(member) member->chan->cid.cid_num ? member->chan->cid.cid_num : "unknown"
-#define CALLERIDNAME(member) member->chan->cid.cid_name ? member->chan->cid.cid_name : "unknown"
-#else
-#define CALLERIDNUM(member) member->chan->caller.id.number.str ? member->chan->caller.id.number.str : "unknown"
-#define CALLERIDNAME(member) member->chan->caller.id.name.str ? member->chan->caller.id.name.str: "unknown"
-#endif
-
 const char *argument_delimiter ;
 
 AST_LIST_HEAD (conference_bucket, ast_conference) ;

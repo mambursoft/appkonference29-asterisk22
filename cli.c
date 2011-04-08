@@ -83,7 +83,11 @@ int conference_version( int fd, int argc, char *argv[] ) {
 #else
 static char conference_version_command[] = "konference version";
 char *conference_version(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_VERSION_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_VERSION_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_version_command,conference_version_usage)
 #endif
 	if ( argc < 2 )
@@ -116,7 +120,11 @@ int conference_restart( int fd, int argc, char *argv[] ) {
 #else
 static char conference_restart_command[] = "konference restart";
 char *conference_restart(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_RESTART_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_RESTART_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_restart_command,conference_restart_usage)
 #endif
 	if ( argc < 2 )
@@ -148,7 +156,11 @@ int conference_debug( int fd, int argc, char *argv[] ) {
 #else
 static char conference_debug_command[] = "konference debug";
 char *conference_debug(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_DEBUG_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_DEBUG_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_debug_command,conference_debug_usage)
 #endif
 	if ( argc < 3 )
@@ -218,7 +230,11 @@ int conference_show_stats( int fd, int argc, char *argv[] ) {
 #else
 static char conference_show_stats_command[] = "konference show stats";
 char *conference_show_stats(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_SHOW_STATS_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_SHOW_STATS_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_show_stats_command,conference_show_stats_usage)
 #endif
 	if ( argc < 3 )
@@ -306,7 +322,11 @@ int conference_list( int fd, int argc, char *argv[] ) {
 #else
 static char conference_list_command[] = "konference list";
 char *conference_list(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_LIST_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_LIST_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_list_command,conference_list_usage)
 #endif
 	if ( argc < 2 )
@@ -351,7 +371,11 @@ int conference_kick( int fd, int argc, char *argv[] ) {
 #else
 static char conference_kick_command[] = "konference kick";
 char *conference_kick(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_KICK_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_KICK_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_kick_command,conference_kick_usage)
 #endif
 	if ( argc < 4 )
@@ -392,7 +416,11 @@ int conference_kickchannel( int fd, int argc, char *argv[] ) {
 #else
 static char conference_kickchannel_command[] = "konference kickchannel";
 char *conference_kickchannel(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_KICKCHANNEL_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_KICKCHANNEL_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_kickchannel_command,conference_kickchannel_usage)
 #endif
 	if ( argc < 3 )
@@ -437,7 +465,11 @@ int conference_mute( int fd, int argc, char *argv[] ) {
 #else
 static char conference_mute_command[] = "konference mute";
 char *conference_mute(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_MUTE_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_MUTE_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_mute_command,conference_mute_usage)
 #endif
 	if ( argc < 4 )
@@ -478,7 +510,11 @@ int conference_muteconference( int fd, int argc, char *argv[] ) {
 #else
 static char conference_muteconference_command[] = "konference muteconference";
 char *conference_muteconference(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_MUTECONFERENCE_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_MUTECONFERENCE_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_muteconference_command,conference_muteconference_usage)
 #endif
 	if ( argc < 3 )
@@ -516,7 +552,11 @@ int conference_mutechannel( int fd, int argc, char *argv[] ) {
 #else
 static char conference_mutechannel_command[] = "konference mutechannel";
 char *conference_mutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_MUTECHANNEL_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_MUTECHANNEL_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_mutechannel_command,conference_mutechannel_usage)
 #endif
 	if ( argc < 3 )
@@ -570,7 +610,11 @@ int conference_viewstream( int fd, int argc, char *argv[] ) {
 #else
 static char conference_viewstream_command[] = "konference viewstream";
 char *conference_viewstream(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_VIEWSTREAM_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_VIEWSTREAM_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_viewstream_command,conference_viewstream_usage)
 #endif
 	if ( argc < 5 )
@@ -612,7 +656,11 @@ int conference_viewchannel( int fd, int argc, char *argv[] ) {
 #else
 static char conference_viewchannel_command[] = "konference viewchannel";
 char *conference_viewchannel(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_VIEWCHANNEL_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_VIEWCHANNEL_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_viewchannel_command,conference_viewchannel_usage)
 #endif
 	if ( argc < 5 )
@@ -650,7 +698,11 @@ int conference_unmute( int fd, int argc, char *argv[] ) {
 #else
 static char conference_unmute_command[] = "konference unmute";
 char *conference_unmute(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_UNMUTE_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_UNMUTE_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_unmute_command,conference_unmute_usage)
 #endif
 	if ( argc < 4 )
@@ -691,7 +743,11 @@ int conference_unmuteconference( int fd, int argc, char *argv[] ) {
 #else
 static char conference_unmuteconference_command[] = "konference unmuteconference";
 char *conference_unmuteconference(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_UNMUTECONFERENCE_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_UNMUTECONFERENCE_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_unmuteconference_command,conference_unmuteconference_usage)
 #endif
 	if ( argc < 3 )
@@ -729,7 +785,11 @@ int conference_unmutechannel( int fd, int argc, char *argv[] ) {
 #else
 static char conference_unmutechannel_command[] = "konference unmutechannel";
 char *conference_unmutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_UNMUTECHANNEL_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_UNMUTECHANNEL_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_unmutechannel_command,conference_unmutechannel_usage)
 #endif
 	if ( argc < 3 )
@@ -785,14 +845,22 @@ int conference_play_sound( int fd, int argc, char *argv[] ) {
 #else
 static char conference_play_sound_command[] = "konference play sound";
 char *conference_play_sound(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_PLAY_SOUND_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_PLAY_SOUND_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_play_sound_command,conference_play_sound_usage)
 #endif
 	if ( argc < 5 )
 		return SHOWUSAGE ;
 
 	const char *channel = argv[3];
+#if	ASTERISK == 14 || ASTERISK == 16
 	char **file = &argv[4];
+#else
+	const char * const *file = &argv[4];
+#endif
 
 	int mute = (argc > 5 && !strcmp(argv[argc-1], "mute")?1:0);
 	int tone = (argc > 5 && !strcmp(argv[argc-1], "tone")?1:0);
@@ -829,7 +897,11 @@ int conference_stop_sounds( int fd, int argc, char *argv[] ) {
 #else
 static char conference_stop_sounds_command[] = "konference stop sounds";
 char *conference_stop_sounds(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_STOP_SOUNDS_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_STOP_SOUNDS_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_stop_sounds_command,conference_stop_sounds_usage)
 #endif
 	if ( argc < 4 )
@@ -869,7 +941,11 @@ int conference_start_moh( int fd, int argc, char *argv[] ) {
 #else
 static char conference_start_moh_command[] = "konference start moh";
 char *conference_start_moh(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_START_MOH_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_START_MOH_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_start_moh_command,conference_start_moh_usage)
 #endif
 	if ( argc < 4 )
@@ -909,7 +985,11 @@ int conference_stop_moh( int fd, int argc, char *argv[] ) {
 #else
 static char conference_stop_moh_command[] = "konference stop moh";
 char *conference_stop_moh(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_STOP_MOH_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_STOP_MOH_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_stop_moh_command,conference_stop_moh_usage)
 #endif
 	if ( argc < 4 )
@@ -950,7 +1030,11 @@ int conference_talkvolume( int fd, int argc, char *argv[] ) {
 #else
 static char conference_talkvolume_command[] = "konference talkvolume";
 char *conference_talkvolume(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_TALKVOLUME_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_TALKVOLUME_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_talkvolume_command,conference_talkvolume_usage)
 #endif
 	if ( argc < 4 )
@@ -998,7 +1082,11 @@ int conference_listenvolume( int fd, int argc, char *argv[] ) {
 #else
 static char conference_listenvolume_command[] = "konference listenvolume";
 char *conference_listenvolume(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_LISTENVOLUME_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_LISTENVOLUME_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_listenvolume_command,conference_listenvolume_usage)
 #endif
 	if ( argc < 4 )
@@ -1046,7 +1134,11 @@ int conference_volume( int fd, int argc, char *argv[] ) {
 #else
 static char conference_volume_command[] = "konference volume";
 char *conference_volume(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_VOLUME_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_VOLUME_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_volume_command,conference_volume_usage)
 #endif
 	if ( argc < 4 )
@@ -1096,7 +1188,11 @@ int conference_end( int fd, int argc, char *argv[] ) {
 #else
 static char conference_end_command[] = "konference end";
 char *conference_end(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_END_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_END_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_end_command,conference_end_usage)
 #endif
 	if ( argc < 3 )
@@ -1139,7 +1235,11 @@ int conference_lock( int fd, int argc, char *argv[] ) {
 #else
 static char conference_lock_command[] = "konference lock";
 char *conference_lock(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_LOCK_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_LOCK_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_lock_command,conference_lock_usage)
 #endif
 	if ( argc < 4 )
@@ -1182,7 +1282,11 @@ int conference_lockchannel( int fd, int argc, char *argv[] ) {
 #else
 static char conference_lockchannel_command[] = "konference lockchannel";
 char *conference_lockchannel(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_LOCKCHANNEL_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_LOCKCHANNEL_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_lockchannel_command,conference_lockchannel_usage)
 #endif
 	if ( argc < 4 )
@@ -1224,7 +1328,11 @@ int conference_unlock( int fd, int argc, char *argv[] ) {
 #else
 static char conference_unlock_command[] = "konference unlock";
 char *conference_unlock(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_UNLOCK_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_UNLOCK_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_unlock_command,conference_unlock_usage)
 #endif
 	if ( argc < 3 )
@@ -1267,7 +1375,11 @@ int conference_set_default(int fd, int argc, char *argv[] ) {
 #else
 static char conference_set_default_command[] = "konference set default";
 char *conference_set_default(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_SET_DEFAULT_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_SET_DEFAULT_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_set_default_command,conference_set_default_usage)
 #endif
 	if ( argc < 5 )
@@ -1310,7 +1422,11 @@ int conference_set_defaultchannel(int fd, int argc, char *argv[] ) {
 #else
 static char conference_set_defaultchannel_command[] = "konference set defaultchannel";
 char *conference_set_defaultchannel(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_SET_DEFAULTCHANNEL_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_SET_DEFAULTCHANNEL_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_set_defaultchannel_command,conference_set_defaultchannel_usage)
 #endif
 	if ( argc < 5 )
@@ -1352,7 +1468,11 @@ int conference_video_mute(int fd, int argc, char *argv[] ) {
 #else
 static char conference_video_mute_command[] = "konference video mute";
 char *conference_video_mute(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_VIDEO_MUTE_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_VIDEO_MUTE_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_video_mute_command,conference_video_mute_usage)
 #endif
 	if ( argc < 5 )
@@ -1395,7 +1515,11 @@ int conference_video_unmute(int fd, int argc, char *argv[] ) {
 #else
 static char conference_video_unmute_command[] = "konference video unmute";
 char *conference_video_unmute(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_VIDEO_UNMUTE_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_VIDEO_UNMUTE_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_video_unmute_command,conference_video_unmute_usage)
 #endif
 	if ( argc < 5 )
@@ -1438,7 +1562,11 @@ int conference_video_mutechannel(int fd, int argc, char *argv[] ) {
 #else
 static char conference_video_mutechannel_command[] = "konference video mutechannel";
 char *conference_video_mutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_VIDEO_MUTECHANNEL_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_VIDEO_MUTECHANNEL_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_video_mutechannel_command,conference_video_mutechannel_usage)
 #endif
 	if ( argc < 5 )
@@ -1480,7 +1608,11 @@ int conference_video_unmutechannel(int fd, int argc, char *argv[] ) {
 #else
 static char conference_video_unmutechannel_command[] = "konference video unmutechannel";
 char *conference_video_unmutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_VIDEO_UNMUTECHANNEL_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_VIDEO_UNMUTECHANNEL_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_video_unmutechannel_command,conference_video_unmutechannel_usage)
 #endif
 	if ( argc < 5 )
@@ -1524,7 +1656,11 @@ int conference_text(int fd, int argc, char *argv[] ) {
 #else
 static char conference_text_command[] = "konference text";
 char *conference_text(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_TEXT_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_TEXT_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_text_command,conference_text_usage)
 #endif
 	if ( argc < 5 )
@@ -1568,7 +1704,11 @@ int conference_textchannel(int fd, int argc, char *argv[] ) {
 #else
 static char conference_textchannel_command[] = "konference textchannel";
 char *conference_textchannel(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_TEXTCHANNEL_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_TEXTCHANNEL_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_textchannel_command,conference_textchannel_usage)
 #endif
 	if ( argc < 5 )
@@ -1611,7 +1751,11 @@ int conference_textbroadcast(int fd, int argc, char *argv[] ) {
 #else
 static char conference_textbroadcast_command[] = "konference textbroadcast";
 char *conference_textbroadcast(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_TEXTBROADCAST_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_TEXTBROADCAST_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_textbroadcast_command,conference_textbroadcast_usage)
 #endif
 	if ( argc < 4 )
@@ -1657,7 +1801,11 @@ int conference_drive(int fd, int argc, char *argv[] ) {
 #else
 static char conference_drive_command[] = "konference drive";
 char *conference_drive(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_DRIVE_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_DRIVE_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_drive_command,conference_drive_usage)
 #endif
 	if ( argc < 4 )
@@ -1706,7 +1854,11 @@ int conference_drivechannel(int fd, int argc, char *argv[] ) {
 #else
 static char conference_drivechannel_command[] = "konference drivechannel";
 char *conference_drivechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+#if	ASTERISK == 14 || ASTERISK == 16
 	static char *choices[] = CONFERENCE_DRIVECHANNEL_CHOICES;
+#else
+	static const char *const choices[] = CONFERENCE_DRIVECHANNEL_CHOICES;
+#endif
 	NEWCLI_SWITCH(conference_drivechannel_command,conference_drivechannel_usage)
 #endif
 	if ( argc < 4 )

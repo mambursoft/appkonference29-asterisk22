@@ -54,7 +54,11 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 		if (member->dtmf_switch)
 		{
 			ast_mutex_lock( &member->lock ) ;
-			switch (CASTCLASS2INT(f->subclass)) {
+#if	ASTERISK == 14 || ASTERISK == 16
+			switch (f->subclass) {
+#else
+			switch (f->subclass.integer) {
+#endif
 			case '0' :member->req_id=0;
 				break;
 			case '1' :member->req_id=1;
@@ -112,9 +116,15 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 				member->type,
 				member->chan->uniqueid,
 				member->chan->name,
-				CALLERIDNUM(member),
-				CALLERIDNAME(member),
-				CASTCLASS2INT(f->subclass),
+#if	ASTERISK == 14 || ASTERISK == 16
+				member->chan->cid.cid_num ? member->chan->cid.cid_num : "unknown",
+				member->chan->cid.cid_name ? member->chan->cid.cid_name : "unknown",
+				f->subclass,
+#else
+				member->chan->caller.id.number.str ? member->chan->caller.id.number.str : "unknown",
+				member->chan->caller.id.name.str ? member->chan->caller.id.name.str: "unknown",
+				f->subclass.integer,
+#endif
 				conf->membercount,
 				member->flags,
 				member->mute_audio
@@ -211,16 +221,28 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 		if (
 			member->dsp != NULL
 #ifndef	AC_USE_G722
-			&& CASTCLASS2INT(f->subclass) == AST_FORMAT_SLINEAR
+#if	ASTERISK == 14 || ASTERISK == 16
+			&& f->subclass == AST_FORMAT_SLINEAR
 #else
-			&& CASTCLASS2INT(f->subclass) == AST_FORMAT_SLINEAR16
+			&& f->subclass.integer == AST_FORMAT_SLINEAR
+#endif
+#else
+#if	ASTERISK == 14 || ASTERISK == 16
+			&& f->subclass == AST_FORMAT_SLINEAR16
+#else
+			&& f->subclass.integer == AST_FORMAT_SLINEAR16
+#endif
 #endif
 			&& f->datalen == AST_CONF_FRAME_DATA_SIZE
 			)
 		{
 			// send the frame to the preprocessor
 			int spx_ret;
-			spx_ret = speex_preprocess( member->dsp, CASTDATA2PTR(f->data, void), NULL );
+#if	ASTERISK == 14
+			spx_ret = speex_preprocess( member->dsp, f->data, NULL );
+#else
+			spx_ret = speex_preprocess( member->dsp, f->data.ptr, NULL );
+#endif
 
 			if ( spx_ret == 0 )
 			{
@@ -289,7 +311,11 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 #endif
 	else if (
 		f->frametype == AST_FRAME_CONTROL
-		&& CASTCLASS2INT(f->subclass) == AST_CONTROL_HANGUP
+#if	ASTERISK == 14 || ASTERISK == 16
+		&& f->subclass == AST_CONTROL_HANGUP
+#else
+		&& f->subclass.integer == AST_CONTROL_HANGUP
+#endif
 		)
 	{
 		// hangup received
@@ -303,7 +329,11 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 #ifdef	VIDEO
 	else if (
 		f->frametype == AST_FRAME_CONTROL
-		&& CASTCLASS2INT(f->subclass) == AST_CONTROL_VIDUPDATE
+#if	ASTERISK == 14 || ASTERISK == 16
+		&& f->subclass == AST_CONTROL_VIDUPDATE
+#else
+		&& f->subclass.integer == AST_CONTROL_VIDUPDATE
+#endif
 		)
 	{
 		// say we have switched to cause a FIR to
@@ -320,7 +350,11 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 #ifdef	TEXT
 	else if ( f->frametype == AST_FRAME_TEXT  && member->does_text )
 	{
-		if ( strncmp(CASTDATA2PTR(f->data, char), AST_CONF_CONTROL_CAMERA_DISABLED, strlen(AST_CONF_CONTROL_CAMERA_DISABLED)) == 0 )
+#if	ASTERISK == 14
+		if ( strncmp(f->data, AST_CONF_CONTROL_CAMERA_DISABLED, strlen(AST_CONF_CONTROL_CAMERA_DISABLED)) == 0 )
+#else
+		if ( strncmp(f->data.ptr, AST_CONF_CONTROL_CAMERA_DISABLED, strlen(AST_CONF_CONTROL_CAMERA_DISABLED)) == 0 )
+#endif
 		{
 			ast_mutex_lock(&member->lock);
 			manager_event(EVENT_FLAG_CONF,
@@ -330,7 +364,11 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 			              member->chan->name);
 			member->no_camera = 1;
 			ast_mutex_unlock(&member->lock);
-		} else if ( strncmp(CASTDATA2PTR(f->data, char), AST_CONF_CONTROL_CAMERA_ENABLED, strlen(AST_CONF_CONTROL_CAMERA_ENABLED)) == 0 )
+#if	ASTERISK == 14
+		} else if ( strncmp(f->data, AST_CONF_CONTROL_CAMERA_ENABLED, strlen(AST_CONF_CONTROL_CAMERA_ENABLED)) == 0 )
+#else
+		} else if ( strncmp(f->data.ptr, AST_CONF_CONTROL_CAMERA_ENABLED, strlen(AST_CONF_CONTROL_CAMERA_ENABLED)) == 0 )
+#endif
 		{
 			ast_mutex_lock(&member->lock);
 			manager_event(EVENT_FLAG_CONF,
@@ -340,7 +378,11 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 			              member->chan->name);
 			member->no_camera = 0;
 			ast_mutex_unlock(&member->lock);
-		} else if ( strncmp(CASTDATA2PTR(f->data, char), AST_CONF_CONTROL_STOP_VIDEO_TRANSMIT, strlen(AST_CONF_CONTROL_STOP_VIDEO_TRANSMIT)) == 0 )
+#if	ASTERISK == 14
+		} else if ( strncmp(f->data, AST_CONF_CONTROL_STOP_VIDEO_TRANSMIT, strlen(AST_CONF_CONTROL_STOP_VIDEO_TRANSMIT)) == 0 )
+#else
+		} else if ( strncmp(f->data.ptr, AST_CONF_CONTROL_STOP_VIDEO_TRANSMIT, strlen(AST_CONF_CONTROL_STOP_VIDEO_TRANSMIT)) == 0 )
+#endif
 		{
 			ast_mutex_lock(&member->lock);
 			manager_event(EVENT_FLAG_CONF,
@@ -350,7 +392,11 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 			              member->chan->name);
 			member->norecv_video = 1;
 			ast_mutex_unlock(&member->lock);
-		} else if ( strncmp(CASTDATA2PTR(f->data, char), AST_CONF_CONTROL_START_VIDEO_TRANSMIT, strlen(AST_CONF_CONTROL_START_VIDEO_TRANSMIT)) == 0 )
+#if	ASTERISK == 14
+		} else if ( strncmp(f->data, AST_CONF_CONTROL_START_VIDEO_TRANSMIT, strlen(AST_CONF_CONTROL_START_VIDEO_TRANSMIT)) == 0 )
+#else
+		} else if ( strncmp(f->data.ptr, AST_CONF_CONTROL_START_VIDEO_TRANSMIT, strlen(AST_CONF_CONTROL_START_VIDEO_TRANSMIT)) == 0 )
+#endif
 		{
 			ast_mutex_lock(&member->lock);
 			manager_event(EVENT_FLAG_CONF,
@@ -622,7 +668,11 @@ static int process_outgoing(struct ast_conf_member *member)
 // main member thread function
 //
 
+#if	ASTERISK == 14
 int member_exec( struct ast_channel* chan, void* data )
+#else
+int member_exec( struct ast_channel* chan, const char* data )
+#endif
 {
 //	struct timeval start, end ;
 //	start = ast_tvnow();
@@ -730,8 +780,13 @@ int member_exec( struct ast_channel* chan, void* data )
 		member->id,
 		member->flags,
 		member->chan->name,
-		CALLERIDNUM(member),
-		CALLERIDNAME(member),
+#if	ASTERISK == 14 || ASTERISK == 16
+		member->chan->cid.cid_num ? member->chan->cid.cid_num : "unknown",
+		member->chan->cid.cid_name ? member->chan->cid.cid_name : "unknown",
+#else
+		member->chan->caller.id.number.str ? member->chan->caller.id.number.str : "unknown",
+		member->chan->caller.id.name.str ? member->chan->caller.id.name.str: "unknown",
+#endif
 		conf->stats.moderators,
 		conf->membercount
 	) ;
@@ -2758,10 +2813,19 @@ int ast_packer_feed(struct ast_packer *s, const struct ast_frame *f)
 		return -1;
 	}
 	if (!s->format) {
-		s->format = CASTCLASS2INT(f->subclass);
+#if	ASTERISK == 14 || ASTERISK == 16
+		s->format = f->subclass;
+#else
+		s->format = f->subclass.integer;
+#endif
 		s->samples=0;
-	} else if (s->format != CASTCLASS2INT(f->subclass)) {
-		ast_log(LOG_WARNING, "Packer was working on %d format frames, now trying to feed %d?\n", s->format, CASTCLASS2INT(f->subclass));
+#if	ASTERISK == 14 || ASTERISK ==16
+	} else if (s->format != f->subclass) {
+		ast_log(LOG_WARNING, "Packer was working on %d format frames, now trying to feed %d?\n", s->format, f->subclass);
+#else
+	} else if (s->format != f->subclass.integer) {
+		ast_log(LOG_WARNING, "Packer was working on %d format frames, now trying to feed %d?\n", s->format, f->subclass.integer);
+#endif
 		return -1;
 	}
 	if (s->len + f->datalen > PACKER_SIZE) {
@@ -2773,7 +2837,11 @@ int ast_packer_feed(struct ast_packer *s, const struct ast_frame *f)
 		return -1;
 	}
 
-	memcpy(s->data + s->len, CASTDATA2PTR(f->data, void), f->datalen);
+#if	ASTERISK == 14 || ASTERISK ==16
+	memcpy(s->data + s->len, f->data, f->datalen);
+#else
+	memcpy(s->data + s->len, f->data.ptr, f->datalen);
+#endif
 	/* If either side is empty, reset the delivery time */
 	if (!s->len || (!f->delivery.tv_sec && !f->delivery.tv_usec) ||
 			(!s->delivery.tv_sec && !s->delivery.tv_usec))
@@ -2810,14 +2878,26 @@ struct ast_frame *ast_packer_read(struct ast_packer *s)
 		len = s->len;
 	/* Make frame */
 	s->f.frametype = AST_FRAME_VOICE;
-	SETCLASS2INT(s->f.subclass,s->format);
-	SETDATA2PTR(s->f.data, s->framedata + AST_FRIENDLY_OFFSET);
+#if	ASTERISK == 14 || ASTERISK == 16
+	s->f.subclass = s->format;
+#else
+	s->f.subclass.integer = s->format;
+#endif
+#if	ASTERISK == 14 || ASTERISK == 16
+	s->f.data = s->framedata + AST_FRIENDLY_OFFSET;
+#else
+	s->f.data.ptr = s->framedata + AST_FRIENDLY_OFFSET;
+#endif
 	s->f.offset = AST_FRIENDLY_OFFSET;
 	s->f.datalen = len;
 	s->f.samples = s->sample_queue[0];
 	s->f.delivery = s->delivery;
 	/* Fill Data */
-	memcpy(CASTDATA2PTR(s->f.data, void), s->data, len);
+#if	ASTERISK == 14 || ASTERISK == 16
+	memcpy(s->f.data, s->data, len);
+#else
+	memcpy(s->f.data.ptr, s->data, len);
+#endif
 	s->len -= len;
 	/* Move remaining data to the front if applicable */
 	if (s->len) {
