@@ -120,7 +120,7 @@ static int load_module( void )
 {
 	int res = 0;
 
-	ast_log( LOG_NOTICE, "Loading app_konference module, revision=%s\n", revision) ;
+	ast_log( LOG_NOTICE, "Loading app_konference module revision=%s, asterisk version=%.1f\n", revision, (float)ASTERISK/10) ;
 
 	init_conference() ;
 

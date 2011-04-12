@@ -13,7 +13,7 @@
 ASTERISK_SRC_DIR =
 
 # asterisk release or subversion working copy
-ASTERISK_SRC_VERSION = $(shell if [ -e $(ASTERISK_SRC_DIR)/.version ] ; then echo release; elif [ -e $(ASTERISK_SRC_DIR)/.svn ] ; then echo subversion; else echo wtf; fi)
+ASTERISK_SRC_VERSION = $(shell if [ -e $(ASTERISK_SRC_DIR)/.version ] ; then echo release; elif [ -e $(ASTERISK_SRC_DIR)/.svn ] ; then echo subversion; else echo unknown; fi)
 
 # asterisk release version or subversion branch
 ifeq ($(ASTERISK_SRC_VERSION),release)
@@ -22,8 +22,8 @@ else
  ifeq ($(ASTERISK_SRC_VERSION),subversion)
   ASTERISK = $(shell svn info $(ASTERISK_SRC_DIR) | grep URL | sed -e 's:^.*/::' | cut -d "." -f 1,2 | sed -e 's/\.//')
  else
-  $(warning Asterisk source not found in directory: $(ASTERISK_SRC_DIR).)
-  $(error Set your asterisk source directory in the Makefile or on the command line.)
+  $(warning Asterisk source version is $(ASTERISK_SRC_VERSION))
+  $(error Modify the source directory variable in the Makefile or set it on the command line)
  endif
 endif
 
