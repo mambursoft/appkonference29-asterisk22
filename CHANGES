@@ -224,4 +224,6 @@ for the for the appropriate asterisk version. The asterisk version can by
 setting the new source directory variable on the command line: make
 ASTERISK_SRC_DIRECTORY or by modifying the variable in the Makefile.
 
-Changed the Makefile so that compiler optimizations are enabled by default.
+Added a compiler flag, VECTORS, that indicates gcc extensions for vector
+operations are to be used for mixing frames. Modify the makefile to enable this
+feature. 

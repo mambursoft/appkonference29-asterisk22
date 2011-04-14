@@ -115,6 +115,13 @@ CPPFLAGS += -DCONFERENCE_TABLE_SIZE=$(CONFERENCE_TABLE_SIZE)
 CPPFLAGS += -DONEMIXTHREAD
 
 #
+#
+# Uncomment this if you want to mix frames using gcc vector extensions
+#
+# CPPFLAGS += -DVECTORS
+#
+
+#
 # Uncomment this if you want G.729A support (need to have the actual codec installed)
 #
 # CPPFLAGS += -DAC_USE_G729A

@@ -28,7 +28,7 @@
 #include "asterisk/autoconfig.h"
 #include "frame.h"
 
-#ifndef	NOVECTORS
+#ifdef	VECTORS
 
 typedef short v4si __attribute__ ((vector_size (16))); 
 
