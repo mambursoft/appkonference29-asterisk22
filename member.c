@@ -5,18 +5,9 @@
  *
  * Copyright (C) 2002, 2003 Junghanns.NET GmbH
  * Copyright (C) 2003, 2004 HorizonLive.com, Inc.
+ * Copyright (C) 2005, 2005 Vipadia Limited
  * Copyright (C) 2005, 2006 HorizonWimba, Inc.
  * Copyright (C) 2007 Wimba, Inc.
- *
- * Klaus-Peter Junghanns <kapejod@ns1.jnetdns.de>
- *
- * Video Conferencing support added by
- * Neil Stratford <neils@vipadia.com>
- * Copyright (C) 2005, 2005 Vipadia Limited
- *
- * VAD driven video conferencing, text message support
- * and miscellaneous enhancements added by
- * Mihai Balea <mihai at hates dot ms>
  *
  * This program may be modified and distributed under the
  * terms of the GNU General Public License. You should have received
@@ -43,59 +34,10 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 #if ( SILDET == 2 )
 	int silent_frame = 0;
 #endif
-#ifdef	VIDEO
-	struct ast_conf_member *src_member ;
-#endif
 
 	// In Asterisk 1.4 AST_FRAME_DTMF is equivalent to AST_FRAME_DTMF_END
 	if (f->frametype == AST_FRAME_DTMF)
 	{
-#ifdef	VIDEO
-		if (member->dtmf_switch)
-		{
-			ast_mutex_lock( &member->lock ) ;
-#if	ASTERISK == 14 || ASTERISK == 16
-			switch (f->subclass) {
-#else
-			switch (f->subclass.integer) {
-#endif
-			case '0' :member->req_id=0;
-				break;
-			case '1' :member->req_id=1;
-				break;
-			case '2' :member->req_id=2;
-				break;
-			case '3' :member->req_id=3;
-				break;
-			case '4' :member->req_id=4;
-				break;
-			case '5' :member->req_id=5;
-				break;
-			case '6' :member->req_id=6;
-				break;
-			case '7' :member->req_id=7;
-				break;
-			case '8' :member->req_id=8;
-				break;
-			case '9' :member->req_id=9;
-				break;
-			case '*' :
-				if (member->mute_video == 0 && member->mute_audio == 0)
-				{
-					member->mute_video = 1;
-					member->mute_audio = 1;
-				}
-				else if (member->mute_video == 1 && member->mute_audio == 1)
-				{
-					member->mute_video = 0;
-					member->mute_audio = 0;
-				}
-				break;
-			}
-			member->conference = 1; // switch me
-			ast_mutex_unlock( &member->lock ) ;
-		}
-#endif
 		if (member->dtmf_relay)
 		{
 			// output to manager...
@@ -133,9 +75,6 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 		}
 #ifdef	DTMF
 		if (!member->mute_audio &&
-#ifdef	VIDEO
-			!member->dtmf_switch &&
-#endif
 			!member->dtmf_relay)
 		{
 			// relay this to the listening channels
@@ -147,9 +86,6 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 	else if (f->frametype == AST_FRAME_DTMF_BEGIN)
 	{
 		if (!member->mute_audio &&
-#ifdef	VIDEO
-			!member->dtmf_switch &&
-#endif
 			!member->dtmf_relay)
 		{
 			// relay this to the listening channels
@@ -157,50 +93,11 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 		}
 	}
 #endif
-#ifdef	VIDEO
-	ast_mutex_lock( &member->lock ) ;
-	// Handle a local or remote conference
-	if (member->conference)
-	{
-		int req_id = member->req_id;
-		ast_mutex_unlock( &member->lock );
-		// this will return NULL or a locked member
-		src_member = check_active_video(req_id,conf);
-		// Stream a picture to the recipient if no active video
-		if (!src_member)
-		{
-			// Mihai: we don't want to send video here, we cannot negotiate codec
-			// and we don't know what codec the conference is using
-			//if (member->norecv_video == 0)
-			//{
-			//	if(!ast_streamfile(member->chan,"novideo",member->chan->language))
-			//	{
-			//		ast_waitstream(member->chan,"");
-			//	}
-			//}
-		}
-		else
-		{
-			// Send a FIR to the new sender
-			ast_indicate(src_member->chan,AST_CONTROL_VIDUPDATE);
-			// we will have locked in check_active_video()
-			ast_mutex_unlock( &src_member->lock);
-		}
-		ast_mutex_lock( &member->lock );
-		member->conference = 0;
-	}
-	ast_mutex_unlock( &member->lock );
-#endif
 	if ((f->frametype == AST_FRAME_VOICE
 			&& (member->mute_audio == 1
 				|| member->muted == 1
 				|| conf->membercount == 1)
 			)
-#ifdef	VIDEO
-		|| (f->frametype == AST_FRAME_VIDEO
-			&& member->mute_video == 1
-			)
-#endif
 		)
 	{
 		// this is a listen-only user, ignore the frame
@@ -299,16 +196,6 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 		// free the original frame
 		ast_frfree( f ) ;
 	}
-#ifdef	VIDEO
-	else if (f->frametype == AST_FRAME_VIDEO)
-	{
-		queue_incoming_video_frame( member, f );
-
-		// free the original frame
-		ast_frfree( f ) ;
-
-	}
-#endif
 	else if (
 		f->frametype == AST_FRAME_CONTROL
 #if	ASTERISK == 14 || ASTERISK == 16
@@ -326,91 +213,6 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 		// break out of the while ( 42 == 42 )
 		return 1;
 	}
-#ifdef	VIDEO
-	else if (
-		f->frametype == AST_FRAME_CONTROL
-#if	ASTERISK == 14 || ASTERISK == 16
-		&& f->subclass == AST_CONTROL_VIDUPDATE
-#else
-		&& f->subclass.integer == AST_CONTROL_VIDUPDATE
-#endif
-		)
-	{
-		// say we have switched to cause a FIR to
-		// be sent to the sender
-		ast_mutex_lock( &member->lock ) ;
-		member->conference = 1;
-		ast_mutex_unlock( &member->lock ) ;
-
-		// free the original frame
-		ast_frfree( f ) ;
-	}
-#endif
-#ifdef	VIDEO
-#ifdef	TEXT
-	else if ( f->frametype == AST_FRAME_TEXT  && member->does_text )
-	{
-#if	ASTERISK == 14
-		if ( strncmp(f->data, AST_CONF_CONTROL_CAMERA_DISABLED, strlen(AST_CONF_CONTROL_CAMERA_DISABLED)) == 0 )
-#else
-		if ( strncmp(f->data.ptr, AST_CONF_CONTROL_CAMERA_DISABLED, strlen(AST_CONF_CONTROL_CAMERA_DISABLED)) == 0 )
-#endif
-		{
-			ast_mutex_lock(&member->lock);
-			manager_event(EVENT_FLAG_CONF,
-			              "ConferenceCameraDisabled",
-			              "ConferenceName: %s\r\nChannel: %s\r\n",
-			              conf->name,
-			              member->chan->name);
-			member->no_camera = 1;
-			ast_mutex_unlock(&member->lock);
-#if	ASTERISK == 14
-		} else if ( strncmp(f->data, AST_CONF_CONTROL_CAMERA_ENABLED, strlen(AST_CONF_CONTROL_CAMERA_ENABLED)) == 0 )
-#else
-		} else if ( strncmp(f->data.ptr, AST_CONF_CONTROL_CAMERA_ENABLED, strlen(AST_CONF_CONTROL_CAMERA_ENABLED)) == 0 )
-#endif
-		{
-			ast_mutex_lock(&member->lock);
-			manager_event(EVENT_FLAG_CONF,
-			              "ConferenceCameraEnabled",
-			              "ConferenceName: %s\r\nChannel: %s\r\n",
-			              conf->name,
-			              member->chan->name);
-			member->no_camera = 0;
-			ast_mutex_unlock(&member->lock);
-#if	ASTERISK == 14
-		} else if ( strncmp(f->data, AST_CONF_CONTROL_STOP_VIDEO_TRANSMIT, strlen(AST_CONF_CONTROL_STOP_VIDEO_TRANSMIT)) == 0 )
-#else
-		} else if ( strncmp(f->data.ptr, AST_CONF_CONTROL_STOP_VIDEO_TRANSMIT, strlen(AST_CONF_CONTROL_STOP_VIDEO_TRANSMIT)) == 0 )
-#endif
-		{
-			ast_mutex_lock(&member->lock);
-			manager_event(EVENT_FLAG_CONF,
-			              "ConferenceStopVideoTransmit",
-			              "ConferenceName: %s\r\nChannel: %s\r\n",
-			              conf->name,
-			              member->chan->name);
-			member->norecv_video = 1;
-			ast_mutex_unlock(&member->lock);
-#if	ASTERISK == 14
-		} else if ( strncmp(f->data, AST_CONF_CONTROL_START_VIDEO_TRANSMIT, strlen(AST_CONF_CONTROL_START_VIDEO_TRANSMIT)) == 0 )
-#else
-		} else if ( strncmp(f->data.ptr, AST_CONF_CONTROL_START_VIDEO_TRANSMIT, strlen(AST_CONF_CONTROL_START_VIDEO_TRANSMIT)) == 0 )
-#endif
-		{
-			ast_mutex_lock(&member->lock);
-			manager_event(EVENT_FLAG_CONF,
-			              "ConferenceStartVideoTransmit",
-			              "ConferenceName: %s\r\nChannel: %s\r\n",
-			              conf->name,
-			              member->chan->name);
-			member->norecv_video = 0;
-			ast_mutex_unlock(&member->lock);
-		}
-		ast_frfree(f);
-	}
-#endif
-#endif
 	else {
 		// undesirables
 		ast_frfree( f ) ;
@@ -572,38 +374,6 @@ static int process_outgoing(struct ast_conf_member *member)
 			return 1;
 
 	}
-#ifdef	VIDEO
-	// Do the same for video, suck it dry
-	for(;;)
-	{
-		// grab a frame.
-		cf = get_outgoing_video_frame( member ) ;
-
-                // if there's no frames exit the loop.
-		if(!cf){
-			break;
-		}
-
-		f = cf->fr;
-
-		// send the video frame
-		if ( ast_write_video( member->chan, f ) != 1 )
-		{
-			// log 'dropped' outgoing frame
-			DEBUG("unable to write video frame to channel, channel => %s\n", member->chan->name) ;
-
-			// accounting: count dropped outgoing frames
-			member->video_frames_out_dropped++ ;
-		}
-
-		// clean up frame
-		delete_conf_frame( cf ) ;
-
-		if ( member->chan->_softhangup )
-			return 1;
-
-	}
-#endif
 #ifdef	DTMF
         // Do the same for dtmf, suck it dry
 	for(;;)
@@ -622,34 +392,6 @@ static int process_outgoing(struct ast_conf_member *member)
 
 			// accounting: count dropped outgoing frames
 			member->dtmf_frames_out_dropped++ ;
-		}
-
-		// clean up frame
-		delete_conf_frame( cf ) ;
-
-		if ( member->chan->_softhangup )
-			return 1;
-
-	}
-#endif
-#ifdef	TEXT
-        // Do the same for text, hell, why not?
-	for(;;)
-	{
-		// acquire member mutex and grab a frame.
-		cf = get_outgoing_text_frame( member ) ;
-
-		// if there's no frames exit the loop.
-		if(!cf) break;
-
-		// send the text frame
-		if ( ast_write( member->chan, cf->fr ) != 0 )
-		{
-			// log 'dropped' outgoing frame
-			DEBUG("unable to write text frame to channel, channel => %s\n", member->chan->name) ;
-
-			// accounting: count dropped outgoing frames
-			member->text_frames_out_dropped++ ;
 		}
 
 		// clean up frame
@@ -905,31 +647,6 @@ int member_exec( struct ast_channel* chan, const char* data )
 	return 0 ;
 }
 
-
-#ifdef	VIDEO
-struct ast_conf_member *check_active_video( int id, struct ast_conference *conf )
-{
-     struct ast_conf_member *member;
-
-     // acquire the conference lock
-     ast_rwlock_rdlock( &conf->lock ) ;
-
-     member = conf->memberlist;
-     while (member)
-     {
-	     if (member->id == id)
-	     {
-		     // lock this member
-		     ast_mutex_lock( &member->lock ) ;
-	      	     ast_rwlock_unlock( &conf->lock ) ;
-		     return member;
-	     }
-	     member = member->next;
-     }
-     ast_rwlock_unlock( &conf->lock ) ;
-     return NULL;
-}
-#endif
 //
 // manange member functions
 //
@@ -988,10 +705,6 @@ struct ast_conf_member* create_member( struct ast_channel *chan, const char* dat
 	ast_cond_init( &member->delete_var, NULL ) ;
 
 	// Default values for parameters that can get overwritten by dialplan arguments
-#ifdef	VIDEO
-	member->video_start_timeout = AST_CONF_VIDEO_START_TIMEOUT;
-	member->video_stop_timeout = AST_CONF_VIDEO_STOP_TIMEOUT;
-#endif
 #if ( SILDET == 2 )
 	member->vad_prob_start = AST_CONF_PROB_START;
 	member->vad_prob_continue = AST_CONF_PROB_CONTINUE;
@@ -1037,10 +750,6 @@ struct ast_conf_member* create_member( struct ast_channel *chan, const char* dat
 		static const char arg_vad_prob_start[] = "vad_prob_start";
 		static const char arg_vad_prob_continue[] = "vad_prob_continue";
 #endif
-#ifdef	VIDEO
-		static const char arg_video_start_timeout[] = "video_start_timeout";
-		static const char arg_video_stop_timeout[] = "video_stop_timeout";
-#endif
 		static const char arg_max_users[] = "max_users";
 		static const char arg_conf_type[] = "type";
 		static const char arg_chanspy[] = "spy";
@@ -1066,16 +775,6 @@ struct ast_conf_member* create_member( struct ast_channel *chan, const char* dat
 		{
 			member->vad_prob_continue = strtof(value, (char **)NULL);
 			DEBUG("vad_prob_continue = %f\n", member->vad_prob_continue) ;
-#endif
-#ifdef	VIDEO
-		} else if ( strncasecmp(key, arg_video_start_timeout, sizeof(arg_video_start_timeout) - 1) == 0 )
-		{
-			member->video_start_timeout = strtol(value, (char **)NULL, 10);
-			DEBUG("video_start_timeout = %d\n", member->video_start_timeout) ;
-		} else if ( strncasecmp(key, arg_video_stop_timeout, sizeof(arg_video_stop_timeout) - 1) == 0 )
-		{
-			member->video_stop_timeout = strtol(value, (char **)NULL, 10);
-			DEBUG("video_stop_timeout = %d\n", member->video_stop_timeout) ;
 #endif
 		} else if ( strncasecmp(key, arg_max_users, sizeof(arg_max_users) - 1) == 0 )
 		{
@@ -1109,14 +808,7 @@ struct ast_conf_member* create_member( struct ast_channel *chan, const char* dat
 		DEBUG("type = %s\n", member->type) ;
 	}
 
-#ifdef	VIDEO
-	member->conference = 1; // we have switched req_id
-#endif
-
 	// start of day video ids
-#ifdef	VIDEO
-	member->req_id = -1;
-#endif
 	member->id = -1;
 
 	// ( not currently used )
@@ -1128,9 +820,6 @@ struct ast_conf_member* create_member( struct ast_channel *chan, const char* dat
 	member->time_entered =
 		member->last_in_dropped =
 		member->last_out_dropped =
-#ifdef	VIDEO
-		member->last_state_change =
-#endif
 		ast_tvnow();
 	//
 	// parse passed flags
@@ -1143,36 +832,11 @@ struct ast_conf_member* create_member( struct ast_channel *chan, const char* dat
 
 	for ( i = 0 ; i < strlen( flags ) ; ++i )
 	{
-#ifdef	VIDEO
-		if (flags[i] >= (int)'0' && flags[i] <= (int)'9')
-		{
-			if (member->req_id < 0)
-			{
-				member->req_id = flags[i] - (int)'0';
-			}
-			else
-			{
-				int newid = flags[i] - (int)'0';
-				// need to boot anyone with this id already
-				// will happen in add_member
-				member->id = newid;
-			}
-		}
-		else
-#endif
 		{
 			// allowed flags are C, c, L, l, V, D, A, C, X, R, T, t, M, S, z, o, F, H
 			// mute/no_recv options
 			switch ( flags[i] )
 			{
-#ifdef	VIDEO
-			case 'C':
-				member->mute_video = 1;
-				break ;
-			case 'c':
-				member->norecv_video = 1;
-				break ;
-#endif
 			case 'L':
 				member->mute_audio = 1;
 				break ;
@@ -1192,43 +856,12 @@ struct ast_conf_member* create_member( struct ast_channel *chan, const char* dat
 				break ;
 #endif
 				// dtmf/moderator/video switching options
-#ifdef	VIDEO
-			case 'X':
-				member->dtmf_switch = 1;
-				break;
-#endif
 			case 'R':
 				member->dtmf_relay = 1;
 				break;
-#ifdef	VIDEO
-			case 'S':
-				member->vad_switch = 1;
-				break;
-			case 'F':
-				member->force_vad_switch = 1;
-				break;
-#endif
 			case 'M':
 				member->ismoderator = 1;
 				break;
-#ifdef	VIDEO
-			case 'N':
-				member->no_camera = 1;
-				break;
-#endif
-#ifdef	TEXT
-			case 't':
-				member->does_text = 1;
-				break;
-#endif
-#ifdef	VIDEO
-			case 'z':
-				member->vad_linger = 1;
-				break;
-			case 'o':
-				member->does_chat_mode = 1;
-				break;
-#endif
 			case 'x':
 				member->kick_conferees = 1;
 				break;
@@ -1493,12 +1126,6 @@ struct ast_conf_member* delete_member( struct ast_conf_member* member )
 	ast_mutex_destroy( &member->lock ) ;
 	ast_cond_destroy( &member->delete_var ) ;
 
-#ifdef	VIDEO
-	// If member is driving another member, make sure its speaker count is correct
-	if ( member->driven_member != NULL && member->speaking_state == 1 )
-		decrement_speaker_count(member->driven_member, 1);
-#endif
-
 	//
 	// delete the members frames
 	//
@@ -1523,14 +1150,6 @@ struct ast_conf_member* delete_member( struct ast_conf_member* member )
 	if (member->outPacker != NULL)
 		ast_packer_free(member->outPacker);
 #endif
-#ifdef	VIDEO
-	cf = member->inVideoFrames ;
-
-	while ( cf != NULL )
-	{
-		cf = delete_conf_frame( cf ) ;
-	}
-#endif
 	// !!! DEBUGING !!!
 	DEBUG("deleting member output frames\n") ;
 
@@ -1541,14 +1160,6 @@ struct ast_conf_member* delete_member( struct ast_conf_member* member )
 	{
 		cf = delete_conf_frame( cf ) ;
 	}
-#ifdef	VIDEO
-	cf = member->outVideoFrames ;
-
-	while ( cf != NULL )
-	{
-		cf = delete_conf_frame( cf ) ;
-	}
-#endif
 #ifdef AST_CONF_CACHE_LAST_FRAME
 	if ( member->inFramesLast != NULL )
 	{
@@ -1608,61 +1219,6 @@ struct ast_conf_member* delete_member( struct ast_conf_member* member )
 //
 // incoming frame functions
 //
-#ifdef	VIDEO
-conf_frame* get_incoming_video_frame( struct ast_conf_member *member )
-{
-  	if ( member == NULL )
-	{
-		ast_log( LOG_WARNING, "unable to get frame from null member\n" ) ;
-		return NULL ;
-	}
-
-	ast_mutex_lock(&member->lock);
-
-	if ( member->inVideoFramesCount == 0 )
-	{
-		ast_mutex_unlock(&member->lock);
-		return NULL ;
-	}
-
-	//
-	// return the next frame in the queue
-	//
-
-	conf_frame* cfr = NULL ;
-
-	// get first frame in line
-	cfr = member->inVideoFramesTail ;
-
-	// if it's the only frame, reset the queue,
-	// else, move the second frame to the front
-	if ( member->inVideoFramesTail == member->inVideoFrames )
-	{
-		member->inVideoFramesTail = NULL ;
-		member->inVideoFrames = NULL ;
-	}
-	else
-	{
-		// move the pointer to the next frame
-		member->inVideoFramesTail = member->inVideoFramesTail->prev ;
-
-		// reset it's 'next' pointer
-		if ( member->inVideoFramesTail != NULL )
-			member->inVideoFramesTail->next = NULL ;
-	}
-
-	// separate the conf frame from the list
-	cfr->next = NULL ;
-	cfr->prev = NULL ;
-
-	// decrement frame count
-	member->inVideoFramesCount-- ;
-
-	ast_mutex_unlock(&member->lock);
-	return cfr ;
-
-}
-#endif
 #ifdef	DTMF
 conf_frame* get_incoming_dtmf_frame( struct ast_conf_member *member )
 {
@@ -1853,85 +1409,6 @@ conf_frame* get_incoming_frame( struct ast_conf_member *member )
 	ast_mutex_unlock(&member->lock);
 	return cfr ;
 }
-#ifdef	VIDEO
-int queue_incoming_video_frame( struct ast_conf_member* member, const struct ast_frame* fr )
-{
-#ifdef	APP_KONFERENCE_DEBUG
-	// check on frame
-	if ( fr == NULL )
-	{
-		DEBUG("unable to queue null frame\n" );
-		return -1 ;
-	}
-
-	// check on member
-	if ( member == NULL )
-	{
-		ast_log( LOG_ERROR, "unable to queue frame for null member\n" ) ;
-		return -1 ;
-	}
-#endif
-	// lock the member
-	ast_mutex_lock(&member->lock);
-
-	if (!member->first_frame_received)
-	{
-		// nat=yes will be correct now
-		member->first_frame_received = 1;
-		member->conference = 1;
-	}
-
-	// We have to drop if the queue is full!
-	if ( member->inVideoFramesCount >= AST_CONF_MAX_VIDEO_QUEUE )
-	{
-		DEBUG("unable to queue incoming VIDEO frame, channel => %s, incoming => %d, outgoing => %d\n", member->chan->name, member->inVideoFramesCount, member->outVideoFramesCount) ;
-		ast_mutex_unlock(&member->lock);
-		return -1 ;
-	}
-
-	//
-	// create new conf frame from passed data frame
-	//
-
-	// ( member->inFrames may be null at this point )
-	conf_frame* cfr = create_conf_frame( member, member->inVideoFrames, fr ) ;
-
-	if ( cfr == NULL )
-	{
-		ast_log( LOG_ERROR, "unable to malloc conf_frame\n" ) ;
-		ast_mutex_unlock(&member->lock);
-		return -1 ;
-	}
-
-	// copy frame data pointer to conf frame
-	// cfr->fr = fr ;
-
-	//
-	// add new frame to speaking members incoming frame queue
-	// ( i.e. save this frame data, so we can distribute it in conference_exec later )
-	//
-
-	if ( member->inVideoFrames == NULL )
-	{
-		// this is the first frame in the buffer
-		member->inVideoFramesTail = cfr ;
-		member->inVideoFrames = cfr ;
-	}
-	else
-	{
-		// put the new frame at the head of the list
-		member->inVideoFrames = cfr ;
-	}
-
-	// increment member frame count
-	member->inVideoFramesCount++ ;
-
-	ast_mutex_unlock(&member->lock);
-
-        // Everything has gone okay!
-	return 0;
-}
-#endif
 #ifdef	DTMF
 int queue_incoming_dtmf_frame( struct ast_conf_member* member, const struct ast_frame* fr )
 {
@@ -2354,145 +1831,6 @@ DEBUG("read sfr from outPacker, datalen=>%d, samples=>%d\n",sfr->datalen, sfr->s
 //
 // outgoing frame functions
 //
-#ifdef	VIDEO
-conf_frame* get_outgoing_video_frame( struct ast_conf_member *member )
-{
-#ifdef	APP_KONFERENCE_DEBUG
-	if ( member == NULL )
-	{
-		DEBUG("unable to get frame from null member\n" ) ;
-		return NULL ;
-	}
-#endif
-	conf_frame* cfr ;
-
-	ast_mutex_lock(&member->lock);
-
-	//DEBUG("getting member frames, count => %d\n", member->outFramesCount ) ;
-
-	if ( member->outVideoFramesCount > AST_CONF_MIN_QUEUE )
-	{
-		cfr = member->outVideoFramesTail ;
-
-		// if it's the only frame, reset the queu,
-		// else, move the second frame to the front
-		if ( member->outVideoFramesTail == member->outVideoFrames )
-		{
-			member->outVideoFrames = NULL ;
-			member->outVideoFramesTail = NULL ;
-		}
-		else
-		{
-			// move the pointer to the next frame
-			member->outVideoFramesTail = member->outVideoFramesTail->prev ;
-
-			// reset it's 'next' pointer
-			if ( member->outVideoFramesTail != NULL )
-				member->outVideoFramesTail->next = NULL ;
-		}
-
-		// separate the conf frame from the list
-		cfr->next = NULL ;
-		cfr->prev = NULL ;
-
-		// decriment frame count
-		member->outVideoFramesCount-- ;
-		ast_mutex_unlock(&member->lock);
-		return cfr ;
-	}
-
-	ast_mutex_unlock(&member->lock);
-	return NULL ;
-}
-
-
-
-int queue_outgoing_video_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery )
-{
-#ifdef	APP_KONFERENCE_DEBUG
-	// check on frame
-	if ( fr == NULL )
-	{
-		DEBUG("unable to queue null frame\n" ) ;
-		return -1 ;
-	}
-
-	// check on member
-	if ( member == NULL )
-	{
-		ast_log( LOG_ERROR, "unable to queue frame for null member\n" ) ;
-		return -1 ;
-	}
-#endif
-	ast_mutex_lock(&member->lock);
-
-	// accounting: count the number of outgoing frames for this member
-	member->video_frames_out++ ;
-
-	//
-	// we have to drop frames, so we'll drop new frames
-	// because it's easier ( and doesn't matter much anyway ).
-	//
-	if ( member->outVideoFramesCount >= AST_CONF_MAX_VIDEO_QUEUE)
-	{
-		DEBUG("unable to queue outgoing VIDEO frame, channel => %s, incoming => %d, outgoing => %d\n", member->chan->name, member->inVideoFramesCount, member->outVideoFramesCount) ;
-
-		// accounting: count dropped outgoing frames
-		member->video_frames_out_dropped++ ;
-		ast_mutex_unlock(&member->lock);
-		return -1 ;
-	}
-
-	//
-	// create new conf frame from passed data frame
-	//
-
-	conf_frame* cfr = create_conf_frame( member, member->outVideoFrames, fr ) ;
-
-	if ( cfr == NULL )
-	{
-		ast_log( LOG_ERROR, "unable to create new conf frame\n" ) ;
-
-		// accounting: count dropped outgoing frames
-		member->video_frames_out_dropped++ ;
-                ast_mutex_unlock(&member->lock);
-		return -1 ;
-	}
-
-	// set delivery timestamp
-#ifdef VIDEO_SETTIMESTAMP
-	cfr->fr->delivery = delivery ;
-#else
-	cfr->fr->delivery.tv_sec = 0;
-	cfr->fr->delivery.tv_usec = 0;
-#endif
-	//ast_log (LOG_WARNING,"%d\n",cfr->fr->seqno);
-
-#ifdef RTP_SEQNO_ZERO
-	cfr->fr->seqno = 0;
-#endif
-
-	if ( member->outVideoFrames == NULL )
-	{
-		// this is the first frame in the buffer
-		member->outVideoFramesTail = cfr ;
-		member->outVideoFrames = cfr ;
-	}
-	else
-	{
-		// put the new frame at the head of the list
-		member->outVideoFrames = cfr ;
-	}
-
-	// increment member frame count
-	member->outVideoFramesCount++ ;
-
-	ast_mutex_unlock(&member->lock);
-
-	// return success
-	return 0 ;
-}
-#endif
 #ifdef	DTMF
 conf_frame* get_outgoing_dtmf_frame( struct ast_conf_member *member )
 {
@@ -2536,56 +1874,6 @@ conf_frame* get_outgoing_dtmf_frame( struct ast_conf_member *member )
 
 		// decriment frame count
 		member->outDTMFFramesCount-- ;
-		ast_mutex_unlock(&member->lock);
-		return cfr ;
-	}
-	ast_mutex_unlock(&member->lock);
-	return NULL ;
-}
-#endif
-#ifdef	TEXT
-conf_frame* get_outgoing_text_frame( struct ast_conf_member *member )
-{
-#ifdef	APP_KONFERENCE_DEBUG
-	if ( member == NULL )
-	{
-		DEBUG("unable to get frame from null member\n" ) ;
-		return NULL ;
-	}
-#endif
-	conf_frame* cfr ;
-
-	//DEBUG("getting member frames, count => %d\n", member->outFramesCount) ;
-
-	ast_mutex_lock(&member->lock);
-
-	if ( member->outTextFramesCount > AST_CONF_MIN_QUEUE )
-	{
-		cfr = member->outTextFramesTail ;
-
-		// if it's the only frame, reset the queu,
-		// else, move the second frame to the front
-		if ( member->outTextFramesTail == member->outTextFrames )
-		{
-			member->outTextFrames = NULL ;
-			member->outTextFramesTail = NULL ;
-		}
-		else
-		{
-			// move the pointer to the next frame
-			member->outTextFramesTail = member->outTextFramesTail->prev ;
-
-			// reset it's 'next' pointer
-			if ( member->outTextFramesTail != NULL )
-				member->outTextFramesTail->next = NULL ;
-		}
-
-		// separate the conf frame from the list
-		cfr->next = NULL ;
-		cfr->prev = NULL ;
-
-		// decriment frame count
-		member->outTextFramesCount-- ;
 		ast_mutex_unlock(&member->lock);
 		return cfr ;
 	}
@@ -2664,83 +1952,6 @@ int queue_outgoing_dtmf_frame( struct ast_conf_member* member, const struct ast_
 
 	// increment member frame count
 	member->outDTMFFramesCount++ ;
-
-	ast_mutex_unlock(&member->lock);
-	// return success
-	return 0 ;
-}
-#endif
-#ifdef	TEXT
-int queue_outgoing_text_frame( struct ast_conf_member* member, const struct ast_frame* fr)
-{
-#ifdef	APP_KONFERENCE_DEBUG
-	// check on frame
-	if ( fr == NULL )
-	{
-		DEBUG("unable to queue null frame\n" ) ;
-		return -1 ;
-	}
-
-	// check on member
-	if ( member == NULL )
-	{
-		ast_log( LOG_ERROR, "unable to queue frame for null member\n" ) ;
-		return -1 ;
-	}
-#endif
-	ast_mutex_lock(&member->lock);
-
-	// accounting: count the number of outgoing frames for this member
-	member->text_frames_out++ ;
-
-	//
-	// we have to drop frames, so we'll drop new frames
-	// because it's easier ( and doesn't matter much anyway ).
-	//
-	if ( member->outTextFramesCount >= AST_CONF_MAX_TEXT_QUEUE)
-	{
-		DEBUG("unable to queue outgoing text frame, channel => %s, incoming => %d, outgoing => %d\n", member->chan->name, member->inTextFramesCount, member->outTextFramesCount) ;
-
-		// accounting: count dropped outgoing frames
-		member->text_frames_out_dropped++ ;
-		ast_mutex_unlock(&member->lock);
-		return -1 ;
-	}
-
-	//
-	// create new conf frame from passed data frame
-	//
-
-	conf_frame* cfr = create_conf_frame( member, member->outTextFrames, fr ) ;
-
-	if ( cfr == NULL )
-	{
-		ast_log( LOG_ERROR, "unable to create new conf frame\n" ) ;
-
-		// accounting: count dropped outgoing frames
-		member->text_frames_out_dropped++ ;
-		ast_mutex_unlock(&member->lock);
-		return -1 ;
-	}
-
-#ifdef RTP_SEQNO_ZERO
-	cfr->fr->seqno = 0;
-#endif
-
-	if ( member->outTextFrames == NULL )
-	{
-		// this is the first frame in the buffer
-		member->outTextFramesTail = cfr ;
-		member->outTextFrames = cfr ;
-	}
-	else
-	{
-		// put the new frame at the head of the list
-		member->outTextFrames = cfr ;
-	}
-
-	// increment member frame count
-	member->outTextFramesCount++ ;
 
 	ast_mutex_unlock(&member->lock);
 	// return success
@@ -3265,64 +2476,7 @@ void member_process_outgoing_frames(struct ast_conference* conf,
 
 	ast_mutex_unlock(&member->lock);
 }
-#ifdef	VIDEO
-// Functions that will increase and decrease speaker_count in a secure way, locking the member mutex if required
-// Will also set speaking_state flag.
-// Returns the previous speaking state
-int increment_speaker_count(struct ast_conf_member *member, int lock)
-{
-	int old_state;
 
-	if ( lock )
-		ast_mutex_lock(&member->lock);
-
-	old_state = member->speaking_state;
-	member->speaker_count++;
-	member->speaking_state = 1;
-
-	DEBUG("Increment speaker count: id=%d, count=%d\n", member->id, member->speaker_count) ;
-
-	// If this is a state change, update the timestamp
-	if ( old_state == 0 )
-	{
-		member->speaking_state_notify = 1;
-		member->last_state_change = ast_tvnow();
-	}
-
-	if ( lock )
-		ast_mutex_unlock(&member->lock);
-
-	return old_state;
-}
-
-int decrement_speaker_count(struct ast_conf_member *member, int lock)
-{
-	int old_state;
-
-	if ( lock )
-		ast_mutex_lock(&member->lock);
-
-	old_state = member->speaking_state;
-	if ( member->speaker_count > 0 )
-		member->speaker_count--;
-	if ( member->speaker_count == 0 )
-		member->speaking_state = 0;
-
-	DEBUG("Decrement speaker count: id=%d, count=%d\n", member->id, member->speaker_count) ;
-
-	// If this is a state change, update the timestamp
-	if ( old_state == 1 && member->speaking_state == 0 )
-	{
-		member->speaking_state_notify = 1;
-		member->last_state_change = ast_tvnow();
-	}
-
-	if ( lock )
-		ast_mutex_unlock(&member->lock);
-
-	return old_state;
-}
-#endif
 void member_process_spoken_frames(struct ast_conference* conf,
 				 struct ast_conf_member *member,
 				 struct conf_frame **spoken_frames,
@@ -3364,12 +2518,6 @@ void member_process_spoken_frames(struct ast_conference* conf,
 		if ( member->local_speaking_state == 1 )
 		{
 			member->local_speaking_state = 0;
-#ifdef	VIDEO
-			decrement_speaker_count(member, 0);
-			// If we're driving another member, decrement its speaker count as well
-			if ( member->driven_member != NULL )
-				decrement_speaker_count(member->driven_member, 1);
-#endif
 		}
 		// count the listeners
 		(*listener_count)++ ;
@@ -3392,12 +2540,6 @@ void member_process_spoken_frames(struct ast_conference* conf,
 		if ( member->local_speaking_state == 0 )
 		{
 			member->local_speaking_state = 1;
-#ifdef	VIDEO
-			increment_speaker_count(member, 0);
-			// If we're driving another member, increment its speaker count as well
-			if ( member->driven_member != NULL )
-				increment_speaker_count(member->driven_member, 1);
-#endif
 		}
 		// count the speakers
 		(*speaker_count)++ ;
@@ -3408,37 +2550,6 @@ void member_process_spoken_frames(struct ast_conference* conf,
 
 	return;
 }
-#ifdef	VIDEO
-int is_video_eligible(struct ast_conf_member *member)
-{
-	if ( member == NULL )
-		return 0;
-	
-	return !member->no_camera && !member->mute_video && !member->via_telephone;
-}
-
-// Member start and stop video methods
-void start_video(struct ast_conf_member *member)
-{
-	if ( member == NULL || member->video_started || !is_video_eligible(member))
-		return;
-#ifdef	TEXT
-	send_text_message_to_member(member, AST_CONF_CONTROL_START_VIDEO);
-#endif
-	member->video_started = 1;
-}
-
-void stop_video(struct ast_conf_member *member)
-{
-	if ( member == NULL || !member->video_started )
-		return;
-#ifdef  TEXT
-	send_text_message_to_member(member, AST_CONF_CONTROL_STOP_VIDEO);
-#endif
-	member->video_started = 0;
-
-}
-#endif
 
 #ifdef	CACHE_CONTROL_BLOCKS
 void freembrblocks( void )

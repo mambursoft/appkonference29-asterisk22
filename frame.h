@@ -5,18 +5,9 @@
  *
  * Copyright (C) 2002, 2003 Junghanns.NET GmbH
  * Copyright (C) 2003, 2004 HorizonLive.com, Inc.
+ * Copyright (C) 2005, 2005 Vipadia Limited
  * Copyright (C) 2005, 2006 HorizonWimba, Inc.
  * Copyright (C) 2007 Wimba, Inc.
- *
- * Klaus-Peter Junghanns <kapejod@ns1.jnetdns.de>
- *
- * Video Conferencing support added by
- * Neil Stratford <neils@vipadia.com>
- * Copyright (C) 2005, 2005 Vipadia Limited
- *
- * VAD driven video conferencing, text message support
- * and miscellaneous enhancements added by
- * Mihai Balea <mihai at hates dot ms>
  *
  * This program may be modified and distributed under the
  * terms of the GNU General Public License. You should have received
@@ -52,11 +43,6 @@ conf_frame* copy_conf_frame( conf_frame* src ) ;
 
 // convert frame function
 struct ast_frame* convert_frame( struct ast_trans_pvt* trans, struct ast_frame* fr ) ;
-
-#ifdef	TEXT
-// text frame function(s)
-struct ast_frame* create_text_frame(const char *text, int copy);
-#endif
 
 // slinear frame functions
 struct ast_frame* create_slinear_frame( char* data ) ;

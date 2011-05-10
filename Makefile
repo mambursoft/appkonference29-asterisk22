@@ -1,12 +1,15 @@
 #
-# Makefile, based on the Asterisk Makefile, Coypright (C) 1999, Mark Spencer
+# app_konference
+#
+# A channel independent conference application for Asterisk
 #
 # Copyright (C) 2002,2003 Junghanns.NET GmbH
 #
-# Klaus-Peter Junghanns <kapejod@ns1.jnetdns.de>
-#
-# This program is free software and may be modified and
-# distributed under the terms of the GNU Public License.
+# This program may be modified and distributed under the
+# terms of the GNU General Public License. You should have received
+# a copy of the GNU General Public License along with this
+# program; if not, write to the Free Software Foundation, Inc.
+# 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
 # asterisk source directory
@@ -54,12 +57,6 @@ CONFERENCE_TABLE_SIZE ?= 199
 
 # schedule conference threads fifo ( 0 == OFF, 1 == ON )
 REALTIME ?= 1
-
-# turn app_konference texting on of off ( 0 == OFF, 1 == ON )
-TEXT ?= 0
-
-# turn app_konference video on of off ( 0 == OFF, 1 == ON )
-VIDEO ?= 0
 
 # turn app_konference dtmf on of off ( 0 == OFF, 1 == ON )
 DTMF ?= 0
@@ -149,14 +146,6 @@ endif
 
 ifeq ($(REALTIME), 1)
 CPPFLAGS += -DREALTIME
-endif
-
-ifeq ($(TEXT), 1)
-CPPFLAGS += -DTEXT
-endif
-
-ifeq ($(VIDEO), 1)
-CPPFLAGS += -DVIDEO
 endif
 
 ifeq ($(DTMF), 1)

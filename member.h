@@ -5,18 +5,9 @@
  *
  * Copyright (C) 2002, 2003 Junghanns.NET GmbH
  * Copyright (C) 2003, 2004 HorizonLive.com, Inc.
+ * Copyright (C) 2005, 2005 Vipadia Limited
  * Copyright (C) 2005, 2006 HorizonWimba, Inc.
  * Copyright (C) 2007 Wimba, Inc.
- *
- * Klaus-Peter Junghanns <kapejod@ns1.jnetdns.de>
- *
- * Video Conferencing support added by
- * Neil Stratford <neils@vipadia.com>
- * Copyright (C) 2005, 2005 Vipadia Limited
- *
- * VAD driven video conferencing, text message support
- * and miscellaneous enhancements added by
- * Mihai Balea <mihai at hates dot ms>
  *
  * This program may be modified and distributed under the
  * terms of the GNU General Public License. You should have received
@@ -85,16 +76,9 @@ struct ast_conf_member
 	int via_telephone;
 	// video conference params
 	int id;
-#ifdef	VIDEO
-	int initial_id;
-	int req_id;
-#endif
 	// muting options - this member will not be heard/seen
 	int mute_audio;
 	int muted; // should incoming audio be muted while we play?
-#ifdef	VIDEO
-	int mute_video;
-#endif
 	// volume level adjustment for this member
 	int talk_volume;
 	int listen_volume;
@@ -108,11 +92,6 @@ struct ast_conf_member
 
 	// this member will not hear/see
 	int norecv_audio;
-#ifdef	VIDEO
-	int norecv_video;
-	// this member does not have a camera
-	int no_camera;
-#endif
 	// is this person a moderator?
 	int ismoderator;
 	int kick_conferees;
@@ -128,20 +107,10 @@ struct ast_conf_member
 	conf_frame* inFrames ;
 	conf_frame* inFramesTail ;
 	unsigned int inFramesCount ;
-#ifdef	VIDEO
-	conf_frame* inVideoFrames ;
-	conf_frame* inVideoFramesTail ;
-	unsigned int inVideoFramesCount ;
-#endif
 #ifdef	DTMF
 	conf_frame* inDTMFFrames ;
 	conf_frame* inDTMFFramesTail ;
 	unsigned int inDTMFFramesCount ;
-#endif
-#ifdef	TEXT
-	conf_frame* inTextFrames ;
-	conf_frame* inTextFramesTail ;
-	unsigned int inTextFramesCount ;
 #endif
 #ifdef	SMOOTHER
 	// input/output smoother
@@ -155,9 +124,6 @@ struct ast_conf_member
 #endif
 	// frames needed by conference_exec
 	unsigned int inFramesNeeded ;
-#ifdef	VIDEO
-	unsigned int inVideoFramesNeeded ;
-#endif
 #ifdef	AST_CONF_CACHE_LAST_FRAME
 	// used when caching last frame
 	conf_frame* inFramesLast ;
@@ -168,51 +134,15 @@ struct ast_conf_member
 	conf_frame* outFrames ;
 	conf_frame* outFramesTail ;
 	unsigned int outFramesCount ;
-#ifdef	VIDEO
-	conf_frame* outVideoFrames ;
-	conf_frame* outVideoFramesTail ;
-	unsigned int outVideoFramesCount ;
-#endif
 #ifdef	DTMF
 	conf_frame* outDTMFFrames ;
 	conf_frame* outDTMFFramesTail ;
 	unsigned int outDTMFFramesCount ;
 #endif
-#ifdef	TEXT
-	conf_frame* outTextFrames ;
-	conf_frame* outTextFramesTail ;
-	unsigned int outTextFramesCount ;
-#endif
-#ifdef	VIDEO
-	// LL video switched flag
-	short conference;
-	// switch video by VAD?
-	short vad_switch;
-	// do a VAD switch even if video is not enabled?
-	short force_vad_switch;
-	// if member is current speaker, video will stay on it when it becomes silent
-	short vad_linger;
-	// switch by dtmf?
-	short dtmf_switch;
-#endif
 	// relay dtmf to manager?
 	short dtmf_relay;
 	// initial nat delay flag
 	short first_frame_received;
-#ifdef	TEXT
-	// does text messages?
-	short does_text;
-#endif
-#ifdef	VIDEO
-	// conference does chat mode (1 on 1 video when two members in conference)
-	short does_chat_mode;
-
-	// Timeouts for VAD based video switching (in ms)
-	// Length of audio needed to decide that the member has started talking
-	int video_start_timeout;
-	// Length of silence needed to decide that the member has stopped talking
-	int video_stop_timeout;
-#endif
 
 	// time we last dropped a frame
 	struct timeval last_in_dropped ;
@@ -224,31 +154,14 @@ struct ast_conf_member
 	// used for determining need to mix frames
 	// and for management interface notification
 	// and for VAD based video switching
-#ifdef	VIDEO
-	short speaking_state_notify ;
-	short speaking_state ; // This flag will be true if this member or any of its drivers is speaking
-	struct timeval last_state_change;
-	int speaker_count; // Number of drivers (including this member) that are speaking
-#endif
 	short local_speaking_state; // This flag will be true only if this member is speaking
-
-#ifdef	VIDEO
-	// Stuff used to determine video broadcast state
-	// This member's video is sent out to at least one member of the conference
-	short video_broadcast_active;
-	// Time when we last sent out a video frame from this member
-	struct timeval last_video_frame_time;
-
-	// Is the member supposed to be transmitting video?
-	short video_started;
-#endif
 
 	// pointer to next member in linked list
 	struct ast_conf_member* next ;
-#ifndef	VIDEO
+
 	// pointer to prev member in linked list
 	struct ast_conf_member* prev ;
-#endif
+
 	// pointer to member's bucket list head
 	struct channel_bucket *bucket;
 	// list entry for member's bucket list
@@ -265,23 +178,11 @@ struct ast_conf_member
 	unsigned long frames_out ;
 	unsigned long frames_out_dropped ;
 
-#ifdef	VIDEO
-	unsigned long video_frames_in ;
-	unsigned long video_frames_in_dropped ;
-	unsigned long video_frames_out ;
-	unsigned long video_frames_out_dropped ;
-#endif
 #ifdef	DTMF
 	unsigned long dtmf_frames_in ;
 	unsigned long dtmf_frames_in_dropped ;
 	unsigned long dtmf_frames_out ;
 	unsigned long dtmf_frames_out_dropped ;
-#endif
-#ifdef	TEXT
-	unsigned long text_frames_in ;
-	unsigned long text_frames_in_dropped ;
-	unsigned long text_frames_out ;
-	unsigned long text_frames_out_dropped ;
 #endif
 
 	// for counting sequentially dropped frames
@@ -315,10 +216,6 @@ struct ast_conf_member
 
 	// For playing sounds
 	struct ast_conf_soundq *soundq;
-#ifdef	VIDEO
-	// Pointer to another member that will be driven from this member's audio
-	struct ast_conf_member *driven_member;
-#endif
 } ;
 
 struct conf_member
@@ -348,16 +245,10 @@ void freembrblocks(void);
 
 // incoming queue
 int queue_incoming_frame( struct ast_conf_member* member, struct ast_frame* fr ) ;
-#ifdef	VIDEO
-int queue_incoming_video_frame( struct ast_conf_member* member, const struct ast_frame* fr ) ;
-#endif
 #ifdef	DTMF
 int queue_incoming_dtmf_frame( struct ast_conf_member* member, const struct ast_frame* fr ) ;
 #endif
 conf_frame* get_incoming_frame( struct ast_conf_member* member ) ;
-#ifdef	VIDEO
-conf_frame* get_incoming_video_frame( struct ast_conf_member* member ) ;
-#endif
 #ifdef	DTMF
 conf_frame* get_incoming_dtmf_frame( struct ast_conf_member* member ) ;
 #endif
@@ -366,25 +257,12 @@ int queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame
 int __queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery ) ;
 conf_frame* get_outgoing_frame( struct ast_conf_member* member ) ;
 
-#ifdef	VIDEO
-int queue_outgoing_video_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery ) ;
-#endif
 conf_frame* get_outgoing_video_frame( struct ast_conf_member* member ) ;
 #ifdef	DTMF
 int queue_outgoing_dtmf_frame( struct ast_conf_member* member, const struct ast_frame* fr ) ;
 #endif
-#ifdef	TEXT
-int queue_outgoing_text_frame( struct ast_conf_member* member, const struct ast_frame* fr ) ;
-#endif
 #ifdef	DTMF
 conf_frame* get_outgoing_dtmf_frame( struct ast_conf_member* member ) ;
-#endif
-#ifdef	TEXT
-conf_frame* get_outgoing_text_frame( struct ast_conf_member* member ) ;
-#endif
-#ifdef	VIDEO
-int increment_speaker_count(struct ast_conf_member *member, int lock);
-int decrement_speaker_count(struct ast_conf_member *member, int lock);
 #endif
 void member_process_spoken_frames(struct ast_conference* conf,
 				  struct ast_conf_member *member,
@@ -395,14 +273,6 @@ void member_process_spoken_frames(struct ast_conference* conf,
 
 void member_process_outgoing_frames(struct ast_conference* conf,
 				    struct ast_conf_member *member);
-
-#ifdef	VIDEO
-int is_video_eligible(struct ast_conf_member *member);
-
-// Member start and stop video methods
-void start_video(struct ast_conf_member *member);
-void stop_video(struct ast_conf_member *member);
-#endif
 
 #ifdef	PACKER
 //

@@ -5,18 +5,9 @@
  *
  * Copyright (C) 2002, 2003 Junghanns.NET GmbH
  * Copyright (C) 2003, 2004 HorizonLive.com, Inc.
+ * Copyright (C) 2005, 2005 Vipadia Limited
  * Copyright (C) 2005, 2006 HorizonWimba, Inc.
  * Copyright (C) 2007 Wimba, Inc.
- *
- * Klaus-Peter Junghanns <kapejod@ns1.jnetdns.de>
- *
- * Video Conferencing support added by
- * Neil Stratford <neils@vipadia.com>
- * Copyright (C) 2005, 2005 Vipadia Limited
- *
- * VAD driven video conferencing, text message support
- * and miscellaneous enhancements added by
- * Mihai Balea <mihai at hates dot ms>
  *
  * This program may be modified and distributed under the
  * terms of the GNU General Public License. You should have received

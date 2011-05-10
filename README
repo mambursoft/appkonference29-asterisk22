@@ -1,9 +1,6 @@
 Introduction
 
 App_konference is a channel-independent conference application.
-It features efficient audio mixing algorithms as well as video selection
-support based on VAD, DTMF or CLI. 
-
 
 Design goals
 
@@ -30,17 +27,6 @@ Mixing design
           o Two speakers: Each speaker gets the other speaker's frames.  
 		The two speaker's frames are decoded and mixed, and then 
 		encoded _once_ for each codec type used by participants. 
-
-Video features
-
-    * Video passthrough: video from selected member is passed to every
-        member of the conference.
-    * Multiple ways to select video
-        - VAD
-	- DTMF from conference members
-	- CLI 
-    * Ability to set default video sources and to lock/unlock video sources.
-
 
 License
 
@@ -70,7 +56,7 @@ There is no configuration file. Conferences are created on-the-fly.
 
 Dialplan syntax:
 
-Konference(NAME,FLAGS[,MAXUSERS][,TYPE][,SPY][,VADSTART][,VADCONTINUE][,VIDEOSTART][,VIDEOSTOP])
+Konference(NAME,FLAGS[,MAXUSERS][,TYPE][,SPY][,VADSTART][,VADCONTINUE])
 
 * NAME: whatever you want to identify the conference
 * FLAGS: dialplan flags, see Flags.txt for a comprehensive list
@@ -81,8 +67,6 @@ Konference(NAME,FLAGS[,MAXUSERS][,TYPE][,SPY][,VADSTART][,VADCONTINUE][,VIDEOSTA
 
 * VADSTART:  "probability" to use to detect start of speech.
 * VADCONTINUE: "probability" to use to detect continuation of speech. 
-* VIDEOSTART: length of speech before assuming that a member is speaking 
-* VIDEOSTOP: length of silence before assuming that a member has stopped speaking
 
 
 CLI Commands
@@ -106,21 +90,6 @@ interfacing with the manager API can monitor conferences:
 	* ConferenceMute: mute conference
 	* ConferenceMemberUnmute: unmute member
 	* ConferenceUnmute: unmute conference
-
-	* ConferenceCameraDisabled: camera disabled
-	* ConferenceCameraEnabled: camera enabled
-	* ConferenceStopVideoTransmit: stop video
-	* ConferenceStartVideoTransmit: start video
-	* ConferenceUnlock: unlock conference video
-	* ConferenceLock: lock conference video
-	* ConferenceVideoBroadcastOff: video broadcast off
-	* ConferenceVideoBroadcastOn: video broadcast on
-	* ConferenceVideoMute: mute video
-	* ConferenceVideoUnmute: unmute video
-	* ConferenceDefault: set video default
-	* ConferenceVideoSwitch: video switched
-
-
 
 Benchmarking
 

@@ -5,18 +5,9 @@
  *
  * Copyright (C) 2002, 2003 Junghanns.NET GmbH
  * Copyright (C) 2003, 2004 HorizonLive.com, Inc.
+ * Copyright (C) 2005, 2005 Vipadia Limited
  * Copyright (C) 2005, 2006 HorizonWimba, Inc.
  * Copyright (C) 2007 Wimba, Inc.
- *
- * Klaus-Peter Junghanns <kapejod@ns1.jnetdns.de>
- *
- * Video Conferencing support added by
- * Neil Stratford <neils@vipadia.com>
- * Copyright (C) 2005, 2005 Vipadia Limited
- *
- * VAD driven video conferencing, text message support
- * and miscellaneous enhancements added by
- * Mihai Balea <mihai at hates dot ms>
  *
  * This program may be modified and distributed under the
  * terms of the GNU General Public License. You should have received
@@ -166,19 +157,9 @@
 // maximum number of frames queued per member
 #define AST_CONF_MAX_QUEUE 100
 
-#ifdef	VIDEO
-// max video frames in the queue
-#define AST_CONF_MAX_VIDEO_QUEUE 800
-#endif
-
 #ifdef	DTMF
 // max dtmf frames in the queue
 #define AST_CONF_MAX_DTMF_QUEUE 8
-#endif
-
-#ifdef	TEXT
-// max text frames in the queue
-#define AST_CONF_MAX_TEXT_QUEUE 8
 #endif
 
 // minimum number of frames queued per member
@@ -243,36 +224,6 @@
 // Default conference type
 //
 #define AST_CONF_TYPE_DEFAULT "konference"
-
-#ifdef	VIDEO
-//
-// Default VAD based video switching parameters
-// All time related values are in ms
-//
-
-// Amount of silence required before we decide somebody stopped talking
-#define AST_CONF_VIDEO_STOP_TIMEOUT 2000
-
-// Amount of audio required before we decide somebody started talking
-#define AST_CONF_VIDEO_START_TIMEOUT 2000
-
-// Amount of time we wait for a video frame until we decide that
-// the member has stopped broadcasting video
-#define AST_CONF_VIDEO_STOP_BROADCAST_TIMEOUT 200
-
-#ifdef	TEXT
-//
-// Text frame control protocol
-//
-#define AST_CONF_CONTROL_CAMERA_DISABLED      "CONTROL:CAMERA_DISABLED"
-#define AST_CONF_CONTROL_CAMERA_ENABLED       "CONTROL:CAMERA_ENABLED"
-#define AST_CONF_CONTROL_START_VIDEO          "CONTROL:STARTVIDEO"
-#define AST_CONF_CONTROL_STOP_VIDEO           "CONTROL:STOPVIDEO"
-#define AST_CONF_CONTROL_STOP_VIDEO_TRANSMIT  "CONTROL:STOP_VIDEO_TRANSMIT"
-#define AST_CONF_CONTROL_START_VIDEO_TRANSMIT "CONTROL:START_VIDEO_TRANSMIT"
-#endif
-
-#endif
 
 #define EVENT_FLAG_CONF EVENT_FLAG_USER
 

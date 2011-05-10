@@ -10,8 +10,6 @@ exten => <ext>,<pri>,Konference(<confname>,<flags>,<optional args>,<more optiona
 	1. Flags
 
 	Mute/no receive options:
-	'C' : member starts with video muted
-	'c' : member starts unable to receive video
 	'L' : member starts with audio muted
 	'l' : member starts unable to receive audio
 
@@ -22,21 +20,13 @@ exten => <ext>,<pri>,Konference(<confname>,<flags>,<optional args>,<more optiona
 	'A' : enable Automatic Gain Control
 
 	DTMF options:
-	'X' : enable DTMF switch: video can be switched by users using DTMF. Do not use with 'S'.
 	'R' : enable DTMF relay: DTMF tones generate a manager event
-	If neither 'X' nor 'R' are present, DTMF tones will be forwarded to all members in the conference
+	If 'R' is not sent, DTMF tones will be forwarded to all members in the conference
 
 	Moderator/video switch options:
 	'M' : member is a "moderator". When a moderator quits, all members are kicked and the conference is disabled.
-	'S' : member accepts VAD controlled video switching.  Do not use with 'X'.
-	'z' : member can "linger". When the member is currently transmitting video and becomes silent and nobody else is speaking, we stay on it.
-	'o' : enable special behavior when in 1 and 2 member situation (one on one video). The conference observes the 'o' status of the last 
-	      member to join it
-	'F' : force switch mode: if the member is talking, force a switch to it even when there is no video
 
 	Miscellaneous:
-	't' : member accepts text based control messages.  The messages are described in a separate document
-	'N' : Assume that the member starts off with camera disabled.
 	'x' : when the last moderator leaves, all conferees are kicked and conference ends.
 	'a' : V + T
 	'H' : play music on hold if only one member in conference
@@ -49,31 +39,17 @@ exten => <ext>,<pri>,Konference(<confname>,<flags>,<optional args>,<more optiona
 	The parser is not perfect so it might not cope well with spurious spaces or other characters.
 	All arguments are optional; appkonference will use sane default values for missing arguments.
 
-	priority=<int> : This argument is currently unused, it was intended to allow for prioritization of speakers.  It might be reinstated in a future appconference revision
 	vad_prob_start=<float> : Probability used to detect start of speech
 	vad_prob_continue=<float> : Probability to detect continuation of speech
-	video_start_timeout=<int> : Length of speech (in ms) before we say that a member is speaking (for video switching purposes)
-	video_stop_timeout=<int>  : Length of silence (in ms) before we say that a member has stopped speaking (for video switching purposes)
 	max_users=<int> : Limit conference participants to max_users
 	type=<string>: Type identifier
 	spy=<string>: Channel name to spy
 
-	3. Examples
+	3. Example
 
-	exten => 6969,1,Konference(testconf,SNt)
+	exten => _X.,1,Konference(testconf,R)
 
-	Calling extension 6969 will connect to conference "testconf". The member accepts VAD based video switching, knows about
-	the text based control protocol and is assumed to start off with camera disabled
-
-
-	exten => 6969,1,Konference(testconf,SNt,video_start_timeout=1000,video_stop_timeout=1000)
-
-	Same as above, but the timeouts used for VAD based video switching are set to 1000 ms (from the default of 2000 ms).
-	The effect is faster video switching.
-
-	exten => 6969,1,Konference(testconf,XNt)
-
-	Same as the first example, but video switching is now controlled by clients via DTMF
+	Application connects to conference "testconf" with DTMF events enabled. 
 
 	4. Channel spying/whispering
 
@@ -81,7 +57,7 @@ exten => <ext>,<pri>,Konference(<confname>,<flags>,<optional args>,<more optiona
 	interested in spying on and whispering to and say the conference started like
 	this:
 
-	konference(testconf,Rca)
+	konference(testconf,aR)
 
 	You would enter the conference: konference(testconf,Rca,spy=sip/5060-3985).
 
@@ -91,7 +67,7 @@ exten => <ext>,<pri>,Konference(<confname>,<flags>,<optional args>,<more optiona
 
 	On the other hand, if you entered the conference like this:
 
-	konference(testconf,RcaL,spy=sip/5060-3985)
+	konference(testconf,aRL,spy=sip/5060-3985)
 
 	You would join the conference muted (unable to talk directly to
 	sip/5060-3985) and you would hear the audio only from that channel.
@@ -107,10 +83,10 @@ The general syntax of KonferenceCount application is:
 
 	To play the conference count to the channel:
 
-	exten => 6969,1,KonferenceCount(textconf)
+	exten => _X.,1,KonferenceCount(textconf)
 
 	To put the conference count in a channel variable:
 
-	exten => 6969,1,KonferenceCount(textconf,testvar)
+	exten => _X.,1,KonferenceCount(textconf,testvar)
 
 

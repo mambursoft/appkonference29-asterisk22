@@ -5,18 +5,9 @@
  *
  * Copyright (C) 2002, 2003 Junghanns.NET GmbH
  * Copyright (C) 2003, 2004 HorizonLive.com, Inc.
+ * Copyright (C) 2005, 2005 Vipadia Limited
  * Copyright (C) 2005, 2006 HorizonWimba, Inc.
  * Copyright (C) 2007 Wimba, Inc.
- *
- * Klaus-Peter Junghanns <kapejod@ns1.jnetdns.de>
- *
- * Video Conferencing support added by
- * Neil Stratford <neils@vipadia.com>
- * Copyright (C) 2005, 2005 Vipadia Limited
- *
- * VAD driven video conferencing, text message support
- * and miscellaneous enhancements added by
- * Mihai Balea <mihai at hates dot ms>
  *
  * This program may be modified and distributed under the
  * terms of the GNU General Public License. You should have received
@@ -82,28 +73,12 @@ struct ast_conference
 
 	// single-linked list of members in conference
 	struct ast_conf_member* memberlist ;
-#ifndef	VIDEO
+
 	// pointer to last member in list
 	struct ast_conf_member* memberlast ;
-#endif
+
 	int membercount ;
         int id_count;
-#ifdef	VIDEO
-	// id of the default video source
-	// If nobody is talking and video is unlocked, we use this source
-	int default_video_source_id;
-
-	// id of the current video source
-	// this changes according to VAD rules and lock requests
-	int current_video_source_id;
-
-	// timestamp of when the current source has started talking
-	// TODO: do we really need this?
-	//struct timeval current_video_source_timestamp;
-
-	// Video source locked flag, 1 -> locked, 0 -> unlocked
-	short video_locked;
-#endif
 	// conference thread id
 	pthread_t conference_thread ;
 
@@ -127,13 +102,6 @@ struct ast_conference
 
 	// keep track of current delivery time
 	struct timeval delivery_time ;
-#ifdef	VIDEO
-	// the conference does chat mode: special treatment for situations with 1 and 2 members
-	short does_chat_mode;
-
-	// chat mode is on;
-	short chat_mode_on;
-#endif	
 #ifdef	APP_KONFERENCE_DEBUG
 	// 1 => on, 0 => off
 	short debug_flag ;
@@ -167,10 +135,6 @@ int queue_silent_frame( struct ast_conference* conf, struct ast_conf_member* mem
 
 void remove_member( struct ast_conf_member* member, struct ast_conference* conf, char* conf_name ) ;
 
-#ifdef	TEXT
-int send_text_message_to_member(struct ast_conf_member *member, const char *text);
-#endif
-
 // called by app_confernce.c:load_module()
 void init_conference( void ) ;
 void dealloc_conference( void ) ;
@@ -197,38 +161,8 @@ int unmute_member ( const char* confname, int user_id);
 int mute_conference ( const char* confname);
 int unmute_conference ( const char* confname);
 
-#ifdef	VIDEO
-int viewstream_switch ( const char* confname, int user_id, int stream_id);
-int viewchannel_switch ( const char* confname, const char* user_chan, const char* stream_chan);
-#endif
-
 int get_conference_stats( ast_conference_stats* stats, int requested ) ;
 int get_conference_stats_by_name( ast_conference_stats* stats, const char* name ) ;
-
-#ifdef	VIDEO
-int lock_conference(const char *conference, int member_id);
-int lock_conference_channel(const char *conference, const char *channel);
-int unlock_conference(const char *conference);
-
-int set_default_id(const char *conference, int member_id);
-int set_default_channel(const char *conference, const char *channel);
-
-int video_mute_member(const char *conference, int member_id);
-int video_unmute_member(const char *conference, int member_id);
-int video_mute_channel(const char *conference, const char *channel);
-int video_unmute_channel(const char *conference, const char *channel);
-#endif
-
-#ifdef	TEXT
-int send_text(const char *conference, int member, const char *text);
-int send_text_channel(const char *conference, const char *channel, const char *text);
-int send_text_broadcast(const char *conference, const char *text);
-#endif
-
-#ifdef	VIDEO
-int drive(const char *conference, int src_member_id, int dst_member_id);
-int drive_channel(const char *conference, const char *src_channel, const char *dst_channel);
-#endif
 
 #if	ASTERISK == 14 || ASTERISK == 16
 int play_sound_channel(int fd, const char *channel, char **file, int mute, int tone, int n);

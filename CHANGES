@@ -227,3 +227,6 @@ ASTERISK_SRC_DIRECTORY or by modifying the variable in the Makefile.
 Added a compiler flag, VECTORS, that indicates gcc extensions for vector
 operations are to be used for mixing frames. Modify the makefile to enable this
 feature. 
+
+Remove video features from conference module because we're only interested in
+voice and video degrades voice performance.
