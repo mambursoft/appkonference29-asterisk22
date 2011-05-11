@@ -61,7 +61,6 @@ struct ast_conf_member
 	conf_frame *speaker_frame ; // member speaker frame
 
 	// values passed to create_member () via *data
-	int priority ;	// highest priority gets the channel
 	char flags[MEMBER_FLAGS_LEN + 1] ;	// raw member-type flags
 	char type[MEMBER_TYPE_LEN + 1] ;		// conference type
 	char *spyee_channel_name ; // spyee  channel name
@@ -216,12 +215,6 @@ struct ast_conf_member
 
 	// For playing sounds
 	struct ast_conf_soundq *soundq;
-} ;
-
-struct conf_member
-{
-	struct ast_conf_member* realmember ;
-	struct conf_member* next ;
 } ;
 
 //

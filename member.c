@@ -448,9 +448,9 @@ int member_exec( struct ast_channel* chan, const char* data )
 	// create a new member for the conference
  	//
 
-	//DEBUG("creating new member, id => %s, flags => %s, p => %s\n", id, flags, priority) ;
+	//DEBUG("creating new member, id => %s, flags => %s\n", id, flags) ;
 
-	member = create_member( chan, (const char*)( data ), conf_name ) ; // flags, atoi( priority ) ) ;
+	member = create_member( chan, (const char*)( data ), conf_name ) ; // flags, name
 
 	// unable to create member, return an error
 	if ( member == NULL )
@@ -634,15 +634,6 @@ int member_exec( struct ast_channel* chan, const char* data )
 	// clean up
 	//
 
-#ifdef DEBUG_OUTPUT_PCM
-	// !!! TESTING !!!
-	if ( incoming_fh != NULL )
-		fclose( incoming_fh ) ;
-#endif
-//	end = ast_tvnow();
-//	int expected_frames = ( int )( floor( (double)( msecdiff( &end, &start ) / AST_CONF_FRAME_INTERVAL ) ) ) ;
-//	DEBUG("expected_frames => %d\n", expected_frames) ;
-
 	remove_member( member, conf, conf_name ) ;
 	return 0 ;
 }
@@ -689,7 +680,7 @@ struct ast_conf_member* create_member( struct ast_channel *chan, const char* dat
 	{
 #endif
 		// allocate new member control block
-		if ( !(member = calloc( 1,  sizeof( struct ast_conf_member ) )) )
+		if ( !(member = ast_calloc( 1,  sizeof( struct ast_conf_member ) )) )
 		{
 			ast_log( LOG_ERROR, "unable to calloc ast_conf_member\n" ) ;
 			return NULL ;
@@ -745,7 +736,6 @@ struct ast_conf_member* create_member( struct ast_channel *chan, const char* dat
 
 	while ( (token = strsep(&stringp, argument_delimiter )) )
 	{
-		static const char arg_priority[] = "priority";
 #if ( SILDET == 2 )
 		static const char arg_vad_prob_start[] = "vad_prob_start";
 		static const char arg_vad_prob_continue[] = "vad_prob_continue";
@@ -762,21 +752,8 @@ struct ast_conf_member* create_member( struct ast_channel *chan, const char* dat
 			ast_log(LOG_WARNING, "Incorrect argument %s\n", token);
 			continue;
 		}
-		if ( !strncasecmp(key, arg_priority, sizeof(arg_priority) - 1) )
-		{
-			member->priority = strtol(value, (char **)NULL, 10);
-			DEBUG("priority = %d\n", member->priority) ;
-#if ( SILDET == 2 )
-		} else if ( !strncasecmp(key, arg_vad_prob_start, sizeof(arg_vad_prob_start) - 1) )
-		{
-			member->vad_prob_start = strtof(value, (char **)NULL);
-			DEBUG("vad_prob_start = %f\n", member->vad_prob_start) ;
-		} else if ( !strncasecmp(key, arg_vad_prob_continue, sizeof(arg_vad_prob_continue) - 1) )
-		{
-			member->vad_prob_continue = strtof(value, (char **)NULL);
-			DEBUG("vad_prob_continue = %f\n", member->vad_prob_continue) ;
-#endif
-		} else if ( !strncasecmp(key, arg_max_users, sizeof(arg_max_users) - 1) )
+
+		if ( !strncasecmp(key, arg_max_users, sizeof(arg_max_users) - 1) )
 		{
 			member->max_users = strtol(value, (char **)NULL, 10);
 			DEBUG("max_users = %d\n", member->max_users) ;
@@ -789,10 +766,21 @@ struct ast_conf_member* create_member( struct ast_channel *chan, const char* dat
 			member->spyee_channel_name = malloc( strlen( value ) + 1 ) ;
 			strcpy( member->spyee_channel_name, value ) ;
 			DEBUG("spyee channel name is %s\n", member->spyee_channel_name) ;
+#if ( SILDET == 2 )
+		} else if ( !strncasecmp(key, arg_vad_prob_start, sizeof(arg_vad_prob_start) - 1) )
+		{
+			member->vad_prob_start = strtof(value, (char **)NULL);
+			DEBUG("vad_prob_start = %f\n", member->vad_prob_start) ;
+		} else if ( !strncasecmp(key, arg_vad_prob_continue, sizeof(arg_vad_prob_continue) - 1) )
+		{
+			member->vad_prob_continue = strtof(value, (char **)NULL);
+			DEBUG("vad_prob_continue = %f\n", member->vad_prob_continue) ;
+#endif
 		} else
 		{
 			ast_log(LOG_WARNING, "unknown parameter %s with value %s\n", key, value) ;
 		}
+
 	}
 
 	//
@@ -1095,7 +1083,7 @@ struct ast_conf_member* create_member( struct ast_channel *chan, const char* dat
 	// finish up
 	//
 
-	DEBUG("created member, type => %s, priority => %d, readformat => %d\n", member->type, member->priority, (int)chan->readformat) ;
+	DEBUG("created member, type => %s, readformat => %d\n", member->type, (int)chan->readformat) ;
 
 	return member ;
 }

@@ -286,7 +286,7 @@ conf_frame* mix_multiple_speakers(
 	conf_frame* cf_spoken = frames_in ;
 
 	// allocate a mix buffer large enough to hold a frame
-	char* listenerBuffer = calloc( AST_CONF_BUFFER_SIZE, sizeof(char) ) ;
+	char* listenerBuffer = ast_calloc( AST_CONF_BUFFER_SIZE, sizeof(char) ) ;
 
 	while ( cf_spoken )
 	{
@@ -334,7 +334,7 @@ conf_frame* mix_multiple_speakers(
 		if ( !cf_spoken->member->spyer )
 		{
 			// allocate a mix buffer large enough to hold a frame
-			char* speakerBuffer = calloc( AST_CONF_BUFFER_SIZE, sizeof(char) ) ;
+			char* speakerBuffer = ast_calloc( AST_CONF_BUFFER_SIZE, sizeof(char) ) ;
 
 			cf_sendFrames = create_conf_frame(cf_spoken->member, cf_sendFrames, NULL);
 
@@ -538,7 +538,6 @@ conf_frame* create_conf_frame( struct ast_conf_member* member, conf_frame* next,
 	memset( (struct ast_frame*)( cf->converted ), 0x0, ( sizeof( struct ast_frame* ) * AC_SUPPORTED_FORMATS ) ) ;
 
 	cf->member = member ;
-	// cf->priority = 0 ;
 
 	cf->prev = NULL ;
 	cf->next = next ;
@@ -596,8 +595,7 @@ struct ast_frame* create_slinear_frame( char* data )
 {
 	struct ast_frame* f ;
 
-	f = calloc( 1, sizeof( struct ast_frame ) ) ;
-	if ( !f )
+	if ( !(f = ast_calloc( 1, sizeof( struct ast_frame ))) )
 	{
 		ast_log( LOG_ERROR, "unable to allocate memory for slinear frame\n" ) ;
 		return NULL ;

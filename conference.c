@@ -1677,7 +1677,7 @@ int play_sound_channel(int fd, const char *channel, const char * const *file, in
 			&& (!tone || !member->soundq))
 	{
 		while ( n-- > 0 ) {
-			if( !(newsound = calloc(1, sizeof(struct ast_conf_soundq))))
+			if( !(newsound = ast_calloc(1, sizeof(struct ast_conf_soundq))))
 				break ;
 
 			ast_copy_string(newsound->name, *file, sizeof(newsound->name));

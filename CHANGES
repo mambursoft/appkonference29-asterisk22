@@ -232,3 +232,6 @@ Remove video features from conference module because we're only interested in
 voice and video degrades voice performance.
 
 Changed the code to use the c language idiom for conditionals testing pointers.
+
+Changed the code to use the asterisk memory allocation routines rather than the
+c library routines directly.

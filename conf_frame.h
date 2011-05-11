@@ -40,11 +40,6 @@ typedef struct conf_frame
 	// pointer to the frame's owner
 	struct ast_conf_member* member ; // who sent this frame
 
-	// frame meta data
-//	struct timeval timestamp ;
-//	unsigned long cycleid ;
-//	int priority ;
-
 	// linked-list pointers
 	struct conf_frame* next ;
 	struct conf_frame* prev ;
