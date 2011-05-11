@@ -170,9 +170,9 @@ char *conference_debug(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a)
 	}
 	else
 	{
-		if ( strncasecmp( argv[3], "on", 4 ) == 0 )
+		if ( !strncasecmp( argv[3], "on", 4 ) )
 			state = 1 ;
-		else if ( strncasecmp( argv[3], "off", 3 ) == 0 )
+		else if ( !strncasecmp( argv[3], "off", 3 ) )
 			state = 0 ;
 		else
 			return SHOWUSAGE ;
@@ -185,7 +185,7 @@ char *conference_debug(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a)
 		ast_cli( fd, "enabled conference debugging, name => %s, new_state => %d\n",
 			name, new_state ) ;
 	}
-	else if ( new_state == 0 )
+	else if ( !new_state )
 	{
 		ast_cli( fd, "disabled conference debugging, name => %s, new_state => %d\n",
 			name, new_state ) ;
@@ -945,9 +945,9 @@ char *conference_talkvolume(struct ast_cli_entry *e, int cmd, struct ast_cli_arg
 	const char *channel = argv[2];
 
 	int up;
-	if ( strncasecmp( argv[3], "up", 2 ) == 0 )
+	if ( !strncasecmp( argv[3], "up", 2 ) )
 		up = 1 ;
-	else if ( strncasecmp( argv[3], "down", 4 ) == 0 )
+	else if ( !strncasecmp( argv[3], "down", 4 ) )
 		up = 0 ;
 	else
 		return SHOWUSAGE ;
@@ -997,9 +997,9 @@ char *conference_listenvolume(struct ast_cli_entry *e, int cmd, struct ast_cli_a
 	const char *channel = argv[2];
 
 	int up;
-	if ( strncasecmp( argv[3], "up", 2 ) == 0 )
+	if ( !strncasecmp( argv[3], "up", 2 ) )
 		up = 1 ;
-	else if ( strncasecmp( argv[3], "down", 4 ) == 0 )
+	else if ( !strncasecmp( argv[3], "down", 4 ) )
 		up = 0 ;
 	else
 		return SHOWUSAGE ;
@@ -1050,9 +1050,9 @@ char *conference_volume(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a
 	const char* conference = argv[2] ;
 
 	int up;
-	if ( strncasecmp( argv[3], "up", 2 ) == 0 )
+	if ( !strncasecmp( argv[3], "up", 2 ) )
 		up = 1 ;
-	else if ( strncasecmp( argv[3], "down", 4 ) == 0 )
+	else if ( !strncasecmp( argv[3], "down", 4 ) )
 		up = 0 ;
 	else
 		return SHOWUSAGE ;
@@ -1106,7 +1106,7 @@ char *conference_end(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
 	int hangup = (argc == 4 && !strcmp(argv[3], "nohangup") ? 0 : 1) ;
 
 	// get the conference
-	if ( end_conference( name, hangup ) != 0 )
+	if ( end_conference( name, hangup ) )
 	{
 		ast_cli( fd, "unable to end the conference, name => %s\n", name ) ;
 		return SHOWUSAGE ;

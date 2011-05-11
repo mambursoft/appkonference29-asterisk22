@@ -168,19 +168,19 @@ conf_frame* mix_single_speaker( struct ast_conference* conf, conf_frame* frames_
 	// check input
 	//
 
-	if ( frames_in == NULL )
+	if ( !frames_in )
 	{
 		DEBUG("unable to mix single spoken frame with null frame\n") ;
 		return NULL ;
 	}
 
-	if ( frames_in->fr == NULL )
+	if ( !frames_in->fr )
 	{
 		DEBUG("unable to mix single spoken frame with null data\n") ;
 		return NULL ;
 	}
 
-	if ( frames_in->member == NULL )
+	if ( !frames_in->member )
 	{
 		DEBUG("unable to mix single spoken frame with null member\n") ;
 		return NULL ;
@@ -217,12 +217,12 @@ conf_frame* mix_single_speaker( struct ast_conference* conf, conf_frame* frames_
 	else
 	{
 		// speaker is either a spyee or a spyer
-		if ( frames_in->member->spyer == 0
+		if ( !frames_in->member->spyer
 			&& conf->membercount > 2 )
 		{
 			conf_frame *spy_frame = copy_conf_frame(frames_in);
 
-			if ( spy_frame != 0 )
+			if ( spy_frame )
 			{
 				frames_in->next = spy_frame;
 				spy_frame->prev = frames_in;
@@ -264,7 +264,7 @@ conf_frame* mix_multiple_speakers(
 	//
 
 	// no frames to mix
-	if ( ( frames_in == NULL ) || ( frames_in->fr == NULL ) )
+	if ( !frames_in || !frames_in->fr )
 	{
 		ast_log( LOG_ERROR, "passed spoken frame list was NULL\n") ;
 		return NULL ;
@@ -288,7 +288,7 @@ conf_frame* mix_multiple_speakers(
 	// allocate a mix buffer large enough to hold a frame
 	char* listenerBuffer = calloc( AST_CONF_BUFFER_SIZE, sizeof(char) ) ;
 
-	while ( cf_spoken != NULL )
+	while ( cf_spoken )
 	{
 
 		if ( !(cf_spoken->fr = convert_frame( cf_spoken->member->to_slinear, cf_spoken->fr)) )
@@ -297,12 +297,12 @@ conf_frame* mix_multiple_speakers(
 			return NULL;
 		}
 
-		if (( cf_spoken->member->talk_volume != 0 ) || (conf->volume != 0))
+		if ( cf_spoken->member->talk_volume || conf->volume )
 		{
 			ast_frame_adjust_volume(cf_spoken->fr, cf_spoken->member->talk_volume + conf->volume);
 		}
 
-		if ( cf_spoken->member->spyer == 0 )
+		if ( !cf_spoken->member->spyer )
 		{
 			// add the speaker's voice
 #if	ASTERISK == 14
@@ -329,9 +329,9 @@ conf_frame* mix_multiple_speakers(
 	// pointer to the new list of mixed frames
 	conf_frame* cf_sendFrames = NULL ;
 
-	while ( cf_spoken != NULL )
+	while ( cf_spoken )
 	{
-		if ( cf_spoken->member->spyer == 0 )
+		if ( !cf_spoken->member->spyer )
 		{
 			// allocate a mix buffer large enough to hold a frame
 			char* speakerBuffer = calloc( AST_CONF_BUFFER_SIZE, sizeof(char) ) ;
@@ -347,7 +347,7 @@ conf_frame* mix_multiple_speakers(
 			unmix_slinear_frame(cf_sendFrames->mixed_buffer, listenerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
 #endif
 
-			if ( cf_spoken->member->spy_partner && cf_spoken->member->spy_partner->local_speaking_state != 0 )
+			if ( cf_spoken->member->spy_partner && cf_spoken->member->spy_partner->local_speaking_state )
 			{
 				// add whisper voice
 #if	ASTERISK == 14
@@ -361,7 +361,7 @@ conf_frame* mix_multiple_speakers(
 
 			cf_sendFrames->member->speaker_frame = cf_sendFrames ;
 		}
-		else if ( cf_spoken->member->spy_partner->local_speaking_state == 0 )
+		else if ( !cf_spoken->member->spy_partner->local_speaking_state )
 		{
 			// allocate a mix buffer large enough to hold a frame
 			char* whisperBuffer = malloc( AST_CONF_BUFFER_SIZE ) ;
@@ -411,11 +411,11 @@ conf_frame* mix_multiple_speakers(
 	// reset the spoken list pointer
 	cf_spoken = frames_in ;
 
-	while ( cf_spoken != NULL )
+	while ( cf_spoken )
 	{
 		struct ast_conf_member *spy_partner = cf_spoken->member->spy_partner ;
 
-		if ( spy_partner == NULL || cf_spoken->member->spyer != 0 )
+		if ( !spy_partner || cf_spoken->member->spyer )
 		{
 			// delete the frame
 			cf_spoken = delete_conf_frame( cf_spoken ) ;
@@ -427,7 +427,7 @@ conf_frame* mix_multiple_speakers(
 			conf_frame *spy_frame = cf_spoken ;
 
 			cf_spoken = cf_spoken->next;
-			if ( cf_spoken != NULL )
+			if ( !cf_spoken )
 				cf_spoken->prev = NULL;
 
 			spy_frame->next = cf_sendFrames;
@@ -448,13 +448,13 @@ conf_frame* mix_multiple_speakers(
 
 struct ast_frame* convert_frame( struct ast_trans_pvt* trans, struct ast_frame* fr )
 {
-	if ( trans == NULL )
+	if ( !trans )
 	{
 		return fr ;
 	}
 
 #ifdef APP_KONFERENCE_DEBUG
-	if ( fr == NULL )
+	if ( !fr  )
 	{
 		ast_log( LOG_WARNING, "unable to convert null frame\n" ) ;
 		return NULL ;
@@ -466,7 +466,7 @@ struct ast_frame* convert_frame( struct ast_trans_pvt* trans, struct ast_frame* 
 
 #ifdef APP_KONFERENCE_DEBUG
 	// check for errors
-	if ( translated_frame == NULL )
+	if ( !translated_frame )
 	{
 		ast_log( LOG_ERROR, "unable to translate frame\n" ) ;
 		return NULL ;
@@ -482,13 +482,13 @@ conf_frame* delete_conf_frame( conf_frame* cf )
   int c;
 #ifdef APP_KONFERENCE_DEBUG
 	// check for null frames
-	if ( cf == NULL )
+	if ( !cf )
 	{
 		ast_log( LOG_ERROR, "unable to delete null conf frame\n") ;
 		return NULL ;
 	}
 #endif
-	if ( cf->fr != NULL )
+	if ( cf->fr )
 	{
 		ast_frfree( cf->fr ) ;
 		cf->fr = NULL ;
@@ -497,7 +497,7 @@ conf_frame* delete_conf_frame( conf_frame* cf )
 	// make sure converted frames are set to null
 	for ( c = 0 ; c < AC_SUPPORTED_FORMATS ; ++c )
 	{
-		if ( cf->converted[ c ] != NULL )
+		if ( cf->converted[ c ] )
 		{
 			ast_frfree( cf->converted[ c ] ) ;
 			cf->converted[ c ] = NULL ;
@@ -519,7 +519,7 @@ conf_frame* create_conf_frame( struct ast_conf_member* member, conf_frame* next,
 	// pointer to list of mixed frames
 	conf_frame* cf = malloc( sizeof( struct conf_frame ) ) ;
 
-	if ( cf == NULL )
+	if ( !cf )
 	{
 		ast_log( LOG_ERROR, "unable to allocate memory for conf frame\n" ) ;
 		return NULL ;
@@ -544,10 +544,10 @@ conf_frame* create_conf_frame( struct ast_conf_member* member, conf_frame* next,
 	cf->next = next ;
 
 	// establish relationship to 'next'
-	if ( next != NULL ) next->prev = cf ;
+	if ( next ) next->prev = cf ;
 
 	// this holds the ast_frame pointer
-	cf->fr = ( fr == NULL ) ? NULL : ast_frdup( ( struct ast_frame* )( fr ) ) ;
+	cf->fr = ( !fr ? NULL : ast_frdup(( struct ast_frame* )( fr )) ) ;
 
 	// this holds the temporu mix buffer
 	cf->mixed_buffer = NULL ;
@@ -564,7 +564,7 @@ conf_frame* copy_conf_frame( conf_frame* src )
 	// check inputs
 	//
 
-	if ( src == NULL )
+	if ( !src )
 	{
 		ast_log( LOG_ERROR, "unable to copy null conf frame\n") ;
 		return NULL ;
@@ -579,7 +579,7 @@ conf_frame* copy_conf_frame( conf_frame* src )
 	// create a new conf frame
 	cfr = create_conf_frame( src->member, NULL, src->fr ) ;
 
-	if ( cfr == NULL )
+	if ( !cfr )
 	{
 		DEBUG("unable to create new conf frame for copy\n") ;
 		return NULL ;
@@ -597,7 +597,7 @@ struct ast_frame* create_slinear_frame( char* data )
 	struct ast_frame* f ;
 
 	f = calloc( 1, sizeof( struct ast_frame ) ) ;
-	if ( f == NULL )
+	if ( !f )
 	{
 		ast_log( LOG_ERROR, "unable to allocate memory for slinear frame\n" ) ;
 		return NULL ;
@@ -641,14 +641,14 @@ conf_frame* get_silent_frame( void )
 	static conf_frame* static_silent_frame = NULL ;
 
 	// we'll let this leak until the application terminates
-	if ( static_silent_frame == NULL )
+	if ( !static_silent_frame )
 	{
 		//DEBUG("creating cached silent frame\n") ;
 		struct ast_frame* fr = get_silent_slinear_frame() ;
 
 		static_silent_frame = create_conf_frame( NULL, NULL, fr ) ;
 
-		if ( static_silent_frame == NULL )
+		if ( !static_silent_frame )
 		{
 			ast_log( LOG_WARNING, "unable to create cached silent frame\n" ) ;
 			return NULL ;
@@ -666,7 +666,7 @@ struct ast_frame* get_silent_slinear_frame( void )
 	static struct ast_frame* f = NULL ;
 
 	// we'll let this leak until the application terminates
-	if ( f == NULL )
+	if ( !f )
 	{
 		char* data = malloc( AST_CONF_BUFFER_SIZE ) ;
 		memset( data, 0x0, AST_CONF_BUFFER_SIZE ) ;
