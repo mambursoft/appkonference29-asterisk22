@@ -152,7 +152,6 @@ struct ast_conf_member
 
 	// used for determining need to mix frames
 	// and for management interface notification
-	// and for VAD based video switching
 	short local_speaking_state; // This flag will be true only if this member is speaking
 
 	// pointer to next member in linked list
@@ -227,8 +226,6 @@ int member_exec( struct ast_channel* chan, void* data ) ;
 int member_exec( struct ast_channel* chan, const char* data ) ;
 #endif
 
-struct ast_conf_member* check_active_video( int id, struct ast_conference *conf );
-
 struct ast_conf_member* create_member( struct ast_channel* chan, const char* data, char* conf_name ) ;
 struct ast_conf_member* delete_member( struct ast_conf_member* member ) ;
 
@@ -250,7 +247,6 @@ int queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame
 int __queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery ) ;
 conf_frame* get_outgoing_frame( struct ast_conf_member* member ) ;
 
-conf_frame* get_outgoing_video_frame( struct ast_conf_member* member ) ;
 #ifdef	DTMF
 int queue_outgoing_dtmf_frame( struct ast_conf_member* member, const struct ast_frame* fr ) ;
 #endif
