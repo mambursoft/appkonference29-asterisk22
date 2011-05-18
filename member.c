@@ -927,67 +927,6 @@ struct ast_conf_member* create_member( struct ast_channel *chan, const char* dat
 		default:
 			break;
 	}
-#ifdef	SMOOTHER
-	// smoother defaults.
-	member->smooth_multiple = 1;
-	member->smooth_size_in = -1;
-	member->smooth_size_out = -1;
-
-	switch (member->read_format){
-		/* these assumptions may be incorrect */
-		case AST_FORMAT_ULAW:
-		case AST_FORMAT_ALAW:
-			member->smooth_size_in  = 160; //bytes
-			member->smooth_size_out = 160; //samples
-			break;
-		case AST_FORMAT_GSM:
-			/*
-			member->smooth_size_in  = 33; //bytes
-			member->smooth_size_out = 160;//samples
-			*/
-			break;
-#ifdef	AC_USE_SPEEX
-		case AST_FORMAT_SPEEX:
-			/* this assumptions are wrong
-			member->smooth_multiple = 2 ;  // for testing, force to dual frame
-			member->smooth_size_in  = 39;  // bytes
-			member->smooth_size_out = 160; // samples
-			*/
-			break;
-#endif
-#ifdef AC_USE_G729A
-		case AST_FORMAT_G729A:
-			/* this assumptions are wrong
-			member->smooth_multiple = 2 ;  // for testing, force to dual frame
-			member->smooth_size_in  = 39;  // bytes
-			member->smooth_size_out = 160; // samples
-			*/
-			break;
-#endif
-#ifndef	AC_USE_G722
-		case AST_FORMAT_SLINEAR:
-			member->smooth_size_in  = 320; //bytes
-			member->smooth_size_out = 160; //samples
-#else
-		case AST_FORMAT_SLINEAR16:
-			member->smooth_size_in  = 640; //bytes
-			member->smooth_size_out = 320; //samples
-#endif
-			break;
-#ifdef AC_USE_G722
-		case AST_FORMAT_G722:
-			/*
-			*/
-			break;
-#endif
-		default:
-			break;
-	}
-
-	if (member->smooth_size_in > 0){
-		member->inSmoother = ast_smoother_new(member->smooth_size_in);
-	}
-#endif
 	//
 	// finish up
 	//
@@ -1022,15 +961,6 @@ struct ast_conf_member* delete_member( struct ast_conf_member* member )
 	{
 		cf = delete_conf_frame( cf ) ;
 	}
-#ifdef	SMOOTHER
-	if (member->inSmoother )
-		ast_smoother_free(member->inSmoother);
-#endif
-#ifdef	PACKER
-	if (member->outPacker )
-		ast_packer_free(member->outPacker);
-#endif
-
 	// outgoing frames
 	cf = member->outFrames ;
 
@@ -1385,10 +1315,6 @@ int queue_incoming_frame( struct ast_conf_member* member, struct ast_frame* fr )
 	//
 	// create new conf frame from passed data frame
 	//
-#ifdef	SMOOTHER
-	// ( member->inFrames may be null at this point )
-	if (!member->inSmoother){
-#endif
 		conf_frame* cfr = create_conf_frame( member, member->inFrames, fr ) ;
 		if ( !cfr)
 		{
@@ -1407,41 +1333,6 @@ int queue_incoming_frame( struct ast_conf_member* member, struct ast_frame* fr )
 		}
 		member->inFrames = cfr ;
 		member->inFramesCount++ ;
-#ifdef	SMOOTHER
-	} else {
-		//feed frame(fr) into the smoother
-
-		// smoother tmp frame
-		struct ast_frame *sfr;
-		int multiple = 1;
-
-		ast_smoother_feed( member->inSmoother, fr );
-		if ( multiple > 1 )
-			fr->samples /= multiple;
-
-		// read smoothed version of frames, add to queue
-		while( ( sfr = ast_smoother_read( member->inSmoother ) ) ){
-			conf_frame* cfr = create_conf_frame( member, member->inFrames, sfr ) ;
-			if ( !cfr )
-			{
-				ast_log( LOG_ERROR, "unable to malloc conf_frame\n" ) ;
-				ast_mutex_unlock(&member->lock);
-				return -1 ;
-			}
-
-			//
-			// add new frame to speaking members incoming frame queue
-			// ( i.e. save this frame data, so we can distribute it in conference_exec later )
-			//
-
-			if ( !member->inFrames ) {
-				member->inFramesTail = cfr ;
-			}
-			member->inFrames = cfr ;
-			member->inFramesCount++ ;
-		}
-	}
-#endif
 	ast_mutex_unlock(&member->lock);
 	return 0 ;
 }
@@ -1541,31 +1432,7 @@ int __queue_outgoing_frame( struct ast_conf_member* member, const struct ast_fra
 
 int queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery )
 {
-#ifdef	PACKER
-	if ( !member->outPacker  && ( member->smooth_multiple > 1 ) && ( member->smooth_size_out > 0 ) ){
-		member->outPacker = ast_packer_new( member->smooth_multiple * member->smooth_size_out);
-	}
-
-	if (!member->outPacker){
-#endif
 		return __queue_outgoing_frame( member, fr, delivery ) ;
-#ifdef	PACKER
-	}
-	else
-	{
-		struct ast_frame *sfr;
-		int exitval = 0;
-		ast_packer_feed( member->outPacker , fr );
-		while( (sfr = ast_packer_read( member->outPacker ) ) )
-		{
-			if ( __queue_outgoing_frame( member, sfr, delivery ) == -1 ) {
-				exitval = -1;
-			}
-		}
-
-		return exitval;
-	}
-#endif
 }
 
 //
@@ -1648,10 +1515,6 @@ int queue_outgoing_dtmf_frame( struct ast_conf_member* member, const struct ast_
 		return -1 ;
 	}
 
-#ifdef RTP_SEQNO_ZERO
-	cfr->fr->seqno = 0;
-#endif
-
 	if ( !member->outDTMFFrames )
 	{
 		// this is the first frame in the buffer
@@ -1670,198 +1533,6 @@ int queue_outgoing_dtmf_frame( struct ast_conf_member* member, const struct ast_
 	ast_mutex_unlock(&member->lock);
 	// return success
 	return 0 ;
-}
-#endif
-
-#ifdef	PACKER
-//
-// ast_packer, adapted from ast_smoother
-// pack multiple frames together into one packet on the wire.
-//
-
-#define PACKER_SIZE  8000
-#define PACKER_QUEUE 10 // store at most 10 complete packets in the queue
-
-struct ast_packer {
-	int framesize; // number of frames per packet on the wire.
-	int size;
-	int packet_index;
-	int format;
-	int readdata;
-	int optimizablestream;
-	int flags;
-	float samplesperbyte;
-	struct ast_frame f;
-	struct timeval delivery;
-	char data[PACKER_SIZE];
-	char framedata[PACKER_SIZE + AST_FRIENDLY_OFFSET];
-	int samples;
-	int sample_queue[PACKER_QUEUE];
-	int len_queue[PACKER_QUEUE];
-	struct ast_frame *opt;
-	int len;
-};
-
-void ast_packer_reset(struct ast_packer *s, int framesize)
-{
-	memset(s, 0, sizeof(struct ast_packer));
-	s->framesize = framesize;
-	s->packet_index=0;
-	s->len=0;
-}
-
-struct ast_packer *ast_packer_new(int framesize)
-{
-	struct ast_packer *s;
-	if (framesize < 1)
-		return NULL;
-	s = malloc(sizeof(struct ast_packer));
-	if (s)
-		ast_packer_reset(s, framesize);
-	return s;
-}
-
-int ast_packer_get_flags(struct ast_packer *s)
-{
-	return s->flags;
-}
-
-void ast_packer_set_flags(struct ast_packer *s, int flags)
-{
-	s->flags = flags;
-}
-
-int ast_packer_feed(struct ast_packer *s, const struct ast_frame *f)
-{
-	if (f->frametype != AST_FRAME_VOICE) {
-		ast_log(LOG_WARNING, "Huh?  Can't pack a non-voice frame!\n");
-		return -1;
-	}
-	if (!s->format) {
-#if	ASTERISK == 14 || ASTERISK == 16
-		s->format = f->subclass;
-#else
-		s->format = f->subclass.integer;
-#endif
-		s->samples=0;
-#if	ASTERISK == 14 || ASTERISK ==16
-	} else if (s->format != f->subclass) {
-		ast_log(LOG_WARNING, "Packer was working on %d format frames, now trying to feed %d?\n", s->format, f->subclass);
-#else
-	} else if (s->format != f->subclass.integer) {
-		ast_log(LOG_WARNING, "Packer was working on %d format frames, now trying to feed %d?\n", s->format, f->subclass.integer);
-#endif
-		return -1;
-	}
-	if (s->len + f->datalen > PACKER_SIZE) {
-		ast_log(LOG_WARNING, "Out of packer space\n");
-		return -1;
-	}
-	if (s->packet_index >= PACKER_QUEUE ){
-		ast_log(LOG_WARNING, "Out of packer queue space\n");
-		return -1;
-	}
-
-#if	ASTERISK == 14 || ASTERISK ==16
-	memcpy(s->data + s->len, f->data, f->datalen);
-#else
-	memcpy(s->data + s->len, f->data.ptr, f->datalen);
-#endif
-	/* If either side is empty, reset the delivery time */
-	if (!s->len || (!f->delivery.tv_sec && !f->delivery.tv_usec) ||
-			(!s->delivery.tv_sec && !s->delivery.tv_usec))
-		s->delivery = f->delivery;
-	s->len += f->datalen;
-//packer stuff
-	s->len_queue[s->packet_index]    += f->datalen;
-	s->sample_queue[s->packet_index] += f->samples;
-	s->samples += f->samples;
-
-	if (s->samples > s->framesize )
-		++s->packet_index;
-
-	return 0;
-}
-
-struct ast_frame *ast_packer_read(struct ast_packer *s)
-{
-	struct ast_frame *opt;
-	int len;
-	/* IF we have an optimization frame, send it */
-	if (s->opt) {
-		opt = s->opt;
-		s->opt = NULL;
-		return opt;
-	}
-
-	/* Make sure we have enough data */
-	if (s->samples < s->framesize ){
-			return NULL;
-	}
-	len = s->len_queue[0];
-	if (len > s->len)
-		len = s->len;
-	/* Make frame */
-	s->f.frametype = AST_FRAME_VOICE;
-#if	ASTERISK == 14 || ASTERISK == 16
-	s->f.subclass = s->format;
-#else
-	s->f.subclass.integer = s->format;
-#endif
-#if	ASTERISK == 14 || ASTERISK == 16
-	s->f.data = s->framedata + AST_FRIENDLY_OFFSET;
-#else
-	s->f.data.ptr = s->framedata + AST_FRIENDLY_OFFSET;
-#endif
-	s->f.offset = AST_FRIENDLY_OFFSET;
-	s->f.datalen = len;
-	s->f.samples = s->sample_queue[0];
-	s->f.delivery = s->delivery;
-	/* Fill Data */
-#if	ASTERISK == 14 || ASTERISK == 16
-	memcpy(s->f.data, s->data, len);
-#else
-	memcpy(s->f.data.ptr, s->data, len);
-#endif
-	s->len -= len;
-	/* Move remaining data to the front if applicable */
-	if (s->len) {
-		/* In principle this should all be fine because if we are sending
-		   G.729 VAD, the next timestamp will take over anyawy */
-		memmove(s->data, s->data + len, s->len);
-		if (s->delivery.tv_sec || s->delivery.tv_usec) {
-			/* If we have delivery time, increment it, otherwise, leave it at 0 */
-			s->delivery.tv_sec +=  s->sample_queue[0] / 8000.0;
-			s->delivery.tv_usec += (((int)(s->sample_queue[0])) % 8000) * 125;
-			if (s->delivery.tv_usec > 1000000) {
-				s->delivery.tv_usec -= 1000000;
-				s->delivery.tv_sec += 1;
-			}
-		}
-	}
-	int j;
-	s->samples -= s->sample_queue[0];
-	if( s->packet_index > 0 ){
-		for (j=0; j<s->packet_index -1 ; j++){
-			s->len_queue[j]=s->len_queue[j+1];
-			s->sample_queue[j]=s->sample_queue[j+1];
-		}
-		s->len_queue[s->packet_index]=0;
-		s->sample_queue[s->packet_index]=0;
-		s->packet_index--;
-	} else {
-		s->len_queue[0]=0;
-		s->sample_queue[0]=0;
-	}
-
-
-	/* Return frame */
-	return &s->f;
-}
-
-void ast_packer_free(struct ast_packer *s)
-{
-	free(s);
 }
 #endif
 

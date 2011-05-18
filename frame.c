@@ -459,12 +459,6 @@ conf_frame* create_conf_frame( struct ast_conf_member* member, conf_frame* next,
 	// init with some defaults
 	//
 
-	// make sure converted frames are set to null
-//	for ( int c = 0 ; c < AC_SUPPORTED_FORMATS ; ++c )
-//	{
-//		cf->converted[ c ] = NULL ;
-//	}
-
 	memset( (struct ast_frame*)( cf->converted ), 0x0, ( sizeof( struct ast_frame* ) * AC_SUPPORTED_FORMATS ) ) ;
 
 	cf->member = member ;

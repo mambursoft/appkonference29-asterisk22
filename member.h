@@ -111,16 +111,6 @@ struct ast_conf_member
 	conf_frame* inDTMFFramesTail ;
 	unsigned int inDTMFFramesCount ;
 #endif
-#ifdef	SMOOTHER
-	// input/output smoother
-	struct ast_smoother *inSmoother;
-#ifdef	PACKER
-	struct ast_packer *outPacker;
-#endif
-	int smooth_size_in;
-	int smooth_size_out;
-	int smooth_multiple;
-#endif
 	// frames needed by conference_exec
 	unsigned int inFramesNeeded ;
 #ifdef	AST_CONF_CACHE_LAST_FRAME
@@ -261,21 +251,5 @@ void member_process_spoken_frames(struct ast_conference* conf,
 
 void member_process_outgoing_frames(struct ast_conference* conf,
 				    struct ast_conf_member *member);
-
-#ifdef	PACKER
-//
-// packer functions
-//
-
-struct ast_packer;
-
-extern struct ast_packer *ast_packer_new(int bytes);
-extern void ast_packer_set_flags(struct ast_packer *packer, int flags);
-extern int ast_packer_get_flags(struct ast_packer *packer);
-extern void ast_packer_free(struct ast_packer *s);
-extern void ast_packer_reset(struct ast_packer *s, int bytes);
-extern int ast_packer_feed(struct ast_packer *s, const struct ast_frame *f);
-extern struct ast_frame *ast_packer_read(struct ast_packer *s);
-#endif
 
 #endif
