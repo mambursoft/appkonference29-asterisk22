@@ -78,25 +78,6 @@
 #endif
 
 //
-// app_conference defines
-//
-
-// debug logging
-#ifdef APP_KONFERENCE_DEBUG
-#define	DEBUG(...) ast_log(LOG_DEBUG, __VA_ARGS__)
-#else
-#define	DEBUG(...)
-#endif
-
-//
-// debug defines
-//
-
-//#define DEBUG_USE_TIMELOG
-
-//#define DEBUG_FRAME_TIMESTAMPS
-
-//
 // !!! THESE CONSTANTS SHOULD BE CLEANED UP AND CLARIFIED !!!
 //
 

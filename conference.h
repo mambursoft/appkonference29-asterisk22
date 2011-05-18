@@ -102,10 +102,7 @@ struct ast_conference
 
 	// keep track of current delivery time
 	struct timeval delivery_time ;
-#ifdef	APP_KONFERENCE_DEBUG
-	// 1 => on, 0 => off
-	short debug_flag ;
-#endif
+
 	// flag indicating we should remove this member
 	char kick_flag ;
 } ;
@@ -178,9 +175,5 @@ int stop_moh_channel(int fd, const char *channel);
 int talk_volume_channel(int fd, const char *channel, int up);
 int listen_volume_channel(int fd, const char *channel, int up);
 int volume(int fd, const char *conference, int up);
-
-#ifdef	APP_KONFERENCE_DEBUG
-int set_conference_debugging( const char* name, int state ) ;
-#endif
 
 #endif

@@ -124,81 +124,6 @@ char *conference_restart(struct ast_cli_entry *e, int cmd, struct ast_cli_args *
 	kick_all();
 	return SUCCESS ;
 }
-#ifdef	APP_KONFERENCE_DEBUG
-//
-// debug functions
-//
-static char conference_debug_usage[] =
-	"Usage: konference debug <conference_name> [ on | off ]\n"
-	"       Enable debugging for a conference\n"
-;
-
-#define CONFERENCE_DEBUG_CHOICES { "konference", "debug", NULL }
-static char conference_debug_summary[] = "Enable debugging for a conference";
-
-#ifndef AST_CLI_DEFINE
-static struct ast_cli_entry cli_debug = {
-	CONFERENCE_DEBUG_CHOICES,
-	conference_debug,
-	conference_debug_summary,
-	conference_debug_usage
-} ;
-int conference_debug( int fd, int argc, char *argv[] ) {
-#else
-static char conference_debug_command[] = "konference debug";
-char *conference_debug(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
-#if	ASTERISK == 14 || ASTERISK == 16
-	static char *choices[] = CONFERENCE_DEBUG_CHOICES;
-#else
-	static const char *const choices[] = CONFERENCE_DEBUG_CHOICES;
-#endif
-	NEWCLI_SWITCH(conference_debug_command,conference_debug_usage)
-#endif
-	if ( argc < 3 )
-		return SHOWUSAGE ;
-
-	// get the conference name
-	const char* name = argv[2] ;
-
-   	// get the new state
-	int state = 0 ;
-
-	if ( argc == 3 )
-	{
-		// no state specified, so toggle it
-		state = -1 ;
-	}
-	else
-	{
-		if ( !strncasecmp( argv[3], "on", 4 ) )
-			state = 1 ;
-		else if ( !strncasecmp( argv[3], "off", 3 ) )
-			state = 0 ;
-		else
-			return SHOWUSAGE ;
-	}
-
-	int new_state = set_conference_debugging( name, state ) ;
-
-	if ( new_state == 1 )
-	{
-		ast_cli( fd, "enabled conference debugging, name => %s, new_state => %d\n",
-			name, new_state ) ;
-	}
-	else if ( !new_state )
-	{
-		ast_cli( fd, "disabled conference debugging, name => %s, new_state => %d\n",
-			name, new_state ) ;
-	}
-	else
-	{
-		// error setting state
-		ast_cli( fd, "\nunable to set debugging state, name => %s\n\n", name ) ;
-	}
-
-	return SUCCESS ;
-}
-#endif
 //
 // stats functions
 //
@@ -1123,9 +1048,6 @@ char *conference_end(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
 static struct ast_cli_entry app_konference_commands[] = {
 	AST_CLI_DEFINE(conference_version, conference_version_summary),
 	AST_CLI_DEFINE(conference_restart, conference_restart_summary),
-#ifdef	APP_KONFERENCE_DEBUG
-	AST_CLI_DEFINE(conference_debug, conference_debug_summary),
-#endif
 	AST_CLI_DEFINE(conference_show_stats, conference_show_stats_summary),
 	AST_CLI_DEFINE(conference_list, conference_list_summary),
 	AST_CLI_DEFINE(conference_kick, conference_kick_summary),
@@ -1154,9 +1076,6 @@ void register_conference_cli( void )
 #else
 	ast_cli_register( &cli_version );
 	ast_cli_register( &cli_restart );
-#ifdef	APP_KONFERENCE_DEBUG
-	ast_cli_register( &cli_debug ) ;
-#endif
 	ast_cli_register( &cli_show_stats ) ;
 	ast_cli_register( &cli_list );
 	ast_cli_register( &cli_kick );
@@ -1189,9 +1108,6 @@ void unregister_conference_cli( void )
 #else
 	ast_cli_unregister( &cli_version );
 	ast_cli_unregister( &cli_restart );
-#ifdef	APP_KONFERENCE_DEBUG
-	ast_cli_unregister( &cli_debug ) ;
-#endif
 	ast_cli_unregister( &cli_show_stats ) ;
 	ast_cli_unregister( &cli_list );
 	ast_cli_unregister( &cli_kick );

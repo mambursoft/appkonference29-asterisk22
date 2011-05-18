@@ -189,7 +189,6 @@ struct ast_conf_member
 
 	// start time
 	struct timeval time_entered ;
-	struct timeval lastsent_timeval ;
 
 	// flag indicating we should remove this member
 	char kick_flag ;

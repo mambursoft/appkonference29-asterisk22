@@ -161,32 +161,6 @@ conf_frame* mix_frames( struct ast_conference* conf, conf_frame* frames_in, int 
 
 conf_frame* mix_single_speaker( struct ast_conference* conf, conf_frame* frames_in )
 {
-#ifdef APP_KONFERENCE_DEBUG
-	//DEBUG("returning single spoken frame\n") ;
-
-	//
-	// check input
-	//
-
-	if ( !frames_in )
-	{
-		DEBUG("unable to mix single spoken frame with null frame\n") ;
-		return NULL ;
-	}
-
-	if ( !frames_in->fr )
-	{
-		DEBUG("unable to mix single spoken frame with null data\n") ;
-		return NULL ;
-	}
-
-	if ( !frames_in->member )
-	{
-		DEBUG("unable to mix single spoken frame with null member\n") ;
-		return NULL ;
-	}
-#endif // APP_KONFERENCE_DEBUG
-
 	//
 	// 'mix' the frame
 	//
@@ -258,26 +232,6 @@ conf_frame* mix_multiple_speakers(
 	int listeners
 )
 {
-#ifdef APP_KONFERENCE_DEBUG
-	//
-	// check input
-	//
-
-	// no frames to mix
-	if ( !frames_in || !frames_in->fr )
-	{
-		ast_log( LOG_ERROR, "passed spoken frame list was NULL\n") ;
-		return NULL ;
-	}
-
-	// if less than two speakers, then no frames to mix
-	if ( speakers < 2 )
-	{
-		ast_log( LOG_ERROR, "mix_multiple_speakers() called with less than two speakers\n") ;
-		return NULL ;
-	}
-#endif // APP_KONFERENCE_DEBUG
-
 	//
 	// mix the audio
 	//
@@ -453,25 +407,8 @@ struct ast_frame* convert_frame( struct ast_trans_pvt* trans, struct ast_frame* 
 		return fr ;
 	}
 
-#ifdef APP_KONFERENCE_DEBUG
-	if ( !fr  )
-	{
-		ast_log( LOG_WARNING, "unable to convert null frame\n" ) ;
-		return NULL ;
-	}
-#endif
-
 	// convert the frame
 	struct ast_frame* translated_frame = ast_translate( trans, fr, 1 ) ;
-
-#ifdef APP_KONFERENCE_DEBUG
-	// check for errors
-	if ( !translated_frame )
-	{
-		ast_log( LOG_ERROR, "unable to translate frame\n" ) ;
-		return NULL ;
-	}
-#endif
 
 	// return the translated frame
 	return translated_frame ;
@@ -480,14 +417,7 @@ struct ast_frame* convert_frame( struct ast_trans_pvt* trans, struct ast_frame* 
 conf_frame* delete_conf_frame( conf_frame* cf )
 {
   int c;
-#ifdef APP_KONFERENCE_DEBUG
-	// check for null frames
-	if ( !cf )
-	{
-		ast_log( LOG_ERROR, "unable to delete null conf frame\n") ;
-		return NULL ;
-	}
-#endif
+
 	if ( cf->fr )
 	{
 		ast_frfree( cf->fr ) ;
@@ -558,17 +488,6 @@ conf_frame* create_conf_frame( struct ast_conf_member* member, conf_frame* next,
 
 conf_frame* copy_conf_frame( conf_frame* src )
 {
-#ifdef	APP_KONFERENCE_DEBUG
-	//
-	// check inputs
-	//
-
-	if ( !src )
-	{
-		ast_log( LOG_ERROR, "unable to copy null conf frame\n") ;
-		return NULL ;
-	}
-#endif
 	//
 	// copy the frame
 	//
@@ -580,7 +499,6 @@ conf_frame* copy_conf_frame( conf_frame* src )
 
 	if ( !cfr )
 	{
-		DEBUG("unable to create new conf frame for copy\n") ;
 		return NULL ;
 	}
 
@@ -641,7 +559,6 @@ conf_frame* get_silent_frame( void )
 	// we'll let this leak until the application terminates
 	if ( !static_silent_frame )
 	{
-		//DEBUG("creating cached silent frame\n") ;
 		struct ast_frame* fr = get_silent_slinear_frame() ;
 
 		static_silent_frame = create_conf_frame( NULL, NULL, fr ) ;
