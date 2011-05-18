@@ -1095,10 +1095,6 @@ void register_conference_cli( void )
 	ast_cli_register( &cli_volume );
 	ast_cli_register( &cli_end );
 #endif
-#ifdef	MANAGER_COMMANDS
-	ast_manager_register( "KonferenceList", 0, manager_conference_list, "Conference List" );
-	ast_manager_register( "KonferenceEnd", EVENT_FLAG_CONF, manager_conference_end, "Terminate a conference" );
-#endif
 }
 
 void unregister_conference_cli( void )
@@ -1126,9 +1122,5 @@ void unregister_conference_cli( void )
 	ast_cli_unregister( &cli_listenvolume ) ;
 	ast_cli_unregister( &cli_volume );
 	ast_cli_unregister( &cli_end );
-#endif
-#ifdef	MANAGER_COMMANDS
-	ast_manager_unregister( "KonferenceList" );
-	ast_manager_unregister( "KonferenceEnd" );
 #endif
 }

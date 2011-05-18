@@ -144,11 +144,6 @@ int get_conference_count( void ) ;
 
 int show_conference_list ( int fd, const char* name );
 
-#ifdef	MANAGER_COMMANDS
-int manager_conference_list( struct mansession *s, const struct message *m);
-int manager_conference_end(struct mansession *s, const struct message *m);
-#endif
-
 int show_conference_stats ( int fd );
 int kick_member ( const char* confname, int user_id);
 int kick_channel ( const char *confname, const char *channel);
