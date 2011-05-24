@@ -140,11 +140,10 @@ void dealloc_conference( void ) ;
 void freeconfblocks( void ) ;
 #endif
 
-int get_conference_count( void ) ;
+int list_members ( int fd, const char* name );
+int list_conferences ( int fd );
+int list_all ( int fd );
 
-int show_conference_list ( int fd, const char* name );
-
-int show_conference_stats ( int fd );
 int kick_member ( const char* confname, int user_id);
 int kick_channel ( const char *confname, const char *channel);
 int kick_all ( void );
@@ -153,8 +152,11 @@ int unmute_member ( const char* confname, int user_id);
 int mute_conference ( const char* confname);
 int unmute_conference ( const char* confname);
 
+#ifdef	CONFERENCE_STATS
 int get_conference_stats( ast_conference_stats* stats, int requested ) ;
 int get_conference_stats_by_name( ast_conference_stats* stats, const char* name ) ;
+int get_conference_count( void ) ;
+#endif
 
 #if	ASTERISK == 14 || ASTERISK == 16
 int play_sound_channel(int fd, const char *channel, char **file, int mute, int tone, int n);

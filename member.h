@@ -233,7 +233,6 @@ conf_frame* get_incoming_dtmf_frame( struct ast_conf_member* member ) ;
 #endif
 // outgoing queue
 int queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery ) ;
-int __queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery ) ;
 conf_frame* get_outgoing_frame( struct ast_conf_member* member ) ;
 
 #ifdef	DTMF

@@ -124,6 +124,8 @@ char *conference_restart(struct ast_cli_entry *e, int cmd, struct ast_cli_args *
 	kick_all();
 	return SUCCESS ;
 }
+
+#ifdef	CONFERENCE_STATS
 //
 // stats functions
 //
@@ -215,6 +217,7 @@ char *conference_show_stats(struct ast_cli_entry *e, int cmd, struct ast_cli_arg
 
 	return SUCCESS ;
 }
+#endif
 
 //
 // list conferences
@@ -248,19 +251,23 @@ char *conference_list(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) 
 	if ( argc < 2 )
 		return SHOWUSAGE ;
 
-	if (argc >= 3)
+	if ( argc == 3 && !strcmp( "*", argv[2]) )
+	{
+		list_all(fd);
+	}
+	else if (argc >= 3)
 	{
 		int index;
 		for (index = 2; index < argc; index++)
 		{
 			// get the conference name
 			const char* name = argv[index] ;
-			show_conference_list( fd, name );
+			list_members( fd, name );
 		}
 	}
 	else
 	{
-		show_conference_stats(fd);
+		list_conferences(fd);
 	}
 	return SUCCESS ;
 }
@@ -1048,7 +1055,9 @@ char *conference_end(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
 static struct ast_cli_entry app_konference_commands[] = {
 	AST_CLI_DEFINE(conference_version, conference_version_summary),
 	AST_CLI_DEFINE(conference_restart, conference_restart_summary),
+#ifdef	CONFERENCE_STATS
 	AST_CLI_DEFINE(conference_show_stats, conference_show_stats_summary),
+#endif
 	AST_CLI_DEFINE(conference_list, conference_list_summary),
 	AST_CLI_DEFINE(conference_kick, conference_kick_summary),
 	AST_CLI_DEFINE(conference_kickchannel, conference_kickchannel_summary),
@@ -1076,7 +1085,9 @@ void register_conference_cli( void )
 #else
 	ast_cli_register( &cli_version );
 	ast_cli_register( &cli_restart );
+#ifdef	CONFERENCE_STATS
 	ast_cli_register( &cli_show_stats ) ;
+#endif
 	ast_cli_register( &cli_list );
 	ast_cli_register( &cli_kick );
 	ast_cli_register( &cli_kickchannel );
@@ -1104,7 +1115,9 @@ void unregister_conference_cli( void )
 #else
 	ast_cli_unregister( &cli_version );
 	ast_cli_unregister( &cli_restart );
+#ifdef	CONFERENCE_STATS
 	ast_cli_unregister( &cli_show_stats ) ;
+#endif
 	ast_cli_unregister( &cli_list );
 	ast_cli_unregister( &cli_kick );
 	ast_cli_unregister( &cli_kickchannel );

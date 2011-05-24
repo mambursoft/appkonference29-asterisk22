@@ -883,12 +883,7 @@ void remove_member( struct ast_conf_member* member, struct ast_conference* conf,
 
 }
 
-int get_conference_count( void )
-{
-	return conference_count ;
-}
-
-int show_conference_stats ( int fd )
+int list_conferences ( int fd )
 {
 	int duration;
 	char duration_str[10];
@@ -921,7 +916,7 @@ int show_conference_stats ( int fd )
 	return 1 ;
 }
 
-int show_conference_list ( int fd, const char *name )
+int list_members ( int fd, const char *name )
 {
 	struct ast_conf_member *member;
 	char volume_str[10];
@@ -948,8 +943,8 @@ int show_conference_list ( int fd, const char *name )
 			// acquire conference lock
 			ast_rwlock_rdlock(&conf->lock);
 
-			// ast_cli(fd, "Chat mode is %s\n", conf->chat_mode_on ? "ON" : "OFF");
-			ast_cli( fd, "%-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-80.20s\n", "User #", "Flags", "Audio", "Volume", "Duration", "Spy", "Channel");
+			// print the header
+			ast_cli( fd, "%s:\n%-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-80.20s\n", conf->name, "User #", "Flags", "Audio", "Volume", "Duration", "Spy", "Channel");
 			// do the biz
 			member = conf->memberlist ;
 			while ( member )
@@ -971,6 +966,61 @@ int show_conference_list ( int fd, const char *name )
 
 			break ;
 		}
+
+		conf = conf->next ;
+	}
+
+	// release mutex
+	ast_mutex_unlock( &conflist_lock ) ;
+
+	return 1 ;
+}
+
+int list_all( int fd )
+{
+	struct ast_conf_member *member;
+	char volume_str[10];
+	char spy_str[10];
+	int duration;
+	char duration_str[10];
+
+        // no conferences exist
+	if ( !conflist )
+	{
+		return 0 ;
+	}
+
+	// acquire mutex
+	ast_mutex_lock( &conflist_lock ) ;
+
+	struct ast_conference *conf = conflist ;
+
+	// loop through conf list
+	while ( conf )
+	{
+		// acquire conference lock
+		ast_rwlock_rdlock(&conf->lock);
+
+		// print the header
+		ast_cli( fd, "%s:\n%-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-80.20s\n", conf->name, "User #", "Flags", "Audio", "Volume", "Duration", "Spy", "Channel");
+		// do the biz
+		member = conf->memberlist ;
+		while ( member )
+		{
+			snprintf(volume_str, 10, "%d:%d", member->talk_volume, member->listen_volume);
+			if ( member->spyee_channel_name )
+				snprintf(spy_str, 10, "%d", member->spy_partner->id);
+			else
+				strcpy(spy_str , "*");
+			duration = (int)(ast_tvdiff_ms(ast_tvnow(),member->time_entered) / 1000);
+			snprintf(duration_str, 10, "%02d:%02d:%02d",  duration / 3600, (duration % 3600) / 60, duration % 60);
+			ast_cli( fd, "%-20d %-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-80s\n",
+			member->id, member->flags, !member->mute_audio ? "Unmuted" : "Muted", volume_str, duration_str , spy_str, member->chan->name);
+			member = member->next;
+		}
+
+		// release conference lock
+		ast_rwlock_unlock(&conf->lock);
 
 		conf = conf->next ;
 	}
@@ -1290,6 +1340,8 @@ int unmute_conference (  const char* confname)
 	return res ;
 }
 
+#ifdef	CONFERENCE_STATS
+
 int get_conference_stats( ast_conference_stats* stats, int requested )
 {
 	// no conferences exist
@@ -1360,6 +1412,13 @@ int get_conference_stats_by_name( ast_conference_stats* stats, const char* name 
 
 	return (!stats ? 0 : 1) ;
 }
+
+int get_conference_count( void )
+{
+	return conference_count ;
+}
+
+#endif
 
 struct ast_conf_member *find_member( const char *chan, const char lock )
 {

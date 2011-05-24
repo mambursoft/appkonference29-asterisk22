@@ -64,9 +64,6 @@ Current command line used by app_konference:
   
 - konference restart: kick all users in all conferences
   usage: konference restart
-  
-- konference show stats: show conference stats
-  usage: konference show stats
 
 - konference unmute: unmute member in a conference
   usage: konference unmute <conference_name> <member id>

@@ -31,7 +31,9 @@
 
 #ifndef AST_CLI_DEFINE
 
+#ifdef	CONFERENCE_STATS
 int conference_show_stats( int fd, int argc, char *argv[] ) ;
+#endif
 
 int conference_version( int fd, int argc, char *argv[] );
 
@@ -62,7 +64,9 @@ int conference_end( int fd, int argc, char *argv[] ) ;
 
 #else
 
+#ifdef	CONFERENCE_STATS
 char *conference_show_stats(struct ast_cli_entry *, int, struct ast_cli_args *) ;
+#endif
 
 char *conference_version(struct ast_cli_entry *, int, struct ast_cli_args *);
 

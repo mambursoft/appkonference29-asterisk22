@@ -1381,7 +1381,7 @@ conf_frame* get_outgoing_frame( struct ast_conf_member *member )
 	return NULL ;
 }
 
-int __queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery )
+int queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery )
 {
 	// accounting: count the number of outgoing frames for this member
 	member->frames_out++ ;
@@ -1428,11 +1428,6 @@ int __queue_outgoing_frame( struct ast_conf_member* member, const struct ast_fra
 
 	// return success
 	return 0 ;
-}
-
-int queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery )
-{
-		return __queue_outgoing_frame( member, fr, delivery ) ;
 }
 
 //
