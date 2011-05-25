@@ -381,7 +381,7 @@ conf_frame* mix_multiple_speakers(
 			conf_frame *spy_frame = cf_spoken ;
 
 			cf_spoken = cf_spoken->next;
-			if ( !cf_spoken )
+			if ( cf_spoken )
 				cf_spoken->prev = NULL;
 
 			spy_frame->next = cf_sendFrames;
