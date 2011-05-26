@@ -950,7 +950,7 @@ int list_members ( int fd, const char *name )
 			while ( member )
 			{
 				snprintf(volume_str, 10, "%d:%d", member->talk_volume, member->listen_volume);
-				if ( member->spyee_channel_name )
+				if ( member->spyee_channel_name && member->spy_partner )
 					snprintf(spy_str, 10, "%d", member->spy_partner->id);
 				else
 					strcpy(spy_str , "*");
@@ -1008,7 +1008,7 @@ int list_all( int fd )
 		while ( member )
 		{
 			snprintf(volume_str, 10, "%d:%d", member->talk_volume, member->listen_volume);
-			if ( member->spyee_channel_name )
+			if ( member->spyee_channel_name && member->spy_partner )
 				snprintf(spy_str, 10, "%d", member->spy_partner->id);
 			else
 				strcpy(spy_str , "*");
