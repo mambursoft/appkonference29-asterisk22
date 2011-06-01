@@ -121,14 +121,12 @@ int count_exec( struct ast_channel* chan, const char* data ) ;
 
 struct ast_conference* join_conference( struct ast_conf_member* member, char* conf_name, char* max_users_flag ) ;
 
-int end_conference( const char *name, int hangup ) ;
-
 // Find a particular member, locked if lock flag set.
 struct ast_conf_member *find_member( const char *chan, const char lock ) ;
 
-int queue_frame_for_listener( struct ast_conference* conf, struct ast_conf_member* member ) ;
-int queue_frame_for_speaker( struct ast_conference* conf, struct ast_conf_member* member ) ;
-int queue_silent_frame( struct ast_conference* conf, struct ast_conf_member* member ) ;
+void queue_frame_for_listener( struct ast_conference* conf, struct ast_conf_member* member ) ;
+void queue_frame_for_speaker( struct ast_conference* conf, struct ast_conf_member* member ) ;
+void queue_silent_frame( struct ast_conference* conf, struct ast_conf_member* member ) ;
 
 void remove_member( struct ast_conf_member* member, struct ast_conference* conf, char* conf_name ) ;
 
@@ -140,17 +138,21 @@ void dealloc_conference( void ) ;
 void freeconfblocks( void ) ;
 #endif
 
-int list_members ( int fd, const char* name );
-int list_conferences ( int fd );
-int list_all ( int fd );
+// cli functions
+void end_conference( const char *name, int hangup ) ;
 
-int kick_member ( const char* confname, int user_id);
-int kick_channel ( const char *confname, const char *channel);
-int kick_all ( void );
-int mute_member ( const char* confname, int user_id);
-int unmute_member ( const char* confname, int user_id);
-int mute_conference ( const char* confname);
-int unmute_conference ( const char* confname);
+void list_members ( int fd, const char* name );
+void list_conferences ( int fd );
+void list_all ( int fd );
+
+void kick_member ( const char* confname, int user_id);
+void kick_all ( void );
+
+void mute_member ( const char* confname, int user_id);
+void unmute_member ( const char* confname, int user_id);
+
+void mute_conference ( const char* confname);
+void unmute_conference ( const char* confname);
 
 #ifdef	CONFERENCE_STATS
 int get_conference_stats( ast_conference_stats* stats, int requested ) ;
@@ -159,18 +161,19 @@ int get_conference_count( void ) ;
 #endif
 
 #if	ASTERISK == 14 || ASTERISK == 16
-int play_sound_channel(int fd, const char *channel, char **file, int mute, int tone, int n);
+void play_sound_channel(int fd, const char *channel, char **file, int mute, int tone, int n);
 #else
-int play_sound_channel(int fd, const char *channel, const char * const *file, int mute, int tone, int n);
+void play_sound_channel(int fd, const char *channel, const char * const *file, int mute, int tone, int n);
 #endif
 
-int stop_sound_channel(int fd, const char *channel);
+void stop_sound_channel(int fd, const char *channel);
 
-int start_moh_channel(int fd, const char *channel);
-int stop_moh_channel(int fd, const char *channel);
+void start_moh_channel(int fd, const char *channel);
+void stop_moh_channel(int fd, const char *channel);
 
-int talk_volume_channel(int fd, const char *channel, int up);
-int listen_volume_channel(int fd, const char *channel, int up);
-int volume(int fd, const char *conference, int up);
+void talk_volume_channel(int fd, const char *channel, int up);
+void listen_volume_channel(int fd, const char *channel, int up);
+
+void volume(int fd, const char *conference, int up);
 
 #endif

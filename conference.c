@@ -662,52 +662,45 @@ struct ast_conference *remove_conf( struct ast_conference *conf )
 	return conf_temp ;
 
 }
-int end_conference(const char *name, int hangup )
+
+void end_conference(const char *name, int hangup )
 {
 	struct ast_conference *conf;
 
 	// acquire the conference list lock
 	ast_mutex_lock(&conflist_lock);
 
-	conf = find_conf(name);
-	if ( !conf )
+	if ( (conf = find_conf(name)) )
 	{
-		// release the conference list lock
-		ast_mutex_unlock(&conflist_lock);
+		// acquire the conference lock
+		ast_rwlock_rdlock( &conf->lock ) ;
 
-		return -1 ;
+		// get list of conference members
+		struct ast_conf_member* member = conf->memberlist ;
+
+		// loop over member list and request hangup
+		while ( member )
+		{
+			// acquire member mutex and request hangup
+			// or just kick
+			ast_mutex_lock( &member->lock ) ;
+			if (hangup)
+				ast_softhangup( member->chan, 1 ) ;
+			else
+				member->kick_flag = 1;
+			ast_mutex_unlock( &member->lock ) ;
+
+			// go on to the next member
+			// ( we have the conf lock, so we know this is okay )
+			member = member->next ;
+		}
+
+		// release the conference lock
+		ast_rwlock_unlock( &conf->lock ) ;
 	}
-
-	// acquire the conference lock
-	ast_rwlock_rdlock( &conf->lock ) ;
-
-	// get list of conference members
-	struct ast_conf_member* member = conf->memberlist ;
-
-	// loop over member list and request hangup
-	while ( member )
-	{
-		// acquire member mutex and request hangup
-		// or just kick
-		ast_mutex_lock( &member->lock ) ;
-		if (hangup)
-			ast_softhangup( member->chan, 1 ) ;
-		else
-			member->kick_flag = 1;
-		ast_mutex_unlock( &member->lock ) ;
-
-		// go on to the next member
-		// ( we have the conf lock, so we know this is okay )
-		member = member->next ;
-	}
-
-	// release the conference lock
-	ast_rwlock_unlock( &conf->lock ) ;
 
 	// release the conference list lock
 	ast_mutex_unlock(&conflist_lock);
-
-	return 0 ;
 }
 
 //
@@ -883,40 +876,37 @@ void remove_member( struct ast_conf_member* member, struct ast_conference* conf,
 
 }
 
-int list_conferences ( int fd )
+void list_conferences ( int fd )
 {
 	int duration;
 	char duration_str[10];
 
-        // no conferences exist
-	if ( !conflist )
+        // any conferences?
+	if ( conflist )
 	{
-		return 0 ;
+
+		// acquire mutex
+		ast_mutex_lock( &conflist_lock ) ;
+
+		struct ast_conference *conf = conflist ;
+
+		ast_cli( fd, "%-20.20s %-20.20s %-20.20s %-20.20s\n", "Name", "Members", "Volume", "Duration" ) ;
+
+		// loop through conf list
+		while ( conf )
+		{
+			duration = (int)(ast_tvdiff_ms(ast_tvnow(),conf->stats.time_entered) / 1000);
+			snprintf(duration_str, 10, "%02d:%02d:%02d",  duration / 3600, (duration % 3600) / 60, duration % 60);
+			ast_cli( fd, "%-20.20s %-20d %-20d %-20.20s\n", conf->name, conf->membercount, conf->volume, duration_str ) ;
+			conf = conf->next ;
+		}
+
+		// release mutex
+		ast_mutex_unlock( &conflist_lock ) ;
 	}
-
-	// acquire mutex
-	ast_mutex_lock( &conflist_lock ) ;
-
-	struct ast_conference *conf = conflist ;
-
-	ast_cli( fd, "%-20.20s %-20.20s %-20.20s %-20.20s\n", "Name", "Members", "Volume", "Duration" ) ;
-
-	// loop through conf list
-	while ( conf )
-	{
-		duration = (int)(ast_tvdiff_ms(ast_tvnow(),conf->stats.time_entered) / 1000);
-		snprintf(duration_str, 10, "%02d:%02d:%02d",  duration / 3600, (duration % 3600) / 60, duration % 60);
-		ast_cli( fd, "%-20.20s %-20d %-20d %-20.20s\n", conf->name, conf->membercount, conf->volume, duration_str ) ;
-		conf = conf->next ;
-	}
-
-	// release mutex
-	ast_mutex_unlock( &conflist_lock ) ;
-
-	return 1 ;
 }
 
-int list_members ( int fd, const char *name )
+void list_members ( int fd, const char *name )
 {
 	struct ast_conf_member *member;
 	char volume_str[10];
@@ -924,21 +914,73 @@ int list_members ( int fd, const char *name )
 	int duration;
 	char duration_str[10];
 
-        // no conferences exist
-	if ( !conflist )
+        // any conferences?
+	if ( conflist )
 	{
-		return 0 ;
+
+		// acquire mutex
+		ast_mutex_lock( &conflist_lock ) ;
+
+		struct ast_conference *conf = conflist ;
+
+		// loop through conf list
+		while ( conf )
+		{
+			if ( !strcasecmp( (const char*)&(conf->name), name ) )
+			{
+				// acquire conference lock
+				ast_rwlock_rdlock(&conf->lock);
+
+				// print the header
+				ast_cli( fd, "%s:\n%-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-80.20s\n", conf->name, "User #", "Flags", "Audio", "Volume", "Duration", "Spy", "Channel");
+				// do the biz
+				member = conf->memberlist ;
+				while ( member )
+				{
+					snprintf(volume_str, 10, "%d:%d", member->talk_volume, member->listen_volume);
+					if ( member->spyee_channel_name && member->spy_partner )
+						snprintf(spy_str, 10, "%d", member->spy_partner->id);
+					else
+						strcpy(spy_str , "*");
+					duration = (int)(ast_tvdiff_ms(ast_tvnow(),member->time_entered) / 1000);
+					snprintf(duration_str, 10, "%02d:%02d:%02d",  duration / 3600, (duration % 3600) / 60, duration % 60);
+					ast_cli( fd, "%-20d %-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-80s\n",
+					member->id, member->flags, !member->mute_audio ? "Unmuted" : "Muted", volume_str, duration_str , spy_str, member->chan->name);
+					member = member->next;
+				}
+
+				// release conference lock
+				ast_rwlock_unlock(&conf->lock);
+
+				break ;
+			}
+
+			conf = conf->next ;
+		}
+
+		// release mutex
+		ast_mutex_unlock( &conflist_lock ) ;
 	}
+}
 
-	// acquire mutex
-	ast_mutex_lock( &conflist_lock ) ;
+void list_all( int fd )
+{
+	struct ast_conf_member *member;
+	char volume_str[10];
+	char spy_str[10];
+	int duration;
+	char duration_str[10];
 
-	struct ast_conference *conf = conflist ;
-
-	// loop through conf list
-	while ( conf )
+        // any conferences?
+	if ( conflist )
 	{
-		if ( !strcasecmp( (const char*)&(conf->name), name ) )
+		// acquire mutex
+		ast_mutex_lock( &conflist_lock ) ;
+
+		struct ast_conference *conf = conflist ;
+
+		// loop through conf list
+		while ( conf )
 		{
 			// acquire conference lock
 			ast_rwlock_rdlock(&conf->lock);
@@ -964,380 +1006,286 @@ int list_members ( int fd, const char *name )
 			// release conference lock
 			ast_rwlock_unlock(&conf->lock);
 
-			break ;
+			conf = conf->next ;
 		}
 
-		conf = conf->next ;
+		// release mutex
+		ast_mutex_unlock( &conflist_lock ) ;
 	}
-
-	// release mutex
-	ast_mutex_unlock( &conflist_lock ) ;
-
-	return 1 ;
 }
 
-int list_all( int fd )
+void kick_member (  const char* confname, int user_id)
 {
 	struct ast_conf_member *member;
-	char volume_str[10];
-	char spy_str[10];
-	int duration;
-	char duration_str[10];
 
-        // no conferences exist
-	if ( !conflist )
+	// any conferences?
+	if ( conflist )
 	{
-		return 0 ;
-	}
+		// acquire mutex
+		ast_mutex_lock( &conflist_lock ) ;
 
-	// acquire mutex
-	ast_mutex_lock( &conflist_lock ) ;
+		struct ast_conference *conf = conflist ;
 
-	struct ast_conference *conf = conflist ;
-
-	// loop through conf list
-	while ( conf )
-	{
-		// acquire conference lock
-		ast_rwlock_rdlock(&conf->lock);
-
-		// print the header
-		ast_cli( fd, "%s:\n%-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-80.20s\n", conf->name, "User #", "Flags", "Audio", "Volume", "Duration", "Spy", "Channel");
-		// do the biz
-		member = conf->memberlist ;
-		while ( member )
+		// loop through conf list
+		while ( conf )
 		{
-			snprintf(volume_str, 10, "%d:%d", member->talk_volume, member->listen_volume);
-			if ( member->spyee_channel_name && member->spy_partner )
-				snprintf(spy_str, 10, "%d", member->spy_partner->id);
-			else
-				strcpy(spy_str , "*");
-			duration = (int)(ast_tvdiff_ms(ast_tvnow(),member->time_entered) / 1000);
-			snprintf(duration_str, 10, "%02d:%02d:%02d",  duration / 3600, (duration % 3600) / 60, duration % 60);
-			ast_cli( fd, "%-20d %-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-80s\n",
-			member->id, member->flags, !member->mute_audio ? "Unmuted" : "Muted", volume_str, duration_str , spy_str, member->chan->name);
-			member = member->next;
+			if ( !strcasecmp( (const char*)&(conf->name), confname ) )
+			{
+				// do the biz
+				ast_rwlock_rdlock( &conf->lock ) ;
+				member = conf->memberlist ;
+				while (member )
+				  {
+				    if (member->id == user_id)
+				      {
+					      ast_mutex_lock( &member->lock ) ;
+					      member->kick_flag = 1;
+					      //ast_soft_hangup(member->chan);
+					      ast_mutex_unlock( &member->lock ) ;
+				      }
+				    member = member->next;
+				  }
+				ast_rwlock_unlock( &conf->lock ) ;
+				break ;
+			}
+
+			conf = conf->next ;
 		}
 
-		// release conference lock
-		ast_rwlock_unlock(&conf->lock);
-
-		conf = conf->next ;
+		// release mutex
+		ast_mutex_unlock( &conflist_lock ) ;
 	}
-
-	// release mutex
-	ast_mutex_unlock( &conflist_lock ) ;
-
-	return 1 ;
 }
 
-int kick_member (  const char* confname, int user_id)
-{
-	struct ast_conf_member *member;
-	int res = 0;
-
-	// no conferences exist
-	if ( !conflist )
-	{
-		return 0 ;
-	}
-
-	// acquire mutex
-	ast_mutex_lock( &conflist_lock ) ;
-
-	struct ast_conference *conf = conflist ;
-
-	// loop through conf list
-	while ( conf )
-	{
-		if ( !strcasecmp( (const char*)&(conf->name), confname ) )
-		{
-		        // do the biz
-			ast_rwlock_rdlock( &conf->lock ) ;
-		        member = conf->memberlist ;
-			while (member )
-			  {
-			    if (member->id == user_id)
-			      {
-				      ast_mutex_lock( &member->lock ) ;
-				      member->kick_flag = 1;
-				      //ast_soft_hangup(member->chan);
-				      ast_mutex_unlock( &member->lock ) ;
-
-				      res = 1;
-			      }
-			    member = member->next;
-			  }
-			ast_rwlock_unlock( &conf->lock ) ;
-			break ;
-		}
-
-		conf = conf->next ;
-	}
-
-	// release mutex
-	ast_mutex_unlock( &conflist_lock ) ;
-
-	return res ;
-}
-
-int kick_all ( void )
+void kick_all ( void )
 {
   struct ast_conf_member *member;
-  int res = 0;
 
-        // no conferences exist
-	if ( !conflist )
+        // any conferences?
+	if ( conflist )
 	{
-		return 0 ;
-	}
+		// acquire mutex
+		ast_mutex_lock( &conflist_lock ) ;
 
-	// acquire mutex
-	ast_mutex_lock( &conflist_lock ) ;
+		struct ast_conference *conf = conflist ;
 
-	struct ast_conference *conf = conflist ;
-
-	// loop through conf list
-	while ( conf )
-	{
-		// do the biz
-		ast_rwlock_rdlock( &conf->lock ) ;
-		member = conf->memberlist ;
-		while (member )
+		// loop through conf list
+		while ( conf )
 		{
-			ast_mutex_lock( &member->lock ) ;
-			member->kick_flag = 1;
-			ast_mutex_unlock( &member->lock ) ;
-			member = member->next;
-		}
-		ast_rwlock_unlock( &conf->lock ) ;
-		break ;
+			// do the biz
+			ast_rwlock_rdlock( &conf->lock ) ;
+			member = conf->memberlist ;
+			while (member )
+			{
+				ast_mutex_lock( &member->lock ) ;
+				member->kick_flag = 1;
+				ast_mutex_unlock( &member->lock ) ;
+				member = member->next;
+			}
+			ast_rwlock_unlock( &conf->lock ) ;
 
-	conf = conf->next ;
+			conf = conf->next ;
+		}
+
+		// release mutex
+		ast_mutex_unlock( &conflist_lock ) ;
 	}
 
-	// release mutex
-	ast_mutex_unlock( &conflist_lock ) ;
-
-	return res ;
 }
 
-int mute_member (  const char* confname, int user_id)
+void mute_member ( const char* confname, int user_id )
 {
   struct ast_conf_member *member;
-  int res = 0;
 
-        // no conferences exist
-	if ( !conflist )
+        // any conferences?
+	if ( conflist )
 	{
-		return 0 ;
-	}
+		// acquire mutex
+		ast_mutex_lock( &conflist_lock ) ;
 
-	// acquire mutex
-	ast_mutex_lock( &conflist_lock ) ;
+		struct ast_conference *conf = conflist ;
 
-	struct ast_conference *conf = conflist ;
-
-	// loop through conf list
-	while ( conf )
-	{
-		if ( !strcasecmp( (const char*)&(conf->name), confname ) )
+		// loop through conf list
+		while ( conf )
 		{
-		        // do the biz
-			ast_rwlock_rdlock( &conf->lock ) ;
-		        member = conf->memberlist ;
-			while (member )
-			  {
-			    if (member->id == user_id)
-			      {
-				      ast_mutex_lock( &member->lock ) ;
-				      member->mute_audio = 1;
-				      ast_mutex_unlock( &member->lock ) ;
-					manager_event(
-						EVENT_FLAG_CONF,
-						"ConferenceMemberMute",
-						"Channel: %s\r\n",
-						member->chan->name
-					) ;
-				      res = 1;
-			      }
-			    member = member->next;
-			  }
-			ast_rwlock_unlock( &conf->lock ) ;
-			break ;
+			if ( !strcasecmp( (const char*)&(conf->name), confname ) )
+			{
+				// do the biz
+				ast_rwlock_rdlock( &conf->lock ) ;
+				member = conf->memberlist ;
+				while (member )
+				  {
+				    if (member->id == user_id)
+				      {
+					      ast_mutex_lock( &member->lock ) ;
+					      member->mute_audio = 1;
+					      ast_mutex_unlock( &member->lock ) ;
+						manager_event(
+							EVENT_FLAG_CONF,
+							"ConferenceMemberMute",
+							"Channel: %s\r\n",
+							member->chan->name
+						) ;
+				      }
+				    member = member->next;
+				  }
+				ast_rwlock_unlock( &conf->lock ) ;
+				break ;
+			}
+
+			conf = conf->next ;
 		}
 
-		conf = conf->next ;
+		// release mutex
+		ast_mutex_unlock( &conflist_lock ) ;
 	}
-
-	// release mutex
-	ast_mutex_unlock( &conflist_lock ) ;
-
-	return res ;
 }
 
-int mute_conference (  const char* confname)
+void mute_conference (  const char* confname)
 {
   struct ast_conf_member *member;
-  int res = 0;
 
-        // no conferences exist
-	if ( !conflist )
+        // any conferences?
+	if ( conflist )
 	{
-		return 0 ;
-	}
+		// acquire mutex
+		ast_mutex_lock( &conflist_lock ) ;
 
-	// acquire mutex
-	ast_mutex_lock( &conflist_lock ) ;
+		struct ast_conference *conf = conflist ;
 
-	struct ast_conference *conf = conflist ;
-
-	// loop through conf list
-	while ( conf )
-	{
-		if ( !strcasecmp( (const char*)&(conf->name), confname ) )
+		// loop through conf list
+		while ( conf )
 		{
-		        // do the biz
-			ast_rwlock_rdlock( &conf->lock ) ;
-		        member = conf->memberlist ;
-			while (member )
-			  {
-			    if ( !member->ismoderator )
-			      {
-				      ast_mutex_lock( &member->lock ) ;
-				      member->mute_audio = 1;
-				      ast_mutex_unlock( &member->lock ) ;
-				      res = 1;
-			      }
-			    member = member->next;
-			  }
-			ast_rwlock_unlock( &conf->lock ) ;
-			break ;
+			if ( !strcasecmp( (const char*)&(conf->name), confname ) )
+			{
+				// do the biz
+				ast_rwlock_rdlock( &conf->lock ) ;
+				member = conf->memberlist ;
+				while (member )
+				  {
+				    if ( !member->ismoderator )
+				      {
+					      ast_mutex_lock( &member->lock ) ;
+					      member->mute_audio = 1;
+					      ast_mutex_unlock( &member->lock ) ;
+				      }
+				    member = member->next;
+				  }
+				ast_rwlock_unlock( &conf->lock ) ;
+				break ;
+			}
+
+			conf = conf->next ;
 		}
 
-		conf = conf->next ;
+		// release mutex
+		ast_mutex_unlock( &conflist_lock ) ;
+
+		manager_event(
+			EVENT_FLAG_CONF,
+			"ConferenceMute",
+			"ConferenceName: %s\r\n",
+			confname
+		) ;
 	}
 
-	// release mutex
-	ast_mutex_unlock( &conflist_lock ) ;
-
-	manager_event(
-		EVENT_FLAG_CONF,
-		"ConferenceMute",
-		"ConferenceName: %s\r\n",
-		confname
-	) ;
-
-	return res ;
 }
 
-int unmute_member (  const char* confname, int user_id)
+void unmute_member ( const char* confname, int user_id )
 {
   struct ast_conf_member *member;
-  int res = 0;
 
-        // no conferences exist
-	if ( !conflist )
+        // any conferences?
+	if ( conflist )
 	{
-		return 0 ;
-	}
+		// acquire mutex
+		ast_mutex_lock( &conflist_lock ) ;
 
-	// acquire mutex
-	ast_mutex_lock( &conflist_lock ) ;
+		struct ast_conference *conf = conflist ;
 
-	struct ast_conference *conf = conflist ;
-
-	// loop through conf list
-	while ( conf )
-	{
-		if ( !strcasecmp( (const char*)&(conf->name), confname ) )
+		// loop through conf list
+		while ( conf )
 		{
-		        // do the biz
-			ast_rwlock_rdlock( &conf->lock ) ;
-		        member = conf->memberlist ;
-			while (member )
-			  {
-			    if (member->id == user_id)
-			      {
-				      ast_mutex_lock( &member->lock ) ;
-				      member->mute_audio = 0;
-				      ast_mutex_unlock( &member->lock ) ;
-					manager_event(
-						EVENT_FLAG_CONF,
-						"ConferenceMemberUnmute",
-						"Channel: %s\r\n",
-						member->chan->name
-					) ;
-				      res = 1;
-			      }
-			    member = member->next;
-			  }
-			ast_rwlock_unlock( &conf->lock ) ;
-			break ;
+			if ( !strcasecmp( (const char*)&(conf->name), confname ) )
+			{
+				// do the biz
+				ast_rwlock_rdlock( &conf->lock ) ;
+				member = conf->memberlist ;
+				while (member )
+				  {
+				    if (member->id == user_id)
+				      {
+					      ast_mutex_lock( &member->lock ) ;
+					      member->mute_audio = 0;
+					      ast_mutex_unlock( &member->lock ) ;
+						manager_event(
+							EVENT_FLAG_CONF,
+							"ConferenceMemberUnmute",
+							"Channel: %s\r\n",
+							member->chan->name
+						) ;
+				      }
+				    member = member->next;
+				  }
+				ast_rwlock_unlock( &conf->lock ) ;
+				break ;
+			}
+
+			conf = conf->next ;
 		}
 
-		conf = conf->next ;
+		// release mutex
+		ast_mutex_unlock( &conflist_lock ) ;
 	}
-
-	// release mutex
-	ast_mutex_unlock( &conflist_lock ) ;
-
-	return res ;
 }
 
-int unmute_conference (  const char* confname)
+void unmute_conference ( const char* confname )
 {
   struct ast_conf_member *member;
-  int res = 0;
 
-        // no conferences exist
-	if ( !conflist )
+        // any conferences?
+	if ( conflist )
 	{
-		return 0 ;
-	}
+		// acquire mutex
+		ast_mutex_lock( &conflist_lock ) ;
 
-	// acquire mutex
-	ast_mutex_lock( &conflist_lock ) ;
+		struct ast_conference *conf = conflist ;
 
-	struct ast_conference *conf = conflist ;
-
-	// loop through conf list
-	while ( conf )
-	{
-		if ( !strcasecmp( (const char*)&(conf->name), confname ) )
+		// loop through conf list
+		while ( conf )
 		{
-		        // do the biz
-			ast_rwlock_rdlock( &conf->lock ) ;
-		        member = conf->memberlist ;
-			while (member )
-			  {
-			    if ( !member->ismoderator )
-			      {
-				      ast_mutex_lock( &member->lock ) ;
-				      member->mute_audio = 0;
-				      ast_mutex_unlock( &member->lock ) ;
-				      res = 1;
-			      }
-			    member = member->next;
-			  }
-			ast_rwlock_unlock( &conf->lock ) ;
-			break ;
+			if ( !strcasecmp( (const char*)&(conf->name), confname ) )
+			{
+				// do the biz
+				ast_rwlock_rdlock( &conf->lock ) ;
+				member = conf->memberlist ;
+				while (member )
+				  {
+				    if ( !member->ismoderator )
+				      {
+					      ast_mutex_lock( &member->lock ) ;
+					      member->mute_audio = 0;
+					      ast_mutex_unlock( &member->lock ) ;
+				      }
+				    member = member->next;
+				  }
+				ast_rwlock_unlock( &conf->lock ) ;
+				break ;
+			}
+
+			conf = conf->next ;
 		}
 
-		conf = conf->next ;
+		// release mutex
+		ast_mutex_unlock( &conflist_lock ) ;
+
+		manager_event(
+			EVENT_FLAG_CONF,
+			"ConferenceUnmute",
+			"ConferenceName: %s\r\n",
+			confname
+		) ;
 	}
-
-	// release mutex
-	ast_mutex_unlock( &conflist_lock ) ;
-
-	manager_event(
-		EVENT_FLAG_CONF,
-		"ConferenceUnmute",
-		"ConferenceName: %s\r\n",
-		confname
-	) ;
-
-	return res ;
 }
 
 #ifdef	CONFERENCE_STATS
@@ -1443,206 +1391,154 @@ struct ast_conf_member *find_member( const char *chan, const char lock )
 }
 
 #if	ASTERISK == 14 || ASTERISK == 16
-int play_sound_channel(int fd, const char *channel, char **file, int mute, int tone, int n)
+void play_sound_channel(int fd, const char *channel, char **file, int mute, int tone, int n)
 #else
-int play_sound_channel(int fd, const char *channel, const char * const *file, int mute, int tone, int n)
+void play_sound_channel(int fd, const char *channel, const char * const *file, int mute, int tone, int n)
 #endif
 {
 	struct ast_conf_member *member;
 	struct ast_conf_soundq *newsound;
 	struct ast_conf_soundq **q;
 
-	ast_cli(fd, "Playing sound %s to member %s %s\n",
-		      *file, channel, mute ? "with mute" : "");
-
-	member = find_member(channel, 1);
-	if( !member )
+	if( (member = find_member(channel, 1)) )
 	{
-		ast_cli(fd, "Member %s not found\n", channel);
-		return 0;
-	} else if (!member->norecv_audio && !member->moh_flag
-			&& (!tone || !member->soundq))
-	{
-		while ( n-- > 0 ) {
-			if( !(newsound = ast_calloc(1, sizeof(struct ast_conf_soundq))))
-				break ;
+		if (!member->norecv_audio && !member->moh_flag
+				&& (!tone || !member->soundq))
+		{
+			while ( n-- > 0 ) {
+				if( !(newsound = ast_calloc(1, sizeof(struct ast_conf_soundq))))
+					break ;
 
-			ast_copy_string(newsound->name, *file, sizeof(newsound->name));
+				ast_copy_string(newsound->name, *file, sizeof(newsound->name));
 
-			// append sound to the end of the list.
-			for ( q=&member->soundq; *q; q = &((*q)->next) ) ;
-			*q = newsound;
+				// append sound to the end of the list.
+				for ( q=&member->soundq; *q; q = &((*q)->next) ) ;
+				*q = newsound;
 
-			file++;
+				file++;
+			}
+
+			member->muted = mute;
+
 		}
-
-		member->muted = mute;
-
+		if ( !--member->use_count && member->delete_flag )
+			ast_cond_signal ( &member->delete_var ) ;
+		ast_mutex_unlock(&member->lock);
 	}
-	if ( !--member->use_count && member->delete_flag )
-		ast_cond_signal ( &member->delete_var ) ;
-	ast_mutex_unlock(&member->lock);
-
-	return 1 ;
 }
 
-int stop_sound_channel(int fd, const char *channel)
+void stop_sound_channel(int fd, const char *channel)
 {
 	struct ast_conf_member *member;
 	struct ast_conf_soundq *sound;
 	struct ast_conf_soundq *next;
 
-	ast_cli( fd, "Stopping sounds to member %s\n", channel);
-
-	member = find_member(channel, 1);
-	if ( !member )
+	if ( (member = find_member(channel, 1)) )
 	{
-		ast_cli(fd, "Member %s not found\n", channel);
-		return 0;
+		// clear all sounds
+		sound = member->soundq;
+
+		while ( sound )
+		{
+			next = sound->next;
+			sound->stopped = 1;
+			sound = next;
+		}
+
+			member->muted = 0;
+
+		if ( !--member->use_count && member->delete_flag )
+			ast_cond_signal ( &member->delete_var ) ;
+		ast_mutex_unlock(&member->lock);
 	}
-
-	// clear all sounds
-	sound = member->soundq;
-
-	while ( sound )
-	{
-		next = sound->next;
-		sound->stopped = 1;
-		sound = next;
-	}
-
-		member->muted = 0;
-
-	if ( !--member->use_count && member->delete_flag )
-		ast_cond_signal ( &member->delete_var ) ;
-	ast_mutex_unlock(&member->lock);
-
-	return 1;
 }
 
-int start_moh_channel(int fd, const char *channel)
+void start_moh_channel(int fd, const char *channel)
 {
 	struct ast_conf_member *member;
 
-	ast_cli( fd, "Starting moh to member %s\n", channel);
+	if ( (member = find_member(channel, 1)) )
+	{
+		if (!member->norecv_audio && !member->moh_flag)
+		{
+			member->moh_flag = member->muted = 1;
+		}
 
-	member = find_member(channel, 1);
-	if ( !member )
-	{
-		ast_cli(fd, "Member %s not found\n", channel);
-		return 0;
-	} else if (!member->norecv_audio && !member->moh_flag)
-	{
-		member->moh_flag = member->muted = 1;
+		if ( !--member->use_count && member->delete_flag )
+			ast_cond_signal ( &member->delete_var ) ;
+		ast_mutex_unlock(&member->lock);
 	}
-
-	if ( !--member->use_count && member->delete_flag )
-		ast_cond_signal ( &member->delete_var ) ;
-	ast_mutex_unlock(&member->lock);
-
-	return 1;
 }
 
-int stop_moh_channel(int fd, const char *channel)
+void stop_moh_channel(int fd, const char *channel)
 {
 	struct ast_conf_member *member;
 
-	ast_cli( fd, "Stopping moh to member %s\n", channel);
-
-	member = find_member(channel, 1);
-	if ( !member )
+	if ( (member = find_member(channel, 1)) )
 	{
-		ast_cli(fd, "Member %s not found\n", channel);
-		return 0;
-	} else if (!member->norecv_audio && member->moh_flag)
-	{
-		member->moh_stop = 1;
+		if (!member->norecv_audio && member->moh_flag)
+		{
+			member->moh_stop = 1;
 
-		member->moh_flag = member->muted = 0;
-		member->ready_for_outgoing = 1;
+			member->moh_flag = member->muted = 0;
+			member->ready_for_outgoing = 1;
+		}
+
+		if ( !--member->use_count && member->delete_flag )
+			ast_cond_signal ( &member->delete_var ) ;
+		ast_mutex_unlock(&member->lock);
 	}
-
-	if ( !--member->use_count && member->delete_flag )
-		ast_cond_signal ( &member->delete_var ) ;
-	ast_mutex_unlock(&member->lock);
-
-	return 1;
 }
 
-int talk_volume_channel(int fd, const char *channel, int up)
+void talk_volume_channel(int fd, const char *channel, int up)
 {
 	struct ast_conf_member *member;
 
-	ast_cli( fd, "Adjusting talk volume level %s for member %s\n", up ? "up" : "down", channel);
-
-	member = find_member(channel, 1);
-	if ( !member )
+	if ( (member = find_member(channel, 1)) )
 	{
-		ast_cli(fd, "Member %s not found\n", channel);
-		return 0;
+		up ? member->talk_volume++ : member->talk_volume--;
+
+		if ( !--member->use_count && member->delete_flag )
+			ast_cond_signal ( &member->delete_var ) ;
+		ast_mutex_unlock(&member->lock);
 	}
-
-	up ? member->talk_volume++ : member->talk_volume--;
-
-	if ( !--member->use_count && member->delete_flag )
-		ast_cond_signal ( &member->delete_var ) ;
-	ast_mutex_unlock(&member->lock);
-
-	return 1;
 }
 
-int listen_volume_channel(int fd, const char *channel, int up)
+void listen_volume_channel(int fd, const char *channel, int up)
 {
 	struct ast_conf_member *member;
 
-	ast_cli( fd, "Adjusting listen volume level %s for member %s\n", up ? "up" : "down", channel);
-
-	member = find_member(channel, 1);
-	if ( !member )
+	if ( (member = find_member(channel, 1)) )
 	{
-		ast_cli(fd, "Member %s not found\n", channel);
-		return 0;
+		up ? member->listen_volume++ : member->listen_volume--;
+
+		if ( !--member->use_count && member->delete_flag )
+			ast_cond_signal ( &member->delete_var ) ;
+		ast_mutex_unlock(&member->lock);
 	}
-
-	up ? member->listen_volume++ : member->listen_volume--;
-
-	if ( !--member->use_count && member->delete_flag )
-		ast_cond_signal ( &member->delete_var ) ;
-	ast_mutex_unlock(&member->lock);
-
-	return 1;
 }
 
-int volume(int fd, const char *conference, int up)
+void volume(int fd, const char *conference, int up)
 {
 	struct ast_conference *conf;
 
 	// acquire the conference list lock
 	ast_mutex_lock(&conflist_lock);
 
-	conf = find_conf(conference);
-	if ( conf == NULL )
+	if ( (conf = find_conf(conference)) )
 	{
-		// release the conference list lock
-		ast_mutex_unlock(&conflist_lock);
+		// acquire the conference lock
+		ast_rwlock_wrlock( &conf->lock ) ;
 
-		ast_cli( fd, "Conference %s not found\n", conference ) ;
-		return 0;
+		// adjust volume
+		up ? conf->volume++ : conf->volume--;
+
+		// release the conference lock
+		ast_rwlock_unlock( &conf->lock ) ;
 	}
-
-	// acquire the conference lock
-	ast_rwlock_wrlock( &conf->lock ) ;
-
-	// adjust volume
-	up ? conf->volume++ : conf->volume--;
-
-	// release the conference lock
-	ast_rwlock_unlock( &conf->lock ) ;
 
 	// release the conference list lock
 	ast_mutex_unlock(&conflist_lock);
-
-	return 1;
 }
 
 int hash(const char *name)

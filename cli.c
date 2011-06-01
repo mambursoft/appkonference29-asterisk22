@@ -310,9 +310,7 @@ char *conference_kick(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) 
 	int member_id;
 	sscanf(argv[3], "%d", &member_id);
 
-	int res = kick_member( name, member_id );
-
-	if (res) ast_cli( fd, "User #: %d kicked\n", member_id) ;
+	kick_member( name, member_id );
 
 	return SUCCESS ;
 }
@@ -352,16 +350,15 @@ char *conference_kickchannel(struct ast_cli_entry *e, int cmd, struct ast_cli_ar
 	const char *channel = argv[2];
 
 	struct ast_conf_member *member = find_member(channel, 1);
-	if(!member) {
-	    ast_cli(fd, "Member %s not found\n", channel);
-	    return FAILURE;
+
+	if ( member )
+	{
+		member->kick_flag = 1;
+
+		if ( !--member->use_count && member->delete_flag )
+			ast_cond_signal ( &member->delete_var ) ;
+		ast_mutex_unlock( &member->lock ) ;
 	}
-
-	member->kick_flag = 1;
-
-	if ( !--member->use_count && member->delete_flag )
-		ast_cond_signal ( &member->delete_var ) ;
-	ast_mutex_unlock( &member->lock ) ;
 
 	return SUCCESS ;
 }
@@ -404,9 +401,7 @@ char *conference_mute(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) 
 	int member_id;
 	sscanf(argv[3], "%d", &member_id);
 
-	int res = mute_member( name, member_id );
-
-	if (res) ast_cli( fd, "User #: %d muted\n", member_id) ;
+	mute_member( name, member_id );
 
 	return SUCCESS ;
 }
@@ -446,9 +441,7 @@ char *conference_muteconference(struct ast_cli_entry *e, int cmd, struct ast_cli
 	// get the conference name
 	const char* name = argv[2] ;
 
-	int res = mute_conference ( name );
-
-	if (res) ast_cli( fd, "Conference: %s muted\n", name) ;
+	mute_conference ( name );
 
 	return SUCCESS ;
 }
@@ -488,25 +481,21 @@ char *conference_mutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_ar
 	const char *channel = argv[2];
 
 	struct ast_conf_member *member = find_member(channel, 1);
-	if(!member) {
-	    ast_cli(fd, "Member %s not found\n", channel);
-	    return FAILURE;
+	if( member )
+	{
+		member->mute_audio = 1;
+
+		if ( !--member->use_count && member->delete_flag )
+			ast_cond_signal ( &member->delete_var ) ;
+		ast_mutex_unlock( &member->lock ) ;
+
+		manager_event(
+			EVENT_FLAG_CONF,
+			"ConferenceMemberMute",
+			"Channel: %s\r\n",
+			channel
+		) ;
 	}
-
-	member->mute_audio = 1;
-
-	if ( !--member->use_count && member->delete_flag )
-		ast_cond_signal ( &member->delete_var ) ;
-	ast_mutex_unlock( &member->lock ) ;
-
-	manager_event(
-		EVENT_FLAG_CONF,
-		"ConferenceMemberMute",
-		"Channel: %s\r\n",
-		channel
-	) ;
-
-	ast_cli( fd, "Channel #: %s muted\n", argv[2]) ;
 
 	return SUCCESS ;
 }
@@ -548,9 +537,7 @@ char *conference_unmute(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a
 	int member_id;
 	sscanf(argv[3], "%d", &member_id);
 
-	int res = unmute_member( name, member_id );
-
-	if (res) ast_cli( fd, "User #: %d unmuted\n", member_id) ;
+	unmute_member( name, member_id );
 
 	return SUCCESS ;
 }
@@ -590,9 +577,7 @@ char *conference_unmuteconference(struct ast_cli_entry *e, int cmd, struct ast_c
 	// get the conference name
 	const char* name = argv[2] ;
 
-	int res = unmute_conference ( name );
-
-	if (res) ast_cli( fd, "Conference: %s unmuted\n", name) ;
+	unmute_conference ( name );
 
 	return SUCCESS ;
 }
@@ -632,25 +617,21 @@ char *conference_unmutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_
 	const char *channel = argv[2];
 
 	struct ast_conf_member *member = find_member(channel, 1);
-	if(!member) {
-	    ast_cli(fd, "Member %s not found\n", channel);
-	    return FAILURE;
+	if( member )
+	{
+		member->mute_audio = 0;
+
+		if ( !--member->use_count && member->delete_flag )
+			ast_cond_signal ( &member->delete_var ) ;
+		ast_mutex_unlock( &member->lock ) ;
+
+		manager_event(
+			EVENT_FLAG_CONF,
+			"ConferenceMemberUnmute",
+			"Channel: %s\r\n",
+			channel
+		) ;
 	}
-
-	member->mute_audio = 0;
-
-	if ( !--member->use_count && member->delete_flag )
-		ast_cond_signal ( &member->delete_var ) ;
-	ast_mutex_unlock( &member->lock ) ;
-
-	manager_event(
-		EVENT_FLAG_CONF,
-		"ConferenceMemberUnmute",
-		"Channel: %s\r\n",
-		channel
-	) ;
-
-	ast_cli( fd, "Channel #: %s unmuted\n", argv[2]) ;
 
 	return SUCCESS ;
 }
@@ -699,13 +680,8 @@ char *conference_play_sound(struct ast_cli_entry *e, int cmd, struct ast_cli_arg
 	int mute = (argc > 5 && !strcmp(argv[argc-1], "mute")?1:0);
 	int tone = (argc > 5 && !strcmp(argv[argc-1], "tone")?1:0);
 
-	int res = play_sound_channel(fd, channel, file, mute, tone, (!mute && !tone) ? argc - 4 : argc - 5);
+	play_sound_channel(fd, channel, file, mute, tone, (!mute && !tone) ? argc - 4 : argc - 5);
 
-	if ( !res )
-	{
-		ast_cli(fd, "Sound playback failed failed\n");
-		return FAILURE;
-	}
 	return SUCCESS ;
 }
 
@@ -743,13 +719,8 @@ char *conference_stop_sounds(struct ast_cli_entry *e, int cmd, struct ast_cli_ar
 
 	const char *channel = argv[3];
 
-	int res = stop_sound_channel(fd, channel);
+	stop_sound_channel(fd, channel);
 
-	if ( !res )
-	{
-		ast_cli(fd, "Sound stop failed failed\n");
-		return FAILURE;
-	}
 	return SUCCESS ;
 }
 
@@ -787,13 +758,8 @@ char *conference_start_moh(struct ast_cli_entry *e, int cmd, struct ast_cli_args
 
 	const char *channel = argv[3];
 
-	int res = start_moh_channel(fd, channel);
+	start_moh_channel(fd, channel);
 
-	if ( !res )
-	{
-		ast_cli(fd, "Start moh failed\n");
-		return FAILURE;
-	}
 	return SUCCESS ;
 }
 
@@ -831,13 +797,8 @@ char *conference_stop_moh(struct ast_cli_entry *e, int cmd, struct ast_cli_args 
 
 	const char *channel = argv[3];
 
-	int res = stop_moh_channel(fd, channel);
+	stop_moh_channel(fd, channel);
 
-	if ( !res )
-	{
-		ast_cli(fd, "Sound moh failed\n");
-		return FAILURE;
-	}
 	return SUCCESS ;
 }
 
@@ -884,13 +845,8 @@ char *conference_talkvolume(struct ast_cli_entry *e, int cmd, struct ast_cli_arg
 	else
 		return SHOWUSAGE ;
 
-	int res = talk_volume_channel(fd, channel, up);
+	talk_volume_channel(fd, channel, up);
 
-	if ( !res )
-	{
-		ast_cli(fd, "Channel %s talk volume adjust failed\n", channel);
-		return FAILURE;
-	}
 	return SUCCESS ;
 }
 
@@ -936,13 +892,8 @@ char *conference_listenvolume(struct ast_cli_entry *e, int cmd, struct ast_cli_a
 	else
 		return SHOWUSAGE ;
 
-	int res = listen_volume_channel(fd, channel, up);
+	listen_volume_channel(fd, channel, up);
 
-	if ( !res )
-	{
-		ast_cli(fd, "Channel %s listen volume adjust failed\n", channel);
-		return FAILURE;
-	}
 	return SUCCESS ;
 }
 
@@ -989,13 +940,7 @@ char *conference_volume(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a
 	else
 		return SHOWUSAGE ;
 
-	int res =  volume(fd, conference, up );
-	
-	if ( !res )
-	{
-		ast_cli( fd, "Conference %s volume adjust failed\n", conference) ;
-		return SHOWUSAGE ;
-	}
+	volume(fd, conference, up );
 
 	return SUCCESS ;
 }
@@ -1038,11 +983,7 @@ char *conference_end(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
 	int hangup = (argc == 4 && !strcmp(argv[3], "nohangup") ? 0 : 1) ;
 
 	// get the conference
-	if ( end_conference( name, hangup ) )
-	{
-		ast_cli( fd, "unable to end the conference, name => %s\n", name ) ;
-		return SHOWUSAGE ;
-	}
+	end_conference( name, hangup ) ;
 
 	return SUCCESS ;
 }

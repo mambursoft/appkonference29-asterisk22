@@ -1196,7 +1196,7 @@ conf_frame* get_incoming_frame( struct ast_conf_member *member )
 	return cfr ;
 }
 #ifdef	DTMF
-int queue_incoming_dtmf_frame( struct ast_conf_member* member, const struct ast_frame* fr )
+void queue_incoming_dtmf_frame( struct ast_conf_member* member, const struct ast_frame* fr )
 {
 	ast_mutex_lock(&member->lock);
 
@@ -1204,7 +1204,7 @@ int queue_incoming_dtmf_frame( struct ast_conf_member* member, const struct ast_
 	if ( member->inDTMFFramesCount >= AST_CONF_MAX_DTMF_QUEUE )
 	{
 		ast_mutex_unlock(&member->lock);
-		return -1 ;
+		return ;
 	}
 
 	//
@@ -1218,7 +1218,7 @@ int queue_incoming_dtmf_frame( struct ast_conf_member* member, const struct ast_
 	{
 		ast_log( LOG_ERROR, "unable to malloc conf_frame\n" ) ;
 		ast_mutex_unlock(&member->lock);
-		return -1 ;
+		return ;
 	}
 
 	// copy frame data pointer to conf frame
@@ -1245,12 +1245,10 @@ int queue_incoming_dtmf_frame( struct ast_conf_member* member, const struct ast_
 	member->inDTMFFramesCount++ ;
 
 	ast_mutex_unlock(&member->lock);
-
-	// Everything has gone okay!
-	return 0;
 }
+
 #endif
-int queue_incoming_frame( struct ast_conf_member* member, struct ast_frame* fr )
+void queue_incoming_frame( struct ast_conf_member* member, struct ast_frame* fr )
 {
 	ast_mutex_lock(&member->lock);
 
@@ -1303,7 +1301,7 @@ int queue_incoming_frame( struct ast_conf_member* member, struct ast_frame* fr )
 		member->since_dropped = 0 ;
 
 		ast_mutex_unlock(&member->lock);
-		return -1 ;
+		return ;
 	}
 
 	// reset sequential drops
@@ -1320,7 +1318,7 @@ int queue_incoming_frame( struct ast_conf_member* member, struct ast_frame* fr )
 		{
 			ast_log( LOG_ERROR, "unable to malloc conf_frame\n" ) ;
 			ast_mutex_unlock(&member->lock);
-			return -1 ;
+			return ;
 		}
 
 		//
@@ -1334,7 +1332,6 @@ int queue_incoming_frame( struct ast_conf_member* member, struct ast_frame* fr )
 		member->inFrames = cfr ;
 		member->inFramesCount++ ;
 	ast_mutex_unlock(&member->lock);
-	return 0 ;
 }
 
 //
@@ -1381,7 +1378,7 @@ conf_frame* get_outgoing_frame( struct ast_conf_member *member )
 	return NULL ;
 }
 
-int queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery )
+void queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery )
 {
 	// accounting: count the number of outgoing frames for this member
 	member->frames_out++ ;
@@ -1394,7 +1391,7 @@ int queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame
 	{
 		// accounting: count dropped outgoing frames
 		member->frames_out_dropped++ ;
-		return -1 ;
+		return ;
 	}
 
 	//
@@ -1409,7 +1406,7 @@ int queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame
 
 		// accounting: count dropped outgoing frames
 		member->frames_out_dropped++ ;
-		return -1 ;
+		return ;
 	}
 
 	// set delivery timestamp
@@ -1425,9 +1422,6 @@ int queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame
 	}
 	member->outFrames = cfr ;
 	member->outFramesCount++ ;
-
-	// return success
-	return 0 ;
 }
 
 //
@@ -1474,8 +1468,9 @@ conf_frame* get_outgoing_dtmf_frame( struct ast_conf_member *member )
 	return NULL ;
 }
 #endif
+
 #ifdef	DTMF
-int queue_outgoing_dtmf_frame( struct ast_conf_member* member, const struct ast_frame* fr )
+void queue_outgoing_dtmf_frame( struct ast_conf_member* member, const struct ast_frame* fr )
 {
 	ast_mutex_lock(&member->lock);
 
@@ -1491,7 +1486,7 @@ int queue_outgoing_dtmf_frame( struct ast_conf_member* member, const struct ast_
 		// accounting: count dropped outgoing frames
 		member->dtmf_frames_out_dropped++ ;
 		ast_mutex_unlock(&member->lock);
-		return -1 ;
+		return ;
 	}
 
 	//
@@ -1507,7 +1502,7 @@ int queue_outgoing_dtmf_frame( struct ast_conf_member* member, const struct ast_
 		// accounting: count dropped outgoing frames
 		member->dtmf_frames_out_dropped++ ;
 		ast_mutex_unlock(&member->lock);
-		return -1 ;
+		return ;
 	}
 
 	if ( !member->outDTMFFrames )
@@ -1526,12 +1521,10 @@ int queue_outgoing_dtmf_frame( struct ast_conf_member* member, const struct ast_
 	member->outDTMFFramesCount++ ;
 
 	ast_mutex_unlock(&member->lock);
-	// return success
-	return 0 ;
 }
 #endif
 
-int queue_frame_for_listener(
+void queue_frame_for_listener(
 	struct ast_conference* conf,
 	struct ast_conf_member* member
 )
@@ -1559,7 +1552,7 @@ int queue_frame_for_listener(
 			{
 				ast_log( LOG_WARNING, "unable to duplicate frame\n" ) ;
 				queue_silent_frame( conf, member ) ;
-				return 0 ;
+				return ;
 			}
 
 			// convert using the conference's translation path
@@ -1578,18 +1571,7 @@ int queue_frame_for_listener(
 
 		if ( qf )
 		{
-			// duplicate the frame before queue'ing it
-			// ( since this member doesn't own this _shared_ frame )
-			// qf = ast_frdup( qf ) ;
-
-
-
-			if ( queue_outgoing_frame( member, qf, conf->delivery_time ) )
-			{
-				// free the new frame if it couldn't be queue'd
-				// XXX NEILS - WOULD BE FREED IN CLEANUPast_frfree( qf ) ;
-				//qf = NULL ;
-			}
+			queue_outgoing_frame( member, qf, conf->delivery_time ) ;
 
 			if ( member->listen_volume )
 			{
@@ -1607,12 +1589,9 @@ int queue_frame_for_listener(
 	{
 		queue_silent_frame( conf, member ) ;
 	}
-
-	return 0 ;
 }
 
-
-int queue_frame_for_speaker(
+void queue_frame_for_speaker(
 	struct ast_conference* conf,
 	struct ast_conf_member* member
 )
@@ -1666,12 +1645,10 @@ int queue_frame_for_speaker(
 	{
 		queue_silent_frame( conf, member ) ;
 	}
-
-	return 0 ;
 }
 
 
-int queue_silent_frame(
+void queue_silent_frame(
 	struct ast_conference* conf,
 	struct ast_conf_member* member
 )
@@ -1690,7 +1667,7 @@ int queue_silent_frame(
 		if ( !( silent_frame = get_silent_frame() ) )
 		{
 			ast_log( LOG_WARNING, "unable to initialize static silent frame\n" ) ;
-			return -1 ;
+			return ;
 		}
 	}
 
@@ -1748,8 +1725,6 @@ int queue_silent_frame(
 	{
 		ast_log( LOG_ERROR, "unable to translate outgoing silent frame, channel => %s\n", member->chan->name ) ;
 	}
-
-	return 0 ;
 }
 
 
