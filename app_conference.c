@@ -127,4 +127,3 @@ static int load_module( void )
 AST_MODULE_INFO_STANDARD(ASTERISK_GPL_KEY,
 		"Channel Independent Conference Application");
 #undef AST_MODULE
-

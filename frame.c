@@ -584,16 +584,3 @@ struct ast_frame* get_silent_slinear_frame( void )
 
 	return f;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -486,7 +486,7 @@ int member_exec( struct ast_channel* chan, const char* data )
 		member->chan->caller.id.number.str ? member->chan->caller.id.number.str : "unknown",
 		member->chan->caller.id.name.str ? member->chan->caller.id.name.str: "unknown",
 #endif
-		conf->stats.moderators,
+		conf->moderators,
 		conf->membercount
 	) ;
 
@@ -968,6 +968,22 @@ struct ast_conf_member* delete_member( struct ast_conf_member* member )
 	{
 		cf = delete_conf_frame( cf ) ;
 	}
+#ifdef	DTMF
+	// incoming dtmf frames
+	cf = member->inDTMFFrames ;
+
+	while ( cf )
+	{
+		cf = delete_conf_frame( cf ) ;
+	}
+	// outgoing frames
+	cf = member->outDTMFFrames ;
+
+	while ( cf )
+	{
+		cf = delete_conf_frame( cf ) ;
+	}
+#endif
 #ifdef AST_CONF_CACHE_LAST_FRAME
 	if ( member->inFramesLast )
 	{

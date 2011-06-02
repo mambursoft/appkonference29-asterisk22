@@ -37,33 +37,16 @@
 // struct declarations
 //
 
-typedef struct ast_conference_stats
-{
-	// conference name ( copied for ease of use )
-	char name[CONF_NAME_LEN + 1] ;
-
-	// type of connection
-	unsigned short phone ;
-	unsigned short iaxclient ;
-	unsigned short sip ;
-
-	// type of users
-	unsigned short moderators ;
-	unsigned short conferees ;
-
-	// accounting data
-	unsigned long frames_in ;
-	unsigned long frames_out ;
-	unsigned long frames_mixed ;
-
-	struct timeval time_entered ;
-
-} ast_conference_stats ;
-
 struct ast_conference
 {
-	// conference name
+	// name
 	char name[CONF_NAME_LEN + 1] ;
+	
+	// start time
+	struct timeval time_entered ;
+
+	// moderator count
+	unsigned short moderators ;
 
 	// conference listener frame
 	conf_frame *listener_frame ;
@@ -96,9 +79,6 @@ struct ast_conference
 
 	// pointer to translation paths
 	struct ast_trans_pvt* from_slinear_paths[ AC_SUPPORTED_FORMATS ] ;
-
-	// conference stats
-	ast_conference_stats stats ;
 
 	// keep track of current delivery time
 	struct timeval delivery_time ;
@@ -153,12 +133,6 @@ void unmute_member ( const char* confname, int user_id);
 
 void mute_conference ( const char* confname);
 void unmute_conference ( const char* confname);
-
-#ifdef	CONFERENCE_STATS
-int get_conference_stats( ast_conference_stats* stats, int requested ) ;
-int get_conference_stats_by_name( ast_conference_stats* stats, const char* name ) ;
-int get_conference_count( void ) ;
-#endif
 
 #if	ASTERISK == 14 || ASTERISK == 16
 void play_sound_channel(int fd, const char *channel, char **file, int mute, int tone, int n);

@@ -125,100 +125,6 @@ char *conference_restart(struct ast_cli_entry *e, int cmd, struct ast_cli_args *
 	return SUCCESS ;
 }
 
-#ifdef	CONFERENCE_STATS
-//
-// stats functions
-//
-static char conference_show_stats_usage[] =
-	"Usage: konference show stats\n"
-	"       Display stats for active conferences\n"
-;
-
-#define CONFERENCE_SHOW_STATS_CHOICES { "konference", "show", "stats", NULL }
-static char conference_show_stats_summary[] = "Show conference stats";
-
-#ifndef AST_CLI_DEFINE
-static struct ast_cli_entry cli_show_stats = {
-	CONFERENCE_SHOW_STATS_CHOICES,
-	conference_show_stats,
-	conference_show_stats_summary,
-	conference_show_stats_usage
-} ;
-int conference_show_stats( int fd, int argc, char *argv[] ) {
-#else
-static char conference_show_stats_command[] = "konference show stats";
-char *conference_show_stats(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
-#if	ASTERISK == 14 || ASTERISK == 16
-	static char *choices[] = CONFERENCE_SHOW_STATS_CHOICES;
-#else
-	static const char *const choices[] = CONFERENCE_SHOW_STATS_CHOICES;
-#endif
-	NEWCLI_SWITCH(conference_show_stats_command,conference_show_stats_usage)
-#endif
-	if ( argc < 3 )
-		return SHOWUSAGE ;
-
-	// get count of active conferences
-	int count = get_conference_count() ;
-
-	ast_cli( fd, "\n\nCONFERENCE STATS, ACTIVE( %d )\n\n", count ) ;
-
-	// if zero, go no further
-	if ( count <= 0 )
-		return SUCCESS ;
-
-	//
-	// get the conference stats
-	//
-
-	// array of stats structs
-	ast_conference_stats stats[ count ] ;
-
-	// get stats structs
-	count = get_conference_stats( stats, count ) ;
-
-	// make sure we were able to fetch some
-	if ( count <= 0 )
-	{
-		ast_cli( fd, "!!! error fetching conference stats, available => %d !!!\n", count ) ;
-		return SUCCESS ;
-	}
-
-	//
-	// output the conference stats
-	//
-
-	// output header
-	ast_cli( fd, "%-20.20s  %-40.40s\n", "Name", "Stats") ;
-	ast_cli( fd, "%-20.20s  %-40.40s\n", "----", "-----") ;
-
-	ast_conference_stats* s = NULL ;
-
-	int i;
-
-	for ( i = 0 ; i < count ; ++i )
-	{
-		s = &(stats[i]) ;
-
-		// output this conferences stats
-		ast_cli( fd, "%-20.20s\n", (char*)( &(s->name) )) ;
-	}
-
-	ast_cli( fd, "\n" ) ;
-
-	//
-	// drill down to specific stats
-	//
-
-	if ( argc == 4 )
-	{
-		// show stats for a particular conference
-	}
-
-	return SUCCESS ;
-}
-#endif
-
 //
 // list conferences
 //
@@ -996,9 +902,6 @@ char *conference_end(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
 static struct ast_cli_entry app_konference_commands[] = {
 	AST_CLI_DEFINE(conference_version, conference_version_summary),
 	AST_CLI_DEFINE(conference_restart, conference_restart_summary),
-#ifdef	CONFERENCE_STATS
-	AST_CLI_DEFINE(conference_show_stats, conference_show_stats_summary),
-#endif
 	AST_CLI_DEFINE(conference_list, conference_list_summary),
 	AST_CLI_DEFINE(conference_kick, conference_kick_summary),
 	AST_CLI_DEFINE(conference_kickchannel, conference_kickchannel_summary),
@@ -1026,9 +929,6 @@ void register_conference_cli( void )
 #else
 	ast_cli_register( &cli_version );
 	ast_cli_register( &cli_restart );
-#ifdef	CONFERENCE_STATS
-	ast_cli_register( &cli_show_stats ) ;
-#endif
 	ast_cli_register( &cli_list );
 	ast_cli_register( &cli_kick );
 	ast_cli_register( &cli_kickchannel );
@@ -1056,9 +956,6 @@ void unregister_conference_cli( void )
 #else
 	ast_cli_unregister( &cli_version );
 	ast_cli_unregister( &cli_restart );
-#ifdef	CONFERENCE_STATS
-	ast_cli_unregister( &cli_show_stats ) ;
-#endif
 	ast_cli_unregister( &cli_list );
 	ast_cli_unregister( &cli_kick );
 	ast_cli_unregister( &cli_kickchannel );

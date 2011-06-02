@@ -245,11 +245,7 @@ static void conference_exec( struct ast_conference *conf )
 			//---------------//
 
 			// mix frames and get batch of outgoing frames
-			if ( (send_frames = (spoken_frames ? mix_frames(conf, spoken_frames, speaker_count, listener_count) : NULL)) )
-			{
-				// accounting: if there are frames, count them as one incoming frame
-				conf->stats.frames_in++ ;
-			}
+			send_frames = spoken_frames ? mix_frames(conf, spoken_frames, speaker_count, listener_count) : NULL ;
 
 			//-----------------//
 			// OUTGOING FRAMES //
@@ -298,12 +294,6 @@ static void conference_exec( struct ast_conference *conf )
 			// clean up send frames
 			while ( send_frames )
 			{
-				// accouting: count all frames and mixed frames
-				if ( !send_frames->member )
-					conf->stats.frames_out++ ;
-				else
-					conf->stats.frames_mixed++ ;
-
 				// delete the frame
 				send_frames = delete_conf_frame( send_frames ) ;
 			}
@@ -507,15 +497,12 @@ static struct ast_conference* create_conf( char* name, struct ast_conf_member* m
 	conf->kick_flag = 0 ;
 
 	conf->id_count = 0;
-	// zero stats
-	memset(	&conf->stats, 0x0, sizeof( ast_conference_stats ) ) ;
 
 	// record start time
-	conf->stats.time_entered = ast_tvnow();
+	conf->time_entered = ast_tvnow();
 
 	// copy name to conference
 	strncpy( (char*)&(conf->name), name, sizeof(conf->name) - 1 ) ;
-	strncpy( (char*)&(conf->stats.name), name, sizeof(conf->name) - 1 ) ;
 
 	// zero volume
 	conf->volume = 0;
@@ -727,7 +714,7 @@ static void add_member( struct ast_conf_member *member, struct ast_conference *c
 		}
 	}
 
-	// update conference stats
+	// update conference count
 	conf->membercount++;
 
 	if ( member->hold_flag == 1 )
@@ -749,7 +736,7 @@ static void add_member( struct ast_conf_member *member, struct ast_conference *c
 	}
 
 	if (member->ismoderator)
-		conf->stats.moderators++;
+		conf->moderators++;
 
 	member->id = ( !conf->memberlast ? 1 : conf->memberlast->id + 1 ) ;
 
@@ -780,7 +767,7 @@ void remove_member( struct ast_conf_member* member, struct ast_conference* conf,
 
 	ast_rwlock_wrlock( &conf->lock );
 
-	if ( member->ismoderator && member->kick_conferees && conf->stats.moderators == 1 )
+	if ( member->ismoderator && member->kick_conferees && conf->moderators == 1 )
 		conf->kick_flag = 1 ;
 
 	struct ast_conf_member *member_temp = member->prev ;
@@ -805,7 +792,7 @@ void remove_member( struct ast_conf_member* member, struct ast_conference* conf,
 			if ( conf->memberlast == member )
 				conf->memberlast = ( !member_temp ? NULL : member_temp );
 
-			// update conference stats
+			// update conference count
 			membercount = --conf->membercount;
 
 			if ( member->hold_flag == 1 && conf->membercount == 1 && conf->memberlist->hold_flag == 1 )
@@ -816,7 +803,7 @@ void remove_member( struct ast_conf_member* member, struct ast_conference* conf,
 			}
 
 			// update moderator count
-			moderators = (!member->ismoderator ? conf->stats.moderators : --conf->stats.moderators );
+			moderators = (!member->ismoderator ? conf->moderators : --conf->moderators );
 	//
 	// if spying sever connection to spyee
 	//
@@ -895,7 +882,7 @@ void list_conferences ( int fd )
 		// loop through conf list
 		while ( conf )
 		{
-			duration = (int)(ast_tvdiff_ms(ast_tvnow(),conf->stats.time_entered) / 1000);
+			duration = (int)(ast_tvdiff_ms(ast_tvnow(),conf->time_entered) / 1000);
 			snprintf(duration_str, 10, "%02d:%02d:%02d",  duration / 3600, (duration % 3600) / 60, duration % 60);
 			ast_cli( fd, "%-20.20s %-20d %-20d %-20.20s\n", conf->name, conf->membercount, conf->volume, duration_str ) ;
 			conf = conf->next ;
@@ -1287,86 +1274,6 @@ void unmute_conference ( const char* confname )
 		) ;
 	}
 }
-
-#ifdef	CONFERENCE_STATS
-
-int get_conference_stats( ast_conference_stats* stats, int requested )
-{
-	// no conferences exist
-	if ( !conflist )
-	{
-		return 0 ;
-	}
-
-	// acquire mutex
-	ast_mutex_lock( &conflist_lock ) ;
-
-	// compare the number of requested to the number of available conferences
-	requested = ( get_conference_count() < requested ? get_conference_count() : requested)  ;
-
-	//
-	// loop through conf list
-	//
-
-	struct ast_conference* conf = conflist ;
-	int count = 0 ;
-
-	while ( count <= requested && conf )
-	{
-		// copy stats struct to array
-		stats[ count ] = conf->stats ;
-
-		conf = conf->next ;
-		++count ;
-	}
-
-	// release mutex
-	ast_mutex_unlock( &conflist_lock ) ;
-
-	return count ;
-}
-
-int get_conference_stats_by_name( ast_conference_stats* stats, const char* name )
-{
-	// no conferences exist
-	if ( !conflist )
-	{
-		return 0 ;
-	}
-
-	// make sure stats is null
-	stats = NULL ;
-
-	// acquire mutex
-	ast_mutex_lock( &conflist_lock ) ;
-
-	struct ast_conference *conf = conflist ;
-
-	// loop through conf list
-	while ( conf )
-	{
-		if ( !strcasecmp( (const char*)&(conf->name), name ) )
-		{
-			// copy stats for found conference
-			*stats = conf->stats ;
-			break ;
-		}
-
-		conf = conf->next ;
-	}
-
-	// release mutex
-	ast_mutex_unlock( &conflist_lock ) ;
-
-	return (!stats ? 0 : 1) ;
-}
-
-int get_conference_count( void )
-{
-	return conference_count ;
-}
-
-#endif
 
 struct ast_conf_member *find_member( const char *chan, const char lock )
 {

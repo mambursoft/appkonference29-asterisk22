@@ -224,23 +224,22 @@ void freembrblocks(void);
 
 // incoming queue
 void queue_incoming_frame( struct ast_conf_member* member, struct ast_frame* fr ) ;
+conf_frame* get_incoming_frame( struct ast_conf_member* member ) ;
+
 #ifdef	DTMF
 void queue_incoming_dtmf_frame( struct ast_conf_member* member, const struct ast_frame* fr ) ;
-#endif
-conf_frame* get_incoming_frame( struct ast_conf_member* member ) ;
-#ifdef	DTMF
 conf_frame* get_incoming_dtmf_frame( struct ast_conf_member* member ) ;
 #endif
+
 // outgoing queue
 void queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery ) ;
 conf_frame* get_outgoing_frame( struct ast_conf_member* member ) ;
 
 #ifdef	DTMF
 void queue_outgoing_dtmf_frame( struct ast_conf_member* member, const struct ast_frame* fr ) ;
-#endif
-#ifdef	DTMF
 conf_frame* get_outgoing_dtmf_frame( struct ast_conf_member* member ) ;
 #endif
+
 void member_process_spoken_frames(struct ast_conference* conf,
 				  struct ast_conf_member *member,
 				  struct conf_frame **spoken_frames,
