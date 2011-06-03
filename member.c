@@ -105,9 +105,6 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 	}
 	else if ( f->frametype == AST_FRAME_VOICE )
 	{
-		// accounting: count the incoming frame
-		member->frames_in++ ;
-
 #if ( SILDET == 2 )
 		// reset silence detection flag
 		silent_frame = 0 ;
@@ -326,11 +323,7 @@ static int process_outgoing(struct ast_conf_member *member)
 		}
 
 		// send the voice frame
-		if ( ast_write( member->chan, f ) )
-		{
-			// accounting: count dropped outgoing frames
-			member->frames_out_dropped++ ;
-		}
+		ast_write( member->chan, f ) ;
 
 		// clean up frame
 		delete_conf_frame( cf ) ;
@@ -354,11 +347,7 @@ static int process_outgoing(struct ast_conf_member *member)
 		if(!cf) break;
 
 		// send the dtmf frame
-		if ( ast_write( member->chan, cf->fr ) )
-		{
-			// accounting: count dropped outgoing frames
-			member->dtmf_frames_out_dropped++ ;
-		}
+		ast_write( member->chan, cf->fr ) ;
 
 		// clean up frame
 		delete_conf_frame( cf ) ;
@@ -683,7 +672,7 @@ struct ast_conf_member* create_member( struct ast_channel *chan, const char* dat
 			strncpy( member->type, value, MEMBER_TYPE_LEN ) ;
 		} else if ( !strncasecmp(key, arg_chanspy, sizeof(arg_chanspy) - 1) )
 		{
-			member->spyee_channel_name = malloc( strlen( value ) + 1 ) ;
+			member->spyee_channel_name = ast_malloc( strlen( value ) + 1 ) ;
 			strcpy( member->spyee_channel_name, value ) ;
 #if ( SILDET == 2 )
 		} else if ( !strncasecmp(key, arg_vad_prob_start, sizeof(arg_vad_prob_start) - 1) )
@@ -723,7 +712,6 @@ struct ast_conf_member* create_member( struct ast_channel *chan, const char* dat
 	// init state change timestamp
 	member->time_entered =
 		member->last_in_dropped =
-		member->last_out_dropped =
 		ast_tvnow();
 	//
 	// parse passed flags
@@ -1039,12 +1027,6 @@ struct ast_conf_member* delete_member( struct ast_conf_member* member )
 #ifdef	DTMF
 conf_frame* get_incoming_dtmf_frame( struct ast_conf_member *member )
 {
-  	if ( !member )
-	{
-		ast_log( LOG_WARNING, "unable to get frame from null member\n" ) ;
-		return NULL ;
-	}
-
 	ast_mutex_lock(&member->lock);
 
 	if ( !member->inDTMFFramesCount )
@@ -1283,15 +1265,6 @@ void queue_incoming_frame( struct ast_conf_member* member, struct ast_frame* fr 
 
 			if ( diff >= time_limit )
 			{
-				// count sequential drops
-				member->sequential_drops++ ;
-
-				// accounting: count dropped incoming frames
-				member->frames_in_dropped++ ;
-
-				// reset frames since dropped
-				member->since_dropped = 0 ;
-
 				// delete the frame
 				delete_conf_frame( get_incoming_frame( member ) ) ;
 
@@ -1307,46 +1280,32 @@ void queue_incoming_frame( struct ast_conf_member* member, struct ast_frame* fr 
 
 	if ( member->inFramesCount >= AST_CONF_MAX_QUEUE )
 	{
-		// count sequential drops
-		member->sequential_drops++ ;
-
-		// accounting: count dropped incoming frames
-		member->frames_in_dropped++ ;
-
-		// reset frames since dropped
-		member->since_dropped = 0 ;
-
 		ast_mutex_unlock(&member->lock);
 		return ;
 	}
 
-	// reset sequential drops
-	member->sequential_drops = 0 ;
-
-	// increment frames since dropped
-	member->since_dropped++ ;
-
 	//
 	// create new conf frame from passed data frame
 	//
-		conf_frame* cfr = create_conf_frame( member, member->inFrames, fr ) ;
-		if ( !cfr)
-		{
-			ast_log( LOG_ERROR, "unable to malloc conf_frame\n" ) ;
-			ast_mutex_unlock(&member->lock);
-			return ;
-		}
+	conf_frame* cfr = create_conf_frame( member, member->inFrames, fr ) ;
+	if ( !cfr)
+	{
+		ast_log( LOG_ERROR, "unable to malloc conf_frame\n" ) ;
+		ast_mutex_unlock(&member->lock);
+		return ;
+	}
 
-		//
-		// add new frame to speaking members incoming frame queue
-		// ( i.e. save this frame data, so we can distribute it in conference_exec later )
-		//
+	//
+	// add new frame to speaking members incoming frame queue
+	// ( i.e. save this frame data, so we can distribute it in conference_exec later )
+	//
 
-		if ( !member->inFrames) {
-			member->inFramesTail = cfr ;
-		}
-		member->inFrames = cfr ;
-		member->inFramesCount++ ;
+	if ( !member->inFrames) {
+		member->inFramesTail = cfr ;
+	}
+	member->inFrames = cfr ;
+	member->inFramesCount++ ;
+
 	ast_mutex_unlock(&member->lock);
 }
 
@@ -1396,17 +1355,12 @@ conf_frame* get_outgoing_frame( struct ast_conf_member *member )
 
 void queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery )
 {
-	// accounting: count the number of outgoing frames for this member
-	member->frames_out++ ;
-
 	//
 	// we have to drop frames, so we'll drop new frames
 	// because it's easier ( and doesn't matter much anyway ).
 	//
 	if ( member->outFramesCount >= AST_CONF_MAX_QUEUE )
 	{
-		// accounting: count dropped outgoing frames
-		member->frames_out_dropped++ ;
 		return ;
 	}
 
@@ -1420,8 +1374,6 @@ void queue_outgoing_frame( struct ast_conf_member* member, const struct ast_fram
 	{
 		ast_log( LOG_ERROR, "unable to create new conf frame\n" ) ;
 
-		// accounting: count dropped outgoing frames
-		member->frames_out_dropped++ ;
 		return ;
 	}
 
@@ -1490,17 +1442,12 @@ void queue_outgoing_dtmf_frame( struct ast_conf_member* member, const struct ast
 {
 	ast_mutex_lock(&member->lock);
 
-	// accounting: count the number of outgoing frames for this member
-	member->dtmf_frames_out++ ;
-
 	//
 	// we have to drop frames, so we'll drop new frames
 	// because it's easier ( and doesn't matter much anyway ).
 	//
 	if ( member->outDTMFFramesCount >= AST_CONF_MAX_DTMF_QUEUE)
 	{
-		// accounting: count dropped outgoing frames
-		member->dtmf_frames_out_dropped++ ;
 		ast_mutex_unlock(&member->lock);
 		return ;
 	}
@@ -1515,8 +1462,6 @@ void queue_outgoing_dtmf_frame( struct ast_conf_member* member, const struct ast
 	{
 		ast_log( LOG_ERROR, "unable to create new conf frame\n" ) ;
 
-		// accounting: count dropped outgoing frames
-		member->dtmf_frames_out_dropped++ ;
 		ast_mutex_unlock(&member->lock);
 		return ;
 	}

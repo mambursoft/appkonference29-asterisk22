@@ -224,10 +224,7 @@ static void conference_exec( struct ast_conference *conf )
 
 			// reset pointer lists
 			spoken_frames = NULL ;
-#ifdef	DTMF
-			// reset dtmf source
-			dtmf_source_member = NULL;
-#endif
+
 			// reset listener frame
 			conf->listener_frame = NULL ;
 
@@ -334,12 +331,12 @@ void init_conference( void )
 	ast_mutex_init( &conflist_lock ) ;
 
 	int i;
-	channel_table = malloc (CHANNEL_TABLE_SIZE * sizeof (struct channel_bucket) ) ;
+	channel_table = ast_malloc (CHANNEL_TABLE_SIZE * sizeof (struct channel_bucket) ) ;
 	for ( i = 0; i < CHANNEL_TABLE_SIZE; i++)
 		AST_LIST_HEAD_INIT (&channel_table[i]) ;
 	ast_log( LOG_NOTICE, "initialized channel table, size = %d\n", CHANNEL_TABLE_SIZE ) ;
 
-	conference_table = malloc (CONFERENCE_TABLE_SIZE * sizeof (struct conference_bucket) ) ;
+	conference_table = ast_malloc (CONFERENCE_TABLE_SIZE * sizeof (struct conference_bucket) ) ;
 	for ( i = 0; i < CONFERENCE_TABLE_SIZE; i++)
 		AST_LIST_HEAD_INIT (&conference_table[i]) ;
 	ast_log( LOG_NOTICE, "initialized conference table, size = %d\n", CONFERENCE_TABLE_SIZE ) ;
@@ -471,7 +468,7 @@ static struct ast_conference* create_conf( char* name, struct ast_conf_member* m
 	{
 #endif
 		// allocate new conference control block
-		if ( !(conf = malloc(sizeof(struct ast_conference))) )
+		if ( !(conf = ast_malloc(sizeof(struct ast_conference))) )
 		{
 			ast_log( LOG_ERROR, "unable to malloc ast_conference\n" ) ;
 			return NULL ;

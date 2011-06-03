@@ -318,7 +318,7 @@ conf_frame* mix_multiple_speakers(
 		else if ( !cf_spoken->member->spy_partner->local_speaking_state )
 		{
 			// allocate a mix buffer large enough to hold a frame
-			char* whisperBuffer = malloc( AST_CONF_BUFFER_SIZE ) ;
+			char* whisperBuffer = ast_malloc( AST_CONF_BUFFER_SIZE ) ;
 			memcpy(whisperBuffer,listenerBuffer,AST_CONF_BUFFER_SIZE);
 
 			cf_sendFrames = create_conf_frame( cf_spoken->member->spy_partner, cf_sendFrames, NULL ) ;
@@ -447,7 +447,7 @@ conf_frame* delete_conf_frame( conf_frame* cf )
 conf_frame* create_conf_frame( struct ast_conf_member* member, conf_frame* next, const struct ast_frame* fr )
 {
 	// pointer to list of mixed frames
-	conf_frame* cf = malloc( sizeof( struct conf_frame ) ) ;
+	conf_frame* cf = ast_malloc( sizeof( struct conf_frame ) ) ;
 
 	if ( !cf )
 	{
@@ -577,7 +577,7 @@ struct ast_frame* get_silent_slinear_frame( void )
 	// we'll let this leak until the application terminates
 	if ( !f )
 	{
-		char* data = malloc( AST_CONF_BUFFER_SIZE ) ;
+		char* data = ast_malloc( AST_CONF_BUFFER_SIZE ) ;
 		memset( data, 0x0, AST_CONF_BUFFER_SIZE ) ;
 		f = create_slinear_frame( data + AST_FRIENDLY_OFFSET ) ;
 	}

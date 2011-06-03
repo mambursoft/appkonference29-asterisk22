@@ -130,15 +130,9 @@ struct ast_conf_member
 #endif
 	// relay dtmf to manager?
 	short dtmf_relay;
-	// initial nat delay flag
-	short first_frame_received;
 
 	// time we last dropped a frame
 	struct timeval last_in_dropped ;
-	struct timeval last_out_dropped ;
-
-	// ( not currently used )
-	// int samplesperframe ;
 
 	// used for determining need to mix frames
 	// and for management interface notification
@@ -159,23 +153,6 @@ struct ast_conf_member
 	struct ast_conf_member* spy_partner ;
 	// spyee pointer to whisper frame
 	struct conf_frame* whisper_frame ;
-
-	// accounting values
-	unsigned long frames_in ;
-	unsigned long frames_in_dropped ;
-	unsigned long frames_out ;
-	unsigned long frames_out_dropped ;
-
-#ifdef	DTMF
-	unsigned long dtmf_frames_in ;
-	unsigned long dtmf_frames_in_dropped ;
-	unsigned long dtmf_frames_out ;
-	unsigned long dtmf_frames_out_dropped ;
-#endif
-
-	// for counting sequentially dropped frames
-	unsigned int sequential_drops ;
-	unsigned long since_dropped ;
 
 	// start time
 	struct timeval time_entered ;
