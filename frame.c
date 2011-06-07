@@ -421,33 +421,26 @@ conf_frame* delete_conf_frame( conf_frame* cf )
 	if ( cf->fr )
 	{
 		ast_frfree( cf->fr ) ;
-		cf->fr = NULL ;
 	}
 
-	// make sure converted frames are set to null
 	for ( c = 0 ; c < AC_SUPPORTED_FORMATS ; ++c )
 	{
 		if ( cf->converted[ c ] )
 		{
 			ast_frfree( cf->converted[ c ] ) ;
-			cf->converted[ c ] = NULL ;
 		}
 	}
 
-	// get a pointer to the next frame
-	// in the list so we can return it
 	conf_frame* nf = cf->next ;
 
 	free( cf ) ;
-	cf = NULL ;
 
 	return nf ;
 }
 
 conf_frame* create_conf_frame( struct ast_conf_member* member, conf_frame* next, const struct ast_frame* fr )
 {
-	// pointer to list of mixed frames
-	conf_frame* cf = ast_malloc( sizeof( struct conf_frame ) ) ;
+	conf_frame* cf = ast_calloc( 1, sizeof( struct conf_frame ) ) ;
 
 	if ( !cf )
 	{
@@ -455,48 +448,20 @@ conf_frame* create_conf_frame( struct ast_conf_member* member, conf_frame* next,
 		return NULL ;
 	}
 
-	//
-	// init with some defaults
-	//
-
-	memset( (struct ast_frame*)( cf->converted ), 0x0, ( sizeof( struct ast_frame* ) * AC_SUPPORTED_FORMATS ) ) ;
-
 	cf->member = member ;
 
-	cf->prev = NULL ;
-	cf->next = next ;
-
-	// establish relationship to 'next'
-	if ( next ) next->prev = cf ;
-
-	// this holds the ast_frame pointer
-	cf->fr = ( !fr ? NULL : ast_frdup(( struct ast_frame* )( fr )) ) ;
-
-	// this holds the temporu mix buffer
-	cf->mixed_buffer = NULL ;
-
-	cf->talk_volume = 0 ;
-
-	return cf ;
-}
-
-conf_frame* copy_conf_frame( conf_frame* src )
-{
-	//
-	// copy the frame
-	//
-
-	struct conf_frame *cfr = NULL ;
-
-	// create a new conf frame
-	cfr = create_conf_frame( src->member, NULL, src->fr ) ;
-
-	if ( !cfr )
+	if ( next )
 	{
-		return NULL ;
+		cf->next = next ;
+		next->prev = cf ;
 	}
 
-	return cfr ;
+	if ( fr )
+	{
+		cf->fr = ast_frdup(( struct ast_frame* )( fr ));
+	}
+
+	return cf ;
 }
 
 //
