@@ -154,6 +154,11 @@ struct ast_conf_member
 	// spyee pointer to whisper frame
 	struct conf_frame* whisper_frame ;
 
+	// silent frame cache
+	conf_frame* silent_frame_cache ;
+	// outgoing frame cache
+	conf_frame* outgoing_frame_cache ;
+
 	// start time
 	struct timeval time_entered ;
 
@@ -209,8 +214,8 @@ conf_frame* get_incoming_dtmf_frame( struct ast_conf_member* member ) ;
 #endif
 
 // outgoing queue
-void queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery ) ;
-conf_frame* get_outgoing_frame( struct ast_conf_member* member ) ;
+void queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery, conf_frame_type type ) ;
+conf_frame* get_outgoing_frame( struct ast_conf_member* member, conf_frame* cfr ) ;
 
 #ifdef	DTMF
 void queue_outgoing_dtmf_frame( struct ast_conf_member* member, const struct ast_frame* fr ) ;

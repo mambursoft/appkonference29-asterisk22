@@ -19,6 +19,9 @@
 #ifndef _KONFERENCE_CONF_FRAME_H
 #define _KONFERENCE_CONF_FRAME_H
 
+// frame types sent by conference thread to member threads
+typedef enum { silent = 1, listener, speaker } conf_frame_type ;
+
 //
 // includes
 //
@@ -31,6 +34,9 @@
 
 typedef struct conf_frame
 {
+	// frame type
+	conf_frame_type type ;
+
 	// frame audio data
 	struct ast_frame* fr ;
 

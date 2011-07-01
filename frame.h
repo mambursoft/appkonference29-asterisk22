@@ -37,10 +37,10 @@ conf_frame* mix_multiple_speakers( struct ast_conference* conf, conf_frame* fram
 conf_frame* mix_single_speaker( struct ast_conference* conf, conf_frame* frames_in ) ;
 
 // frame creation and deletion
-conf_frame* create_conf_frame( struct ast_conf_member* member, conf_frame* next, const struct ast_frame* fr ) ;
+conf_frame* create_conf_frame( struct ast_conf_member* member, conf_frame* next, const struct ast_frame* fr, conf_frame_type type ) ;
 conf_frame* delete_conf_frame( conf_frame* cf ) ;
 
-#define copy_conf_frame(src) create_conf_frame( src->member, NULL, src->fr )
+#define copy_conf_frame(src) create_conf_frame( src->member, NULL, src->fr, 0 )
 
 // convert frame function
 struct ast_frame* convert_frame( struct ast_trans_pvt* trans, struct ast_frame* fr ) ;
