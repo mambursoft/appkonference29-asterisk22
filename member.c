@@ -1423,7 +1423,11 @@ void queue_outgoing_frame( struct ast_conf_member* member, const struct ast_fram
 			cfr->prev = NULL ;
 			if ( member->outFrames )
 				member->outFrames->prev = cfr ;
+#if	ASTERISK == 14
 			memcpy(cfr->fr->data, fr->data, fr->datalen) ;
+#else
+			memcpy(cfr->fr->data.ptr, fr->data.ptr, fr->datalen) ;
+#endif
 		}
 		else
 		{

@@ -235,3 +235,7 @@ Changed the code to use the c language idiom for conditionals testing pointers.
 
 Changed the code to use the asterisk memory allocation routines rather than the
 c library routines directly.
+
+Changed the code to reuse outgoing conference frames which should be more
+efficient than allocating a new frame for each voice frame the conference
+thread sends to the conference members.
