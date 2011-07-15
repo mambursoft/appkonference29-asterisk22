@@ -158,6 +158,8 @@ struct ast_conf_member
 	conf_frame* silent_frame_cache ;
 	// outgoing frame cache
 	conf_frame* outgoing_frame_cache ;
+	// incoming frame cache
+	conf_frame* incoming_frame_cache ;
 
 	// start time
 	struct timeval time_entered ;

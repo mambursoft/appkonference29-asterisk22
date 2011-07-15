@@ -34,7 +34,7 @@ typedef enum { silent = 1, listener, speaker } conf_frame_type ;
 
 typedef struct conf_frame
 {
-	// frame type
+	// outgoing frame type
 	conf_frame_type type ;
 
 	// frame audio data
@@ -43,8 +43,9 @@ typedef struct conf_frame
 	// array of converted versions for listeners
 	struct ast_frame* converted[ AC_SUPPORTED_FORMATS ] ;
 
-	// pointer to the frame's owner
-	struct ast_conf_member* member ; // who sent this frame
+	// incoming: member reading frame
+	// outgoing: member sending frame
+	struct ast_conf_member* member ;
 
 	// linked-list pointers
 	struct conf_frame* next ;
