@@ -283,13 +283,13 @@ again2:
 // or requested sounds
 static int process_outgoing(struct ast_conf_member *member)
 {
-	conf_frame* cf = NULL ; // frame read from the output queue
+	conf_frame* cf ; // frame read from the output queue
 	struct ast_frame *f;
 
 	for(;;)
 	{
 		// acquire member mutex and grab a frame.
-		cf = get_outgoing_frame( member, cf ) ;
+		cf = get_outgoing_frame( member ) ;
 
                 // if there's no frames exit the loop.
 		if ( !cf )
@@ -325,6 +325,9 @@ static int process_outgoing(struct ast_conf_member *member)
 		// send the voice frame
 		ast_write( member->chan, f ) ;
 
+		// clean up frame
+		delete_conf_frame( cf ) ;
+		
 		// free sound frame
 		if ( f != realframe )
 			ast_frfree(f) ;
@@ -953,20 +956,6 @@ struct ast_conf_member* delete_member( struct ast_conf_member* member )
 	{
 		cf = delete_conf_frame( cf ) ;
 	}
-	// silent frame cache
-	cf = member->silent_frame_cache ;
-
-	while ( cf )
-	{
-		cf = delete_conf_frame( cf ) ;
-	}
-	// outgoing frame cache
-	cf = member->outgoing_frame_cache ;
-
-	while ( cf )
-	{
-		cf = delete_conf_frame( cf ) ;
-	}
 #ifdef	DTMF
 	// incoming dtmf frames
 	cf = member->inDTMFFrames ;
@@ -1221,7 +1210,7 @@ void queue_incoming_dtmf_frame( struct ast_conf_member* member, const struct ast
 	//
 
 	// ( member->inFrames may be null at this point )
-	conf_frame* cfr = create_conf_frame( member, member->inDTMFFrames, fr, 0 ) ;
+	conf_frame* cfr = create_conf_frame( member, member->inDTMFFrames, fr ) ;
 
 	if ( !cfr )
 	{
@@ -1298,7 +1287,7 @@ void queue_incoming_frame( struct ast_conf_member* member, struct ast_frame* fr 
 	//
 	// create new conf frame from passed data frame
 	//
-	conf_frame* cfr = create_conf_frame( member, member->inFrames, fr, 0 ) ;
+	conf_frame* cfr = create_conf_frame( member, member->inFrames, fr ) ;
 	if ( !cfr)
 	{
 		ast_log( LOG_ERROR, "unable to malloc conf_frame\n" ) ;
@@ -1324,46 +1313,15 @@ void queue_incoming_frame( struct ast_conf_member* member, struct ast_frame* fr 
 // outgoing frame functions
 //
 
-conf_frame* get_outgoing_frame( struct ast_conf_member *member, conf_frame *cfr )
+conf_frame* get_outgoing_frame( struct ast_conf_member *member )
 {
+	conf_frame* cfr ;
 
 	ast_mutex_lock(&member->lock);
 
-	if ( cfr )
-	{
-		if ( cfr->type == silent )
-		{
-			if (!member->silent_frame_cache)
-			{
-				member->silent_frame_cache = cfr ;
-				cfr->next = cfr->prev = NULL ;
-			}
-			else
-			{
-				cfr->next = member->silent_frame_cache ;
-				member->silent_frame_cache = cfr ;
-				cfr->prev = NULL ;
-			}
-		}
-		else
-		{
-			if (!member->outgoing_frame_cache)
-			{
-				member->outgoing_frame_cache = cfr ;
-				cfr->next = cfr->prev = NULL ;
-			}
-			else
-			{
-				cfr->next = member->outgoing_frame_cache ;
-				member->outgoing_frame_cache = cfr ;
-				cfr->prev = NULL ;
-			}
-		}
-	}
-
 	if ( member->outFramesCount > AST_CONF_MIN_QUEUE )
 	{
-		conf_frame* res = member->outFramesTail ;
+		cfr = member->outFramesTail ;
 
 		// if it's the only frame, reset the queu,
 		// else, move the second frame to the front
@@ -1383,19 +1341,19 @@ conf_frame* get_outgoing_frame( struct ast_conf_member *member, conf_frame *cfr 
 		}
 
 		// separate the conf frame from the list
-		res->next = NULL ;
-		res->prev = NULL ;
+		cfr->next = NULL ;
+		cfr->prev = NULL ;
 
 		// decriment frame count
 		member->outFramesCount-- ;
 		ast_mutex_unlock(&member->lock);
-		return res ;
+		return cfr ;
 	}
 	ast_mutex_unlock(&member->lock);
 	return NULL ;
 }
 
-void queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery, conf_frame_type type )
+void queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery )
 {
 	//
 	// we have to drop frames, so we'll drop new frames
@@ -1410,47 +1368,7 @@ void queue_outgoing_frame( struct ast_conf_member* member, const struct ast_fram
 	// create new conf frame from passed data frame
 	//
 
-	conf_frame* cfr ;
-
-	if ( type != silent )
-	{
-		// speaker or listener frame
-		if ( member->outgoing_frame_cache )
-		{
-			cfr = member->outgoing_frame_cache ;
-			member->outgoing_frame_cache = cfr->next ;
-			cfr->next = member->outFrames ;
-			cfr->prev = NULL ;
-			if ( member->outFrames )
-				member->outFrames->prev = cfr ;
-#if	ASTERISK == 14
-			memcpy(cfr->fr->data, fr->data, fr->datalen) ;
-#else
-			memcpy(cfr->fr->data.ptr, fr->data.ptr, fr->datalen) ;
-#endif
-		}
-		else
-		{
-			cfr = create_conf_frame( member, member->outFrames, fr, type ) ;
-		}
-	}
-	else
-	{
-		// silent frame
-		if ( member->silent_frame_cache )
-		{
-			cfr = member->silent_frame_cache ;
-			member->silent_frame_cache = cfr->next ;
-			cfr->next = member->outFrames ;
-			cfr->prev = NULL ;
-			if ( member->outFrames )
-				member->outFrames->prev = cfr ;
-		}
-		else
-		{
-			cfr = create_conf_frame( member, member->outFrames, fr, type ) ;
-		}
-	}
+	conf_frame* cfr = create_conf_frame( member, member->outFrames, fr ) ;
 
 	if ( !cfr )
 	{
@@ -1538,7 +1456,7 @@ void queue_outgoing_dtmf_frame( struct ast_conf_member* member, const struct ast
 	// create new conf frame from passed data frame
 	//
 
-	conf_frame* cfr = create_conf_frame( member, member->outDTMFFrames, fr, 0 ) ;
+	conf_frame* cfr = create_conf_frame( member, member->outDTMFFrames, fr ) ;
 
 	if ( !cfr )
 	{
@@ -1614,7 +1532,7 @@ void queue_frame_for_listener(
 
 		if ( qf )
 		{
-			queue_outgoing_frame( member, qf, conf->delivery_time, listener ) ;
+			queue_outgoing_frame( member, qf, conf->delivery_time ) ;
 
 			if ( member->listen_volume )
 			{
@@ -1652,7 +1570,7 @@ void queue_frame_for_speaker(
 		{
 			// frame is already in correct format, so just queue it
 
-			queue_outgoing_frame( member, qf, conf->delivery_time, speaker ) ;
+			queue_outgoing_frame( member, qf, conf->delivery_time ) ;
 		}
 		else
 		{
@@ -1673,7 +1591,7 @@ void queue_frame_for_speaker(
 			if ( qf )
 			{
 				// queue frame
-				queue_outgoing_frame( member, qf, conf->delivery_time, speaker ) ;
+				queue_outgoing_frame( member, qf, conf->delivery_time ) ;
 
 				// free frame ( the translator's copy )
 				ast_frfree( qf ) ;
@@ -1762,7 +1680,7 @@ void queue_silent_frame(
 	//
 	if ( qf )
 	{
-		queue_outgoing_frame( member, qf, conf->delivery_time, silent ) ;
+		queue_outgoing_frame( member, qf, conf->delivery_time ) ;
 	}
 	else
 	{

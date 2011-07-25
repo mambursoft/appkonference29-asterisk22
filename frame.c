@@ -290,7 +290,7 @@ conf_frame* mix_multiple_speakers(
 			// allocate a mix buffer large enough to hold a frame
 			char* speakerBuffer = ast_calloc( AST_CONF_BUFFER_SIZE, sizeof(char) ) ;
 
-			cf_sendFrames = create_conf_frame(cf_spoken->member, cf_sendFrames, NULL, 0);
+			cf_sendFrames = create_conf_frame(cf_spoken->member, cf_sendFrames, NULL);
 
 			cf_sendFrames->mixed_buffer = speakerBuffer + AST_FRIENDLY_OFFSET ;
 
@@ -321,7 +321,7 @@ conf_frame* mix_multiple_speakers(
 			char* whisperBuffer = ast_malloc( AST_CONF_BUFFER_SIZE ) ;
 			memcpy(whisperBuffer,listenerBuffer,AST_CONF_BUFFER_SIZE);
 
-			cf_sendFrames = create_conf_frame( cf_spoken->member->spy_partner, cf_sendFrames, NULL, 0 ) ;
+			cf_sendFrames = create_conf_frame( cf_spoken->member->spy_partner, cf_sendFrames, NULL ) ;
 
 			cf_sendFrames->mixed_buffer = whisperBuffer + AST_FRIENDLY_OFFSET ;
 
@@ -346,7 +346,7 @@ conf_frame* mix_multiple_speakers(
 
 	if ( listeners > 0 )
 	{
-		cf_sendFrames = create_conf_frame( NULL, cf_sendFrames, NULL, 0 ) ;
+		cf_sendFrames = create_conf_frame( NULL, cf_sendFrames, NULL ) ;
 		cf_sendFrames->mixed_buffer = listenerBuffer + AST_FRIENDLY_OFFSET ;
 		cf_sendFrames->fr = create_slinear_frame( cf_sendFrames->mixed_buffer ) ;
 
@@ -438,7 +438,7 @@ conf_frame* delete_conf_frame( conf_frame* cf )
 	return nf ;
 }
 
-conf_frame* create_conf_frame( struct ast_conf_member* member, conf_frame* next, const struct ast_frame* fr, conf_frame_type type )
+conf_frame* create_conf_frame( struct ast_conf_member* member, conf_frame* next, const struct ast_frame* fr )
 {
 	conf_frame* cf = ast_calloc( 1, sizeof( struct conf_frame ) ) ;
 
@@ -447,8 +447,6 @@ conf_frame* create_conf_frame( struct ast_conf_member* member, conf_frame* next,
 		ast_log( LOG_ERROR, "unable to allocate memory for conf frame\n" ) ;
 		return NULL ;
 	}
-
-	cf->type = type ;
 
 	cf->member = member ;
 
@@ -522,7 +520,7 @@ conf_frame* get_silent_frame( void )
 	{
 		struct ast_frame* fr = get_silent_slinear_frame() ;
 
-		static_silent_frame = create_conf_frame( NULL, NULL, fr, 0 ) ;
+		static_silent_frame = create_conf_frame( NULL, NULL, fr ) ;
 
 		if ( !static_silent_frame )
 		{
