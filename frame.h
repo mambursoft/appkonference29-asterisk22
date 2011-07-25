@@ -43,7 +43,7 @@ conf_frame* delete_conf_frame( conf_frame* cf ) ;
 #define copy_conf_frame(src) create_conf_frame( src->member, NULL, src->fr, 0 )
 
 // convert frame function
-struct ast_frame* convert_frame( struct ast_trans_pvt* trans, struct ast_frame* fr, int consume ) ;
+struct ast_frame* convert_frame( struct ast_trans_pvt* trans, struct ast_frame* fr ) ;
 
 // slinear frame functions
 struct ast_frame* create_slinear_frame( char* data ) ;

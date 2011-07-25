@@ -238,8 +238,4 @@ c library routines directly.
 
 Changed the code to reuse outgoing conference frames which should be more
 efficient than allocating a new frame for each voice frame the conference
-thread sends to conference members.
-
-Changed the code to reuse incoming conference frames which should be more
-efficient than allocating a new frame for each voice frame the conference
-thread receives from conference members.
+thread sends to the conference members.

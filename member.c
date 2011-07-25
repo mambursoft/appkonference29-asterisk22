@@ -967,13 +967,6 @@ struct ast_conf_member* delete_member( struct ast_conf_member* member )
 	{
 		cf = delete_conf_frame( cf ) ;
 	}
-	// incoming frame cache
-	cf = member->incoming_frame_cache ;
-
-	while ( cf )
-	{
-		cf = delete_conf_frame( cf ) ;
-	}
 #ifdef	DTMF
 	// incoming dtmf frames
 	cf = member->inDTMFFrames ;
@@ -1305,27 +1298,7 @@ void queue_incoming_frame( struct ast_conf_member* member, struct ast_frame* fr 
 	//
 	// create new conf frame from passed data frame
 	//
-	conf_frame* cfr = NULL ;
-	
-	if ( member->incoming_frame_cache )
-	{
-		cfr = member->incoming_frame_cache ;
-		member->incoming_frame_cache = cfr->next ;
-		cfr->next = member->inFrames ;
-		cfr->prev = NULL ;
-		if (member->inFrames )
-			member->inFrames->prev = cfr ;
-#if	ASTERISK == 14
-		memcpy(cfr->fr->data, fr->data, fr->datalen) ;
-#else
-		memcpy(cfr->fr->data.ptr, fr->data.ptr, fr->datalen) ;
-#endif
-	}
-	else
-	{
-		cfr = create_conf_frame( member, member->inFrames, fr, 0 ) ;
-	}
-
+	conf_frame* cfr = create_conf_frame( member, member->inFrames, fr, 0 ) ;
 	if ( !cfr)
 	{
 		ast_log( LOG_ERROR, "unable to malloc conf_frame\n" ) ;
@@ -1626,7 +1599,7 @@ void queue_frame_for_listener(
 			}
 
 			// convert using the conference's translation path
-			qf = convert_frame( conf->from_slinear_paths[ member->write_format_index ], qf, 1 ) ;
+			qf = convert_frame( conf->from_slinear_paths[ member->write_format_index ], qf ) ;
 
 			// store the converted frame
 			// ( the frame will be free'd next time through the loop )
@@ -1695,7 +1668,7 @@ void queue_frame_for_speaker(
 			// convert frame to member's write format
 			// ( calling ast_frdup() to make sure the translator's copy sticks around )
 			//
-			qf = convert_frame( member->from_slinear, qf, 1 ) ;
+			qf = convert_frame( member->from_slinear, qf ) ;
 
 			if ( qf )
 			{
@@ -1863,6 +1836,9 @@ void member_process_spoken_frames(struct ast_conference* conf,
 
 	// acquire member mutex
 	ast_mutex_lock( &member->lock ) ;
+
+	// reset speaker frame
+	member->speaker_frame = NULL ;
 
 	// tell member the number of frames we're going to need ( used to help dropping algorithm )
 	member->inFramesNeeded = ( time_diff / AST_CONF_FRAME_INTERVAL ) - 1 ;

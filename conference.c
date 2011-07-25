@@ -61,7 +61,9 @@ static void conference_exec( struct ast_conference *conf )
 {
 #endif
 	struct ast_conf_member *member;
+#if	DTMF
 	struct conf_frame *cfr;
+#endif
 #ifdef	DTMF
 	struct ast_conf_member *dtmf_source_member;
 #endif
@@ -229,9 +231,6 @@ static void conference_exec( struct ast_conference *conf )
 			// loop over member list to retrieve queued frames
 			while ( member )
 			{
-				// reset speaker frame
-				member->speaker_frame = NULL ;
-
 				member_process_spoken_frames(conf,member,&spoken_frames,time_diff,
 							     &listener_count, &speaker_count);
 
@@ -292,48 +291,8 @@ static void conference_exec( struct ast_conference *conf )
 			// clean up send frames
 			while ( send_frames )
 			{
-				if ( send_frames == conf->listener_frame && !send_frames->mixed_buffer )
-				{
-					// reuse spoken frame
-					cfr  = send_frames ;
-					send_frames = send_frames->next ;
-					member = cfr->member ;
-
-					ast_frfree ( cfr->fr ) ;
-					cfr->fr = cfr->converted[ member->read_format_index ] ;
-					cfr->converted[ member->read_format_index ] = NULL ;
-
-					int c ;
-					for ( c = 0 ; c < AC_SUPPORTED_FORMATS ; ++c )
-					{
-						if ( cfr->converted[ c ] )
-						{
-							ast_frfree( cfr->converted[ c ] ) ;
-							cfr->converted[ c ] = NULL ;
-						}
-					}
-
-					ast_mutex_lock( &member->lock ) ;
-
-					if ( !member->incoming_frame_cache )
-					{
-						member->incoming_frame_cache = cfr ;
-						cfr->next = cfr->prev = NULL ;
-					}
-					else
-					{
-						cfr->next =  member->incoming_frame_cache ;
-						member->incoming_frame_cache = cfr ;
-						cfr->prev = NULL ;
-					}
-
-					ast_mutex_unlock( &member->lock ) ;
-				}
-				else
-				{
-					// delete the frame
-					send_frames = delete_conf_frame( send_frames ) ;
-				}
+				// delete the frame
+				send_frames = delete_conf_frame( send_frames ) ;
 			}
 
 			// release conference lock

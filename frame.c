@@ -114,11 +114,11 @@ conf_frame* mix_frames( struct ast_conference* conf, conf_frame* frames_in, int 
 	{
 		struct ast_conf_member* mbr = NULL ;
 
-		// save orignal frame to converted array so speaker doesn't need to re-encode it
-		frames_in->converted[ frames_in->member->read_format_index ] = frames_in->fr ;
+		// copy orignal frame to converted array so speaker doesn't need to re-encode it
+		frames_in->converted[ frames_in->member->read_format_index ] = ast_frdup( frames_in->fr ) ;
 
 		// convert frame to slinear and adjust volume; otherwise, drop both frames
-		if (!(frames_in->fr = convert_frame( frames_in->member->to_slinear, frames_in->fr, 0)))
+		if (!(frames_in->fr = convert_frame( frames_in->member->to_slinear, frames_in->fr)))
 		{
 			ast_log( LOG_WARNING, "mix_frames: unable to convert frame to slinear\n" ) ;
 			return NULL ;
@@ -128,11 +128,11 @@ conf_frame* mix_frames( struct ast_conference* conf, conf_frame* frames_in, int 
 			ast_frame_adjust_volume(frames_in->fr, frames_in->talk_volume);
 		}
 
-		// save orignal frame to converted array so speakers doesn't need to re-encode it
-		frames_in->next->converted[ frames_in->next->member->read_format_index ] = frames_in->next->fr ;
+		// copy orignal frame to converted array so speakers doesn't need to re-encode it
+		frames_in->next->converted[ frames_in->next->member->read_format_index ] = ast_frdup( frames_in->next->fr ) ;
 
 		// convert frame to slinear and adjust volume; otherwise, drop both frames
-		if (!(frames_in->next->fr = convert_frame( frames_in->next->member->to_slinear, frames_in->next->fr, 0)))
+		if (!(frames_in->next->fr = convert_frame( frames_in->next->member->to_slinear, frames_in->next->fr)))
 		{
 			ast_log( LOG_WARNING, "mix_frames: unable to convert frame to slinear\n" ) ;
 			return NULL ;
@@ -165,11 +165,11 @@ conf_frame* mix_single_speaker( struct ast_conference* conf, conf_frame* frames_
 	// 'mix' the frame
 	//
 
-	// save orignal frame to converted array so listeners don't need to re-encode it
-	frames_in->converted[ frames_in->member->read_format_index ] = frames_in->fr ;
+	// copy orignal frame to converted array so listeners don't need to re-encode it
+	frames_in->converted[ frames_in->member->read_format_index ] = ast_frdup( frames_in->fr ) ;
 
 	// convert frame to slinear; otherwise, drop the frame
-	if (!(frames_in->fr = convert_frame( frames_in->member->to_slinear, frames_in->fr, 0)))
+	if (!(frames_in->fr = convert_frame( frames_in->member->to_slinear, frames_in->fr)))
 	{
 		ast_log( LOG_WARNING, "mix_single_speaker: unable to convert frame to slinear\n" ) ;
 		return NULL ;
@@ -183,7 +183,9 @@ conf_frame* mix_single_speaker( struct ast_conference* conf, conf_frame* frames_
 	if (!frames_in->member->spy_partner)
 	{
 		// speaker is neither a spyee nor a spyer
-		// set the conference listener frame
+		// set the frame's member to null ( i.e. all listeners )
+		frames_in->member = NULL ;
+
 		conf->listener_frame = frames_in ;
 	}
 	else
@@ -208,7 +210,8 @@ conf_frame* mix_single_speaker( struct ast_conference* conf, conf_frame* frames_
 				spy_frame->member->speaker_frame = spy_frame ;
 			}
 
-			// set the conference listener frame
+			frames_in->member = NULL ;
+
 			conf->listener_frame = frames_in ;
 		}
 		else
@@ -241,10 +244,8 @@ conf_frame* mix_multiple_speakers(
 
 	while ( cf_spoken )
 	{
-		// save orignal frame to converted array so speaker can reuse it
-		cf_spoken->converted[ cf_spoken->member->read_format_index ] = cf_spoken->fr ;
 
-		if ( !(cf_spoken->fr = convert_frame( cf_spoken->member->to_slinear, cf_spoken->fr, 0)) )
+		if ( !(cf_spoken->fr = convert_frame( cf_spoken->member->to_slinear, cf_spoken->fr)) )
 		{
 			ast_log( LOG_ERROR, "mix_multiple_speakers: unable to convert frame to slinear\n" ) ;
 			return NULL;
@@ -370,34 +371,8 @@ conf_frame* mix_multiple_speakers(
 
 		if ( !spy_partner || cf_spoken->member->spyer )
 		{
-			// reuse the incoming frame
-			conf_frame *reuse_frame = cf_spoken ;
-			struct ast_conf_member *reuse_member = cf_spoken->member ;
-
-			cf_spoken = cf_spoken->next ;
-			if ( cf_spoken )
-				cf_spoken->prev = NULL;
-
-			ast_frfree ( reuse_frame->fr ) ;
-
-			reuse_frame->fr = reuse_frame->converted[ reuse_member->read_format_index ] ;
-			reuse_frame->converted[ reuse_member->read_format_index ] = NULL ;
-
-			ast_mutex_lock(&reuse_member->lock);
-
-			if ( !reuse_member->incoming_frame_cache )
-			{
-				reuse_member->incoming_frame_cache = reuse_frame ;
-				reuse_frame->next = reuse_frame->prev = NULL ;
-			}
-			else
-			{
-				reuse_frame->next = reuse_member->incoming_frame_cache ;
-				reuse_member->incoming_frame_cache = reuse_frame ;
-				reuse_frame->prev = NULL ;
-			}
-
-			ast_mutex_unlock(&reuse_member->lock);
+			// delete the frame
+			cf_spoken = delete_conf_frame( cf_spoken ) ;
 		}
 		else
 		{
@@ -425,15 +400,15 @@ conf_frame* mix_multiple_speakers(
 	return cf_sendFrames ;
 }
 
-struct ast_frame* convert_frame( struct ast_trans_pvt* trans, struct ast_frame* fr, int consume )
+struct ast_frame* convert_frame( struct ast_trans_pvt* trans, struct ast_frame* fr )
 {
 	if ( !trans )
 	{
-		return consume ? fr : ast_frdup( fr ) ;
+		return fr ;
 	}
 
 	// convert the frame
-	struct ast_frame* translated_frame = ast_translate( trans, fr, consume ) ;
+	struct ast_frame* translated_frame = ast_translate( trans, fr, 1 ) ;
 
 	// return the translated frame
 	return translated_frame ;
