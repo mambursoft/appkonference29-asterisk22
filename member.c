@@ -956,6 +956,11 @@ struct ast_conf_member* delete_member( struct ast_conf_member* member )
 	{
 		cf = delete_conf_frame( cf ) ;
 	}
+	// speaker buffer
+	if ( member->speakerBuffer )
+	{
+		free( member->speakerBuffer ) ;
+	}
 #ifdef	DTMF
 	// incoming dtmf frames
 	cf = member->inDTMFFrames ;

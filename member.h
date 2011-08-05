@@ -180,6 +180,9 @@ struct ast_conf_member
 
 	// For playing sounds
 	struct ast_conf_soundq *soundq;
+
+	// speaker mix buffer
+	char *speakerBuffer;
 } ;
 
 //

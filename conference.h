@@ -85,6 +85,13 @@ struct ast_conference
 
 	// flag indicating we should remove this member
 	char kick_flag ;
+
+	// listener mix buffer
+#ifdef	VECTORS
+	char listenerBuffer[ AST_CONF_BUFFER_SIZE ] __attribute((aligned(16))) ;
+#else
+	char listenerBuffer[ AST_CONF_BUFFER_SIZE ] ;
+#endif
 } ;
 
 //

@@ -183,9 +183,8 @@ conf_frame* mix_single_speaker( struct ast_conference* conf, conf_frame* frames_
 	if (!frames_in->member->spy_partner)
 	{
 		// speaker is neither a spyee nor a spyer
-		// set the frame's member to null ( i.e. all listeners )
-		frames_in->member = NULL ;
 
+		// set the conference listener frame
 		conf->listener_frame = frames_in ;
 	}
 	else
@@ -210,8 +209,7 @@ conf_frame* mix_single_speaker( struct ast_conference* conf, conf_frame* frames_
 				spy_frame->member->speaker_frame = spy_frame ;
 			}
 
-			frames_in->member = NULL ;
-
+			// set the conference listener frame
 			conf->listener_frame = frames_in ;
 		}
 		else
@@ -239,8 +237,8 @@ conf_frame* mix_multiple_speakers(
 	// pointer to the spoken frames list
 	conf_frame* cf_spoken = frames_in ;
 
-	// allocate a mix buffer large enough to hold a frame
-	char* listenerBuffer = ast_calloc( AST_CONF_BUFFER_SIZE, sizeof(char) ) ;
+	// clear listener mix buffer
+	memset(conf->listenerBuffer,0,AST_CONF_BUFFER_SIZE) ;
 
 	while ( cf_spoken )
 	{
@@ -260,9 +258,9 @@ conf_frame* mix_multiple_speakers(
 		{
 			// add the speaker's voice
 #if	ASTERISK == 14
-			mix_slinear_frames( listenerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data, AST_CONF_BLOCK_SAMPLES);
+			mix_slinear_frames( conf->listenerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data, AST_CONF_BLOCK_SAMPLES);
 #else
-			mix_slinear_frames( listenerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
+			mix_slinear_frames( conf->listenerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
 #endif
 		} 
 		else
@@ -287,52 +285,63 @@ conf_frame* mix_multiple_speakers(
 	{
 		if ( !cf_spoken->member->spyer )
 		{
-			// allocate a mix buffer large enough to hold a frame
-			char* speakerBuffer = ast_calloc( AST_CONF_BUFFER_SIZE, sizeof(char) ) ;
+			// allocate/reuse mix buffer for speaker
+			if ( !cf_spoken->member->speakerBuffer )
+				cf_spoken->member->speakerBuffer = ast_malloc( AST_CONF_BUFFER_SIZE ) ;
+
+			// clear speaker buffer
+			memset(cf_spoken->member->speakerBuffer,0,AST_CONF_BUFFER_SIZE);
 
 			cf_sendFrames = create_conf_frame(cf_spoken->member, cf_sendFrames, NULL);
 
-			cf_sendFrames->mixed_buffer = speakerBuffer + AST_FRIENDLY_OFFSET ;
+			cf_sendFrames->mixed_buffer = cf_spoken->member->speakerBuffer + AST_FRIENDLY_OFFSET ;
 
 			// subtract the speaker's voice
 #if	ASTERISK == 14
-			unmix_slinear_frame(cf_sendFrames->mixed_buffer, listenerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data, AST_CONF_BLOCK_SAMPLES);
+			unmix_slinear_frame(cf_sendFrames->mixed_buffer, conf->listenerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data, AST_CONF_BLOCK_SAMPLES);
 #else
-			unmix_slinear_frame(cf_sendFrames->mixed_buffer, listenerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
+			unmix_slinear_frame(cf_sendFrames->mixed_buffer, conf->listenerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
 #endif
 
 			if ( cf_spoken->member->spy_partner && cf_spoken->member->spy_partner->local_speaking_state )
 			{
 				// add whisper voice
 #if	ASTERISK == 14
-				mix_slinear_frames( cf_sendFrames->mixed_buffer, cf_spoken->member->whisper_frame->fr->data, AST_CONF_BLOCK_SAMPLES);
+				mix_slinear_frames(cf_sendFrames->mixed_buffer, cf_spoken->member->whisper_frame->fr->data, AST_CONF_BLOCK_SAMPLES);
 #else
-				mix_slinear_frames( cf_sendFrames->mixed_buffer, cf_spoken->member->whisper_frame->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
+				mix_slinear_frames(cf_sendFrames->mixed_buffer, cf_spoken->member->whisper_frame->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
 #endif
 			}
 
 			cf_sendFrames->fr = create_slinear_frame( cf_sendFrames->mixed_buffer ) ;
 
+			cf_sendFrames->fr->mallocd &= ~AST_MALLOCD_DATA ;
+
 			cf_sendFrames->member->speaker_frame = cf_sendFrames ;
 		}
 		else if ( !cf_spoken->member->spy_partner->local_speaking_state )
 		{
-			// allocate a mix buffer large enough to hold a frame
-			char* whisperBuffer = ast_malloc( AST_CONF_BUFFER_SIZE ) ;
-			memcpy(whisperBuffer,listenerBuffer,AST_CONF_BUFFER_SIZE);
+			// allocate/reuse a mix buffer for whisper
+			if ( !cf_spoken->member->speakerBuffer )
+				cf_spoken->member->speakerBuffer = ast_malloc( AST_CONF_BUFFER_SIZE ) ;
+
+			// copy listener buffer for whisper
+			memcpy(cf_spoken->member->speakerBuffer,conf->listenerBuffer,AST_CONF_BUFFER_SIZE);
 
 			cf_sendFrames = create_conf_frame( cf_spoken->member->spy_partner, cf_sendFrames, NULL ) ;
 
-			cf_sendFrames->mixed_buffer = whisperBuffer + AST_FRIENDLY_OFFSET ;
+			cf_sendFrames->mixed_buffer = cf_spoken->member->speakerBuffer + AST_FRIENDLY_OFFSET ;
 
 			// add the whisper voice
 #if	ASTERISK == 14
-			mix_slinear_frames( whisperBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data, AST_CONF_BLOCK_SAMPLES);
+			mix_slinear_frames(cf_spoken->member->speakerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data, AST_CONF_BLOCK_SAMPLES);
 #else
-			mix_slinear_frames( whisperBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
+			mix_slinear_frames(cf_spoken->member->speakerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
 #endif
 
 			cf_sendFrames->fr = create_slinear_frame( cf_sendFrames->mixed_buffer ) ;
+
+			cf_sendFrames->fr->mallocd &= ~AST_MALLOCD_DATA ;
 
 			cf_sendFrames->member->speaker_frame = cf_sendFrames ;
 		}
@@ -347,14 +356,13 @@ conf_frame* mix_multiple_speakers(
 	if ( listeners > 0 )
 	{
 		cf_sendFrames = create_conf_frame( NULL, cf_sendFrames, NULL ) ;
-		cf_sendFrames->mixed_buffer = listenerBuffer + AST_FRIENDLY_OFFSET ;
+		cf_sendFrames->mixed_buffer = conf->listenerBuffer + AST_FRIENDLY_OFFSET ;
 		cf_sendFrames->fr = create_slinear_frame( cf_sendFrames->mixed_buffer ) ;
 
+		cf_sendFrames->fr->mallocd &= ~AST_MALLOCD_DATA ;
+
+		// set the conference listener frame
 		conf->listener_frame = cf_sendFrames ;
-	}
-	else
-	{
-		free(listenerBuffer);
 	}
 
 	//
@@ -420,7 +428,7 @@ conf_frame* delete_conf_frame( conf_frame* cf )
 
 	if ( cf->fr )
 	{
-		ast_frfree( cf->fr ) ;
+		ast_frame_free( cf->fr, !cf->mixed_buffer ) ;
 	}
 
 	for ( c = 0 ; c < AC_SUPPORTED_FORMATS ; ++c )
