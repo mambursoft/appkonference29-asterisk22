@@ -725,10 +725,10 @@ struct ast_conf_member* create_member( struct ast_channel *chan, const char* dat
 	for ( i = 0 ; i < strlen( flags ) ; ++i )
 	{
 		{
-			// allowed flags are C, c, L, l, V, D, A, C, X, R, T, t, M, S, z, o, F, H
-			// mute/no_recv options
+			// flags are L, l, V, D, A, R, M, x, a, T, H
 			switch ( flags[i] )
 			{
+				// mute/no_recv options
 			case 'L':
 				member->mute_audio = 1;
 				break ;
@@ -1506,23 +1506,25 @@ void queue_frame_for_listener(
 		// convert ( and store ) the frame
 		if ( !qf )
 		{
-			// make a copy of the slinear version of the frame
-			qf = ast_frdup( frame->fr ) ;
-
-			if (member->listen_volume )
+			if (!member->listen_volume )
 			{
+				qf = frame->fr ;
+			}
+			else
+			{
+				// make a copy of the slinear version of the frame
+				if ( !(qf = ast_frdup( frame->fr ))  )
+				{
+					ast_log( LOG_WARNING, "unable to duplicate frame\n" ) ;
+					queue_silent_frame( conf, member ) ;
+					return ;
+				}
+
 				ast_frame_adjust_volume(qf, member->listen_volume);
 			}
 
-			if ( !qf  )
-			{
-				ast_log( LOG_WARNING, "unable to duplicate frame\n" ) ;
-				queue_silent_frame( conf, member ) ;
-				return ;
-			}
-
 			// convert using the conference's translation path
-			qf = convert_frame( conf->from_slinear_paths[ member->write_format_index ], qf ) ;
+			qf = convert_frame( conf->from_slinear_paths[ member->write_format_index ], qf, member->listen_volume ) ;
 
 			// store the converted frame
 			// ( the frame will be free'd next time through the loop )
@@ -1530,7 +1532,7 @@ void queue_frame_for_listener(
 			{
 				if (frame->converted[ member->write_format_index ])
 					ast_frfree (frame->converted[ member->write_format_index ]);
-				frame->converted[ member->write_format_index ] = qf ;
+				frame->converted[ member->write_format_index ] = conf->from_slinear_paths[ member->write_format_index ] ? qf : ast_frdup(qf) ;
 				frame->talk_volume = 0;
 			}
 		}
@@ -1542,7 +1544,8 @@ void queue_frame_for_listener(
 			if ( member->listen_volume )
 			{
 				// free frame ( the translator's copy )
-				ast_frfree( qf ) ;
+				if (conf->from_slinear_paths[ member->write_format_index ])
+					ast_frfree( qf ) ;
 			}
 		}
 		else
@@ -1579,19 +1582,15 @@ void queue_frame_for_speaker(
 		}
 		else
 		{
-			// make a copy of the slinear version of the frame
-			qf = ast_frdup( frame->fr ) ;
-
 			if (member->listen_volume )
 			{
-				ast_frame_adjust_volume(qf, member->listen_volume);
+				ast_frame_adjust_volume(frame->fr, member->listen_volume);
 			}
 
 			//
 			// convert frame to member's write format
-			// ( calling ast_frdup() to make sure the translator's copy sticks around )
 			//
-			qf = convert_frame( member->from_slinear, qf ) ;
+			qf = convert_frame( member->from_slinear, frame->fr, 0 ) ;
 
 			if ( qf )
 			{
@@ -1599,7 +1598,8 @@ void queue_frame_for_speaker(
 				queue_outgoing_frame( member, qf, conf->delivery_time ) ;
 
 				// free frame ( the translator's copy )
-				ast_frfree( qf ) ;
+				if (member->from_slinear)
+					ast_frfree( qf ) ;
 			}
 			else
 			{

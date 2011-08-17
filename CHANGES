@@ -238,3 +238,6 @@ c library routines directly.
 
 Reuse speaker and listener mix buffers. This should be more efficient than
 allocating/freeing them every time voice frames are mixed.
+
+Remove unnecessary calls to ast_frdup from queue frame for speaker and queue
+frame for speaker routines.

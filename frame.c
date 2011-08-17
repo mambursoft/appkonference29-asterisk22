@@ -118,7 +118,7 @@ conf_frame* mix_frames( struct ast_conference* conf, conf_frame* frames_in, int 
 		frames_in->converted[ frames_in->member->read_format_index ] = ast_frdup( frames_in->fr ) ;
 
 		// convert frame to slinear and adjust volume; otherwise, drop both frames
-		if (!(frames_in->fr = convert_frame( frames_in->member->to_slinear, frames_in->fr)))
+		if (!(frames_in->fr = convert_frame( frames_in->member->to_slinear, frames_in->fr, 1)))
 		{
 			ast_log( LOG_WARNING, "mix_frames: unable to convert frame to slinear\n" ) ;
 			return NULL ;
@@ -132,7 +132,7 @@ conf_frame* mix_frames( struct ast_conference* conf, conf_frame* frames_in, int 
 		frames_in->next->converted[ frames_in->next->member->read_format_index ] = ast_frdup( frames_in->next->fr ) ;
 
 		// convert frame to slinear and adjust volume; otherwise, drop both frames
-		if (!(frames_in->next->fr = convert_frame( frames_in->next->member->to_slinear, frames_in->next->fr)))
+		if (!(frames_in->next->fr = convert_frame( frames_in->next->member->to_slinear, frames_in->next->fr, 1)))
 		{
 			ast_log( LOG_WARNING, "mix_frames: unable to convert frame to slinear\n" ) ;
 			return NULL ;
@@ -169,7 +169,7 @@ conf_frame* mix_single_speaker( struct ast_conference* conf, conf_frame* frames_
 	frames_in->converted[ frames_in->member->read_format_index ] = ast_frdup( frames_in->fr ) ;
 
 	// convert frame to slinear; otherwise, drop the frame
-	if (!(frames_in->fr = convert_frame( frames_in->member->to_slinear, frames_in->fr)))
+	if (!(frames_in->fr = convert_frame( frames_in->member->to_slinear, frames_in->fr, 1)))
 	{
 		ast_log( LOG_WARNING, "mix_single_speaker: unable to convert frame to slinear\n" ) ;
 		return NULL ;
@@ -243,7 +243,7 @@ conf_frame* mix_multiple_speakers(
 	while ( cf_spoken )
 	{
 
-		if ( !(cf_spoken->fr = convert_frame( cf_spoken->member->to_slinear, cf_spoken->fr)) )
+		if ( !(cf_spoken->fr = convert_frame( cf_spoken->member->to_slinear, cf_spoken->fr, 1)) )
 		{
 			ast_log( LOG_ERROR, "mix_multiple_speakers: unable to convert frame to slinear\n" ) ;
 			return NULL;
@@ -408,7 +408,7 @@ conf_frame* mix_multiple_speakers(
 	return cf_sendFrames ;
 }
 
-struct ast_frame* convert_frame( struct ast_trans_pvt* trans, struct ast_frame* fr )
+struct ast_frame* convert_frame( struct ast_trans_pvt* trans, struct ast_frame* fr, int consume )
 {
 	if ( !trans )
 	{
@@ -416,7 +416,7 @@ struct ast_frame* convert_frame( struct ast_trans_pvt* trans, struct ast_frame* 
 	}
 
 	// convert the frame
-	struct ast_frame* translated_frame = ast_translate( trans, fr, 1 ) ;
+	struct ast_frame* translated_frame = ast_translate( trans, fr, consume ) ;
 
 	// return the translated frame
 	return translated_frame ;
