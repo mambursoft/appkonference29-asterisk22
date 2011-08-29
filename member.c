@@ -1530,9 +1530,9 @@ void queue_frame_for_listener(
 			// ( the frame will be free'd next time through the loop )
 			if (!member->listen_volume)
 			{
-				if (frame->converted[ member->write_format_index ])
+				if ( frame->converted[ member->write_format_index ] && conf->from_slinear_paths[ member->write_format_index ] )
 					ast_frfree (frame->converted[ member->write_format_index ]);
-				frame->converted[ member->write_format_index ] = conf->from_slinear_paths[ member->write_format_index ] ? qf : ast_frdup(qf) ;
+				frame->converted[ member->write_format_index ] = qf ;
 				frame->talk_volume = 0;
 			}
 		}

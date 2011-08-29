@@ -241,3 +241,5 @@ allocating/freeing them every time voice frames are mixed.
 
 Remove unnecessary calls to ast_frdup from queue frame for speaker and queue
 frame for speaker routines.
+
+Remove unnecessary calls to ast_frdup from frame mixing routines.

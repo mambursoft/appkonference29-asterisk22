@@ -115,10 +115,10 @@ conf_frame* mix_frames( struct ast_conference* conf, conf_frame* frames_in, int 
 		struct ast_conf_member* mbr = NULL ;
 
 		// copy orignal frame to converted array so speaker doesn't need to re-encode it
-		frames_in->converted[ frames_in->member->read_format_index ] = ast_frdup( frames_in->fr ) ;
+		frames_in->converted[ frames_in->member->read_format_index ] = frames_in->fr ;
 
 		// convert frame to slinear and adjust volume; otherwise, drop both frames
-		if (!(frames_in->fr = convert_frame( frames_in->member->to_slinear, frames_in->fr, 1)))
+		if (!(frames_in->fr = convert_frame( frames_in->member->to_slinear, frames_in->fr, 0)))
 		{
 			ast_log( LOG_WARNING, "mix_frames: unable to convert frame to slinear\n" ) ;
 			return NULL ;
@@ -129,10 +129,10 @@ conf_frame* mix_frames( struct ast_conference* conf, conf_frame* frames_in, int 
 		}
 
 		// copy orignal frame to converted array so speakers doesn't need to re-encode it
-		frames_in->next->converted[ frames_in->next->member->read_format_index ] = ast_frdup( frames_in->next->fr ) ;
+		frames_in->next->converted[ frames_in->next->member->read_format_index ] = frames_in->next->fr ;
 
 		// convert frame to slinear and adjust volume; otherwise, drop both frames
-		if (!(frames_in->next->fr = convert_frame( frames_in->next->member->to_slinear, frames_in->next->fr, 1)))
+		if (!(frames_in->next->fr = convert_frame( frames_in->next->member->to_slinear, frames_in->next->fr, 0)))
 		{
 			ast_log( LOG_WARNING, "mix_frames: unable to convert frame to slinear\n" ) ;
 			return NULL ;
@@ -166,10 +166,10 @@ conf_frame* mix_single_speaker( struct ast_conference* conf, conf_frame* frames_
 	//
 
 	// copy orignal frame to converted array so listeners don't need to re-encode it
-	frames_in->converted[ frames_in->member->read_format_index ] = ast_frdup( frames_in->fr ) ;
+	frames_in->converted[ frames_in->member->read_format_index ] = frames_in->fr ;
 
 	// convert frame to slinear; otherwise, drop the frame
-	if (!(frames_in->fr = convert_frame( frames_in->member->to_slinear, frames_in->fr, 1)))
+	if (!(frames_in->fr = convert_frame( frames_in->member->to_slinear, frames_in->fr, 0)))
 	{
 		ast_log( LOG_WARNING, "mix_single_speaker: unable to convert frame to slinear\n" ) ;
 		return NULL ;
@@ -204,7 +204,8 @@ conf_frame* mix_single_speaker( struct ast_conference* conf, conf_frame* frames_
 				spy_frame->talk_volume = frames_in->talk_volume;
 
 				spy_frame->converted[ frames_in->member->read_format_index ]
-					= ast_frdup( frames_in->converted[ frames_in->member->read_format_index ] ) ;
+					= !frames_in->member->to_slinear ? spy_frame->fr :
+						ast_frdup( frames_in->converted[ frames_in->member->read_format_index ] ) ; 
 
 				spy_frame->member->speaker_frame = spy_frame ;
 			}
@@ -242,8 +243,10 @@ conf_frame* mix_multiple_speakers(
 
 	while ( cf_spoken )
 	{
+		// copy orignal frame to converted array so spyers don't need to re-encode it
+		cf_spoken->converted[ cf_spoken->member->read_format_index ] = cf_spoken->fr ;
 
-		if ( !(cf_spoken->fr = convert_frame( cf_spoken->member->to_slinear, cf_spoken->fr, 1)) )
+		if ( !(cf_spoken->fr = convert_frame( cf_spoken->member->to_slinear, cf_spoken->fr, 0)) )
 		{
 			ast_log( LOG_ERROR, "mix_multiple_speakers: unable to convert frame to slinear\n" ) ;
 			return NULL;
@@ -431,7 +434,7 @@ conf_frame* delete_conf_frame( conf_frame* cf )
 		ast_frame_free( cf->fr, !cf->mixed_buffer ) ;
 	}
 
-	for ( c = 0 ; c < AC_SUPPORTED_FORMATS ; ++c )
+	for ( c = 1 ; c < AC_SUPPORTED_FORMATS ; ++c )
 	{
 		if ( cf->converted[ c ] )
 		{
@@ -528,16 +531,14 @@ conf_frame* get_silent_frame( void )
 	{
 		struct ast_frame* fr = get_silent_slinear_frame() ;
 
-		static_silent_frame = create_conf_frame( NULL, NULL, fr ) ;
-
-		if ( !static_silent_frame )
-		{
-			ast_log( LOG_WARNING, "unable to create cached silent frame\n" ) ;
+		if ( !fr )
 			return NULL ;
-		}
+
+		if ( !(static_silent_frame = create_conf_frame( NULL, NULL, 0 )) )
+			return NULL ;
 
 		// init the 'converted' slinear silent frame
-		static_silent_frame->converted[ AC_SLINEAR_INDEX ] = get_silent_slinear_frame() ;
+		static_silent_frame->fr = static_silent_frame->converted[ AC_SLINEAR_INDEX ] = fr ;
 	}
 
 	return static_silent_frame ;
@@ -551,6 +552,13 @@ struct ast_frame* get_silent_slinear_frame( void )
 	if ( !f )
 	{
 		char* data = ast_malloc( AST_CONF_BUFFER_SIZE ) ;
+
+		if ( !data )
+		{
+			ast_log( LOG_WARNING, "unable to create cached silent frame data buffer\n" ) ;
+			return NULL ;
+		}
+
 		memset( data, 0x0, AST_CONF_BUFFER_SIZE ) ;
 		f = create_slinear_frame( data + AST_FRIENDLY_OFFSET ) ;
 	}
