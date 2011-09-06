@@ -489,6 +489,8 @@ static struct ast_conference* create_conf( char* name, struct ast_conf_member* m
 	conf->memberlast = NULL ;
 
 	conf->membercount = 0 ;
+	conf->moderators = 0 ;
+
 	conf->conference_thread = -1 ;
 
 	conf->kick_flag = 0 ;
