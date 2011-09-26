@@ -87,9 +87,6 @@ char *conference_volume(struct ast_cli_entry *, int, struct ast_cli_args *) ;
 
 char *conference_end(struct ast_cli_entry *, int, struct ast_cli_args *) ;
 
-char *conference_drive(struct ast_cli_entry *, int, struct ast_cli_args *) ;
-char *conference_drivechannel(struct ast_cli_entry *, int, struct ast_cli_args *);
-
 #endif
 
 void register_conference_cli( void ) ;
