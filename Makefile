@@ -55,9 +55,6 @@ CONFERENCE_TABLE_SIZE ?= 199
 # schedule conference threads fifo ( 0 == OFF, 1 == ON )
 REALTIME ?= 1
 
-# turn app_konference dtmf on of off ( 0 == OFF, 1 == ON )
-DTMF ?= 0
-
 # 0 = OFF 1 = astdsp 2 = speex
 SILDET := 2
 
@@ -139,10 +136,6 @@ endif
 
 ifeq ($(REALTIME), 1)
 CPPFLAGS += -DREALTIME
-endif
-
-ifeq ($(DTMF), 1)
-CPPFLAGS += -DDTMF
 endif
 
 #

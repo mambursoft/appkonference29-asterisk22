@@ -73,26 +73,7 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 				) ;
 
 		}
-#ifdef	DTMF
-		if (!member->mute_audio &&
-			!member->dtmf_relay)
-		{
-			// relay this to the listening channels
-			queue_incoming_dtmf_frame( member, f );
-		}
-#endif
 	}
-#ifdef	DTMF
-	else if (f->frametype == AST_FRAME_DTMF_BEGIN)
-	{
-		if (!member->mute_audio &&
-			!member->dtmf_relay)
-		{
-			// relay this to the listening channels
-			queue_incoming_dtmf_frame( member, f );
-		}
-	}
-#endif
 	if ((f->frametype == AST_FRAME_VOICE
 			&& (member->mute_audio == 1
 				|| member->muted == 1
@@ -336,27 +317,6 @@ static int process_outgoing(struct ast_conf_member *member)
 			return 1;
 
 	}
-#ifdef	DTMF
-        // Do the same for dtmf, suck it dry
-	for(;;)
-	{
-		// acquire member mutex and grab a frame.
-		cf = get_outgoing_dtmf_frame( member ) ;
-
-		// if there's no frames exit the loop.
-		if(!cf) break;
-
-		// send the dtmf frame
-		ast_write( member->chan, cf->fr ) ;
-
-		// clean up frame
-		delete_conf_frame( cf ) ;
-
-		if ( member->chan->_softhangup )
-			return 1;
-
-	}
-#endif
 
 	return 0;
 }
@@ -961,22 +921,6 @@ struct ast_conf_member* delete_member( struct ast_conf_member* member )
 	{
 		free( member->speakerBuffer ) ;
 	}
-#ifdef	DTMF
-	// incoming dtmf frames
-	cf = member->inDTMFFrames ;
-
-	while ( cf )
-	{
-		cf = delete_conf_frame( cf ) ;
-	}
-	// outgoing frames
-	cf = member->outDTMFFrames ;
-
-	while ( cf )
-	{
-		cf = delete_conf_frame( cf ) ;
-	}
-#endif
 #ifdef AST_CONF_CACHE_LAST_FRAME
 	if ( member->inFramesLast )
 	{
@@ -1029,55 +973,6 @@ struct ast_conf_member* delete_member( struct ast_conf_member* member )
 //
 // incoming frame functions
 //
-#ifdef	DTMF
-conf_frame* get_incoming_dtmf_frame( struct ast_conf_member *member )
-{
-	ast_mutex_lock(&member->lock);
-
-	if ( !member->inDTMFFramesCount )
-	{
-		ast_mutex_unlock(&member->lock);
-		return NULL ;
-	}
-
-	//
-	// return the next frame in the queue
-	//
-
-	conf_frame* cfr = NULL ;
-
-	// get first frame in line
-	cfr = member->inDTMFFramesTail ;
-
-	// if it's the only frame, reset the queue,
-	// else, move the second frame to the front
-	if ( member->inDTMFFramesTail == member->inDTMFFrames )
-	{
-		member->inDTMFFramesTail = NULL ;
-		member->inDTMFFrames = NULL ;
-	}
-	else
-	{
-		// move the pointer to the next frame
-		member->inDTMFFramesTail = member->inDTMFFramesTail->prev ;
-
-		// reset it's 'next' pointer
-		if ( member->inDTMFFramesTail )
-			member->inDTMFFramesTail->next = NULL ;
-	}
-
-	// separate the conf frame from the list
-	cfr->next = NULL ;
-	cfr->prev = NULL ;
-
-	// decriment frame count
-	member->inDTMFFramesCount-- ;
-
-	ast_mutex_unlock(&member->lock);
-	return cfr ;
-
-}
-#endif
 
 conf_frame* get_incoming_frame( struct ast_conf_member *member )
 {
@@ -1198,59 +1093,7 @@ conf_frame* get_incoming_frame( struct ast_conf_member *member )
 	ast_mutex_unlock(&member->lock);
 	return cfr ;
 }
-#ifdef	DTMF
-void queue_incoming_dtmf_frame( struct ast_conf_member* member, const struct ast_frame* fr )
-{
-	ast_mutex_lock(&member->lock);
 
-	// We have to drop if the queue is full!
-	if ( member->inDTMFFramesCount >= AST_CONF_MAX_DTMF_QUEUE )
-	{
-		ast_mutex_unlock(&member->lock);
-		return ;
-	}
-
-	//
-	// create new conf frame from passed data frame
-	//
-
-	// ( member->inFrames may be null at this point )
-	conf_frame* cfr = create_conf_frame( member, member->inDTMFFrames, fr ) ;
-
-	if ( !cfr )
-	{
-		ast_log( LOG_ERROR, "unable to malloc conf_frame\n" ) ;
-		ast_mutex_unlock(&member->lock);
-		return ;
-	}
-
-	// copy frame data pointer to conf frame
-	// cfr->fr = fr ;
-
-	//
-	// add new frame to speaking members incoming frame queue
-	// ( i.e. save this frame data, so we can distribute it in conference_exec later )
-	//
-
-	if ( !member->inDTMFFrames )
-	{
-		// this is the first frame in the buffer
-		member->inDTMFFramesTail = cfr ;
-		member->inDTMFFrames = cfr ;
-	}
-	else
-	{
-		// put the new frame at the head of the list
-		member->inDTMFFrames = cfr ;
-	}
-
-	// increment member frame count
-	member->inDTMFFramesCount++ ;
-
-	ast_mutex_unlock(&member->lock);
-}
-
-#endif
 void queue_incoming_frame( struct ast_conf_member* member, struct ast_frame* fr )
 {
 	ast_mutex_lock(&member->lock);
@@ -1400,95 +1243,6 @@ void queue_outgoing_frame( struct ast_conf_member* member, const struct ast_fram
 //
 // outgoing frame functions
 //
-#ifdef	DTMF
-conf_frame* get_outgoing_dtmf_frame( struct ast_conf_member *member )
-{
-	conf_frame* cfr ;
-
-	ast_mutex_lock(&member->lock);
-
-	if ( member->outDTMFFramesCount > AST_CONF_MIN_QUEUE )
-	{
-		cfr = member->outDTMFFramesTail ;
-
-		// if it's the only frame, reset the queu,
-		// else, move the second frame to the front
-		if ( member->outDTMFFramesTail == member->outDTMFFrames )
-		{
-			member->outDTMFFrames = NULL ;
-			member->outDTMFFramesTail = NULL ;
-		}
-		else
-		{
-			// move the pointer to the next frame
-			member->outDTMFFramesTail = member->outDTMFFramesTail->prev ;
-
-			// reset it's 'next' pointer
-			if ( member->outDTMFFramesTail )
-				member->outDTMFFramesTail->next = NULL ;
-		}
-
-		// separate the conf frame from the list
-		cfr->next = NULL ;
-		cfr->prev = NULL ;
-
-		// decriment frame count
-		member->outDTMFFramesCount-- ;
-		ast_mutex_unlock(&member->lock);
-		return cfr ;
-	}
-	ast_mutex_unlock(&member->lock);
-	return NULL ;
-}
-#endif
-
-#ifdef	DTMF
-void queue_outgoing_dtmf_frame( struct ast_conf_member* member, const struct ast_frame* fr )
-{
-	ast_mutex_lock(&member->lock);
-
-	//
-	// we have to drop frames, so we'll drop new frames
-	// because it's easier ( and doesn't matter much anyway ).
-	//
-	if ( member->outDTMFFramesCount >= AST_CONF_MAX_DTMF_QUEUE)
-	{
-		ast_mutex_unlock(&member->lock);
-		return ;
-	}
-
-	//
-	// create new conf frame from passed data frame
-	//
-
-	conf_frame* cfr = create_conf_frame( member, member->outDTMFFrames, fr ) ;
-
-	if ( !cfr )
-	{
-		ast_log( LOG_ERROR, "unable to create new conf frame\n" ) ;
-
-		ast_mutex_unlock(&member->lock);
-		return ;
-	}
-
-	if ( !member->outDTMFFrames )
-	{
-		// this is the first frame in the buffer
-		member->outDTMFFramesTail = cfr ;
-		member->outDTMFFrames = cfr ;
-	}
-	else
-	{
-		// put the new frame at the head of the list
-		member->outDTMFFrames = cfr ;
-	}
-
-	// increment member frame count
-	member->outDTMFFramesCount++ ;
-
-	ast_mutex_unlock(&member->lock);
-}
-#endif
 
 void queue_frame_for_listener(
 	struct ast_conference* conf,

@@ -106,11 +106,6 @@ struct ast_conf_member
 	conf_frame* inFrames ;
 	conf_frame* inFramesTail ;
 	unsigned int inFramesCount ;
-#ifdef	DTMF
-	conf_frame* inDTMFFrames ;
-	conf_frame* inDTMFFramesTail ;
-	unsigned int inDTMFFramesCount ;
-#endif
 	// frames needed by conference_exec
 	unsigned int inFramesNeeded ;
 #ifdef	AST_CONF_CACHE_LAST_FRAME
@@ -123,11 +118,7 @@ struct ast_conf_member
 	conf_frame* outFrames ;
 	conf_frame* outFramesTail ;
 	unsigned int outFramesCount ;
-#ifdef	DTMF
-	conf_frame* outDTMFFrames ;
-	conf_frame* outDTMFFramesTail ;
-	unsigned int outDTMFFramesCount ;
-#endif
+
 	// relay dtmf to manager?
 	short dtmf_relay;
 
@@ -206,19 +197,9 @@ void freembrblocks(void);
 void queue_incoming_frame( struct ast_conf_member* member, struct ast_frame* fr ) ;
 conf_frame* get_incoming_frame( struct ast_conf_member* member ) ;
 
-#ifdef	DTMF
-void queue_incoming_dtmf_frame( struct ast_conf_member* member, const struct ast_frame* fr ) ;
-conf_frame* get_incoming_dtmf_frame( struct ast_conf_member* member ) ;
-#endif
-
 // outgoing queue
 void queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery ) ;
 conf_frame* get_outgoing_frame( struct ast_conf_member* member ) ;
-
-#ifdef	DTMF
-void queue_outgoing_dtmf_frame( struct ast_conf_member* member, const struct ast_frame* fr ) ;
-conf_frame* get_outgoing_dtmf_frame( struct ast_conf_member* member ) ;
-#endif
 
 void member_process_spoken_frames(struct ast_conference* conf,
 				  struct ast_conf_member *member,

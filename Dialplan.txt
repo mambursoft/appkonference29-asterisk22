@@ -21,7 +21,6 @@ exten => <ext>,<pri>,Konference(<confname>,<flags>,<optional args>,<more optiona
 
 	DTMF options:
 	'R' : enable DTMF relay: DTMF tones generate a manager event
-	If 'R' is not sent, DTMF tones will be forwarded to all members in the conference
 
 	Moderator/video switch options:
 	'M' : member is a "moderator". When a moderator quits, all members are kicked and the conference is disabled.

@@ -136,11 +136,6 @@
 // maximum number of frames queued per member
 #define AST_CONF_MAX_QUEUE 100
 
-#ifdef	DTMF
-// max dtmf frames in the queue
-#define AST_CONF_MAX_DTMF_QUEUE 8
-#endif
-
 // minimum number of frames queued per member
 #define AST_CONF_MIN_QUEUE 0
 

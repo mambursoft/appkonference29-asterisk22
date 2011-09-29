@@ -61,12 +61,6 @@ static void conference_exec( struct ast_conference *conf )
 {
 #endif
 	struct ast_conf_member *member;
-#if	DTMF
-	struct conf_frame *cfr;
-#endif
-#ifdef	DTMF
-	struct ast_conf_member *dtmf_source_member;
-#endif
 	struct conf_frame *spoken_frames, *send_frames;
 
 	// count number of speakers, number of listeners
@@ -255,35 +249,7 @@ static void conference_exec( struct ast_conference *conf )
 			{
 				member_process_outgoing_frames(conf, member);
 			}
-#ifdef	DTMF
-			//------//
-			// DTMF //
-			//------//
 
-			// loop over the incoming frames and send to all outgoing
-			for (dtmf_source_member = conf->memberlist; dtmf_source_member ; dtmf_source_member = dtmf_source_member->next)
-			{
-				while ((cfr = get_incoming_dtmf_frame( dtmf_source_member )))
-				{
-					for (member = conf->memberlist; member ; member = member->next)
-					{
-						// skip members that are not ready
-						if ( !member->ready_for_outgoing )
-						{
-							continue ;
-						}
-
-						if (member != dtmf_source_member)
-						{
-							// Send the latest frame
-							queue_outgoing_dtmf_frame(member, cfr->fr);
-						}
-					}
-					// Garbage collection
-					delete_conf_frame(cfr);
-				}
-			}
-#endif
 			//---------//
 			// CLEANUP //
 			//---------//
