@@ -31,69 +31,23 @@ AST_MUTEX_DEFINE_STATIC(mbrblocklist_lock);
 // process an incoming frame.  Returns 0 normally, 1 if hangup was received.
 static int process_incoming(struct ast_conf_member *member, struct ast_conference *conf, struct ast_frame *f)
 {
-#if ( SILDET == 2 )
-	int silent_frame = 0;
-#endif
-
-	// In Asterisk 1.4 AST_FRAME_DTMF is equivalent to AST_FRAME_DTMF_END
-	if (f->frametype == AST_FRAME_DTMF)
+	if (f->frametype == AST_FRAME_VOICE)
 	{
-		if (member->dtmf_relay)
+		if ( member->mute_audio
+			|| member->muted
+			||  conf->membercount == 1)
 		{
-			// output to manager...
-			manager_event(
-				EVENT_FLAG_CONF,
-				"ConferenceDTMF",
-				"ConferenceName: %s\r\n"
-				"Type: %s\r\n"
-				"UniqueID: %s\r\n"
-				"Channel: %s\r\n"
-				"CallerID: %s\r\n"
-				"CallerIDName: %s\r\n"
-				"Key: %c\r\n"
-				"Count: %d\r\n"
-				"Flags: %s\r\n"
-				"Mute: %d\r\n",
-				conf->name,
-				member->type,
-				member->chan->uniqueid,
-				member->chan->name,
-#if	ASTERISK == 14 || ASTERISK == 16
-				member->chan->cid.cid_num ? member->chan->cid.cid_num : "unknown",
-				member->chan->cid.cid_name ? member->chan->cid.cid_name : "unknown",
-				f->subclass,
-#else
-				member->chan->caller.id.number.str ? member->chan->caller.id.number.str : "unknown",
-				member->chan->caller.id.name.str ? member->chan->caller.id.name.str: "unknown",
-				f->subclass.integer,
-#endif
-				conf->membercount,
-				member->flags,
-				member->mute_audio
-				) ;
-
+			// free the input frame
+			ast_frfree( f ) ;
+			return 0;
 		}
-	}
-	if ((f->frametype == AST_FRAME_VOICE
-			&& (member->mute_audio == 1
-				|| member->muted == 1
-				|| conf->membercount == 1)
-			)
-		)
-	{
-		// this is a listen-only user, ignore the frame
-		ast_frfree( f ) ;
-	}
-	else if ( f->frametype == AST_FRAME_VOICE )
-	{
 #if ( SILDET == 2 )
 		// reset silence detection flag
-		silent_frame = 0 ;
+		int silent_frame = 0 ;
 		//
 		// make sure we have a valid dsp and frame type
 		//
-		if (
-			member->dsp
+		if (member->dsp
 #ifndef	AC_USE_G722
 #if	ASTERISK == 14 || ASTERISK == 16
 			&& f->subclass == AST_FORMAT_SLINEAR
@@ -111,14 +65,11 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 			)
 		{
 			// send the frame to the preprocessor
-			int spx_ret;
 #if	ASTERISK == 14
-			spx_ret = speex_preprocess( member->dsp, f->data, NULL );
+			if (!speex_preprocess( member->dsp, f->data, NULL ))
 #else
-			spx_ret = speex_preprocess( member->dsp, f->data.ptr, NULL );
+			if (!speex_preprocess( member->dsp, f->data.ptr, NULL ))
 #endif
-
-			if ( !spx_ret )
 			{
 				//
 				// we ignore the preprocessor's outcome if we've seen voice frames
@@ -167,31 +118,66 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 		if ( !silent_frame )
 #endif
 			queue_incoming_frame( member, f );
-
-		// free the original frame
-		ast_frfree( f ) ;
 	}
-	else if (
-		f->frametype == AST_FRAME_CONTROL
-#if	ASTERISK == 14 || ASTERISK == 16
-		&& f->subclass == AST_CONTROL_HANGUP
-#else
-		&& f->subclass.integer == AST_CONTROL_HANGUP
-#endif
-		)
+	// In Asterisk 1.4 AST_FRAME_DTMF is equivalent to AST_FRAME_DTMF_END
+	else if (f->frametype == AST_FRAME_DTMF)
 	{
-		// hangup received
+		if (member->dtmf_relay)
+		{
+			// output to manager...
+			manager_event(
+				EVENT_FLAG_CONF,
+				"ConferenceDTMF",
+				"ConferenceName: %s\r\n"
+				"Type: %s\r\n"
+				"UniqueID: %s\r\n"
+				"Channel: %s\r\n"
+				"CallerID: %s\r\n"
+				"CallerIDName: %s\r\n"
+				"Key: %c\r\n"
+				"Count: %d\r\n"
+				"Flags: %s\r\n"
+				"Mute: %d\r\n",
+				conf->name,
+				member->type,
+				member->chan->uniqueid,
+				member->chan->name,
+#if	ASTERISK == 14 || ASTERISK == 16
+				member->chan->cid.cid_num ? member->chan->cid.cid_num : "unknown",
+				member->chan->cid.cid_name ? member->chan->cid.cid_name : "unknown",
+				f->subclass,
+#else
+				member->chan->caller.id.number.str ? member->chan->caller.id.number.str : "unknown",
+				member->chan->caller.id.name.str ? member->chan->caller.id.name.str: "unknown",
+				f->subclass.integer,
+#endif
+				conf->membercount,
+				member->flags,
+				member->mute_audio
+				) ;
 
-		// free the frame
-		ast_frfree( f ) ;
+		}
+	}
+	else if (f->frametype == AST_FRAME_CONTROL)
+	{
+#if	ASTERISK == 14 || ASTERISK == 16
+		if (f->subclass == AST_CONTROL_HANGUP)
+#else
+		if (f->subclass.integer == AST_CONTROL_HANGUP)
+#endif
+		{
+			// hangup received
 
-		// break out of the while ( 42 == 42 )
-		return 1;
+			// free the input frame
+			ast_frfree( f ) ;
+
+			// break out of the while ( 42 == 42 )
+			return 1;
+		}
 	}
-	else {
-		// undesirables
-		ast_frfree( f ) ;
-	}
+
+	// free the input frame
+	ast_frfree( f ) ;
 
 	return 0;
 }
