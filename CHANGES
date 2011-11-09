@@ -246,3 +246,5 @@ Remove unnecessary calls to ast_frdup from frame mixing routines.
 
 Remove dtmf forwarding as this feature was required for video and video is no
 longer supported.
+
+Reuse asterisk frames used for speaker and listener mix buffers.

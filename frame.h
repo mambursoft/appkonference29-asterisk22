@@ -46,7 +46,7 @@ conf_frame* delete_conf_frame( conf_frame* cf ) ;
 struct ast_frame* convert_frame( struct ast_trans_pvt* trans, struct ast_frame* fr, int consume ) ;
 
 // slinear frame functions
-struct ast_frame* create_slinear_frame( char* data ) ;
+struct ast_frame* create_slinear_frame( struct ast_frame** fr, char* data ) ;
 
 // silent frame functions
 conf_frame* get_silent_frame( void ) ;

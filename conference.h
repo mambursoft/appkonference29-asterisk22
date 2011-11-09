@@ -92,6 +92,8 @@ struct ast_conference
 #else
 	char listenerBuffer[ AST_CONF_BUFFER_SIZE ] ;
 #endif
+	// listener mix frame
+	struct ast_frame *mixAstFrame;
 } ;
 
 //

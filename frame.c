@@ -295,7 +295,8 @@ conf_frame* mix_multiple_speakers(
 			// clear speaker buffer
 			memset(cf_spoken->member->speakerBuffer,0,AST_CONF_BUFFER_SIZE);
 
-			cf_sendFrames = create_conf_frame(cf_spoken->member, cf_sendFrames, NULL);
+			if (!(cf_sendFrames = create_conf_frame(cf_spoken->member, cf_sendFrames, NULL)))
+				return NULL ;
 
 			cf_sendFrames->mixed_buffer = cf_spoken->member->speakerBuffer + AST_FRIENDLY_OFFSET ;
 
@@ -316,9 +317,8 @@ conf_frame* mix_multiple_speakers(
 #endif
 			}
 
-			cf_sendFrames->fr = create_slinear_frame( cf_sendFrames->mixed_buffer ) ;
-
-			cf_sendFrames->fr->mallocd &= ~AST_MALLOCD_DATA ;
+			if (!(cf_sendFrames->fr = create_slinear_frame( &cf_sendFrames->member->mixAstFrame, cf_sendFrames->mixed_buffer )))
+				return NULL ;
 
 			cf_sendFrames->member->speaker_frame = cf_sendFrames ;
 		}
@@ -331,7 +331,8 @@ conf_frame* mix_multiple_speakers(
 			// copy listener buffer for whisper
 			memcpy(cf_spoken->member->speakerBuffer,conf->listenerBuffer,AST_CONF_BUFFER_SIZE);
 
-			cf_sendFrames = create_conf_frame( cf_spoken->member->spy_partner, cf_sendFrames, NULL ) ;
+			if (!(cf_sendFrames = create_conf_frame( cf_spoken->member->spy_partner, cf_sendFrames, NULL )))
+				return NULL ;
 
 			cf_sendFrames->mixed_buffer = cf_spoken->member->speakerBuffer + AST_FRIENDLY_OFFSET ;
 
@@ -342,9 +343,8 @@ conf_frame* mix_multiple_speakers(
 			mix_slinear_frames(cf_spoken->member->speakerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
 #endif
 
-			cf_sendFrames->fr = create_slinear_frame( cf_sendFrames->mixed_buffer ) ;
-
-			cf_sendFrames->fr->mallocd &= ~AST_MALLOCD_DATA ;
+			if (!(cf_sendFrames->fr = create_slinear_frame( &cf_sendFrames->member->mixAstFrame, cf_sendFrames->mixed_buffer )))
+				return NULL ;
 
 			cf_sendFrames->member->speaker_frame = cf_sendFrames ;
 		}
@@ -358,11 +358,11 @@ conf_frame* mix_multiple_speakers(
 
 	if ( listeners > 0 )
 	{
-		cf_sendFrames = create_conf_frame( NULL, cf_sendFrames, NULL ) ;
+		if (!(cf_sendFrames = create_conf_frame( NULL, cf_sendFrames, NULL )))
+			return NULL ;
 		cf_sendFrames->mixed_buffer = conf->listenerBuffer + AST_FRIENDLY_OFFSET ;
-		cf_sendFrames->fr = create_slinear_frame( cf_sendFrames->mixed_buffer ) ;
-
-		cf_sendFrames->fr->mallocd &= ~AST_MALLOCD_DATA ;
+		if (!(cf_sendFrames->fr = create_slinear_frame( &conf->mixAstFrame, cf_sendFrames->mixed_buffer )))
+			return NULL ;
 
 		// set the conference listener frame
 		conf->listener_frame = cf_sendFrames ;
@@ -479,43 +479,40 @@ conf_frame* create_conf_frame( struct ast_conf_member* member, conf_frame* next,
 // slinear frame functions
 //
 
-struct ast_frame* create_slinear_frame( char* data )
+struct ast_frame* create_slinear_frame(struct ast_frame **f, char* data )
 {
-	struct ast_frame* f ;
-
-	if ( !(f = ast_calloc( 1, sizeof( struct ast_frame ))) )
+	if (!*f)
 	{
-		ast_log( LOG_ERROR, "unable to allocate memory for slinear frame\n" ) ;
-		return NULL ;
-	}
-
-	f->frametype = AST_FRAME_VOICE ;
+		if ( !(*f = ast_calloc( 1, sizeof( struct ast_frame ))) )
+		{
+			ast_log( LOG_ERROR, "unable to allocate memory for slinear frame\n" ) ;
+			return NULL ;
+		}
+		(*f)->frametype = AST_FRAME_VOICE ;
 #ifndef	AC_USE_G722
 #if	ASTERISK == 14 || ASTERISK == 16
-	f->subclass = AST_FORMAT_SLINEAR ;
+		(*f)->subclass = AST_FORMAT_SLINEAR ;
 #else
-	f->subclass.integer = AST_FORMAT_SLINEAR ;
+		(*f)->subclass.integer = AST_FORMAT_SLINEAR ;
 #endif
 #else
 #if	ASTERISK == 14 || ASTERISK == 16
-	f->subclass = AST_FORMAT_SLINEAR16 ;
+		(*f)->subclass = AST_FORMAT_SLINEAR16 ;
 #else
-	f->subclass.integer = AST_FORMAT_SLINEAR16 ;
+		(*f)->subclass.integer = AST_FORMAT_SLINEAR16 ;
 #endif
 #endif
-	f->samples = AST_CONF_BLOCK_SAMPLES ;
-	f->offset = AST_FRIENDLY_OFFSET ;
-	f->mallocd = AST_MALLOCD_HDR | AST_MALLOCD_DATA ;
-
-	f->datalen = AST_CONF_FRAME_DATA_SIZE ;
+		(*f)->samples = AST_CONF_BLOCK_SAMPLES ;
+		(*f)->offset = AST_FRIENDLY_OFFSET ;
+		(*f)->datalen = AST_CONF_FRAME_DATA_SIZE ;
+		(*f)->src = NULL ;
+	}
 #if	ASTERISK == 14
-	f->data = data;
+	(*f)->data = data;
 #else
-	f->data.ptr = data;
+	(*f)->data.ptr = data;
 #endif
-	f->src = NULL ;
-
-	return f ;
+	return *f ;
 }
 
 //
@@ -524,15 +521,11 @@ struct ast_frame* create_slinear_frame( char* data )
 
 conf_frame* get_silent_frame( void )
 {
-	static conf_frame* static_silent_frame = NULL ;
+	static conf_frame* static_silent_frame ;
 
-	// we'll let this leak until the application terminates
 	if ( !static_silent_frame )
 	{
 		struct ast_frame* fr = get_silent_slinear_frame() ;
-
-		if ( !fr )
-			return NULL ;
 
 		if ( !(static_silent_frame = create_conf_frame( NULL, NULL, 0 )) )
 			return NULL ;
@@ -546,22 +539,19 @@ conf_frame* get_silent_frame( void )
 
 struct ast_frame* get_silent_slinear_frame( void )
 {
-	static struct ast_frame* f = NULL ;
+	static char data[AST_CONF_BUFFER_SIZE] ;
 
-	// we'll let this leak until the application terminates
-	if ( !f )
-	{
-		char* data = ast_malloc( AST_CONF_BUFFER_SIZE ) ;
+	static struct ast_frame fr = {	.frametype = AST_FRAME_VOICE, 
+#if     ASTERISK == 14
+					.subclass = AST_FORMAT_SLINEAR,
+					.data = &(data[AST_FRIENDLY_OFFSET]),
+#else
+					.subclass.integer = AST_FORMAT_SLINEAR,
+					.data.ptr = &(data[AST_FRIENDLY_OFFSET]),
+#endif
+					.samples = AST_CONF_BLOCK_SAMPLES,
+					.offset = AST_FRIENDLY_OFFSET,
+					.datalen = AST_CONF_FRAME_DATA_SIZE } ;
 
-		if ( !data )
-		{
-			ast_log( LOG_WARNING, "unable to create cached silent frame data buffer\n" ) ;
-			return NULL ;
-		}
-
-		memset( data, 0x0, AST_CONF_BUFFER_SIZE ) ;
-		f = create_slinear_frame( data + AST_FRIENDLY_OFFSET ) ;
-	}
-
-	return f;
+	return &fr;
 }

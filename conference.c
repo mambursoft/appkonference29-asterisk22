@@ -429,12 +429,13 @@ static struct ast_conference* create_conf( char* name, struct ast_conf_member* m
 		// get conference control block from the free list
 		conf = confblocklist;
 		confblocklist = confblocklist->next;
+		memset(conf,0,sizeof(struct ast_conference));
 	}
 	else
 	{
 #endif
 		// allocate new conference control block
-		if ( !(conf = ast_malloc(sizeof(struct ast_conference))) )
+		if ( !(conf = ast_calloc(1, sizeof(struct ast_conference))) )
 		{
 			ast_log( LOG_ERROR, "unable to malloc ast_conference\n" ) ;
 			return NULL ;
@@ -447,30 +448,13 @@ static struct ast_conference* create_conf( char* name, struct ast_conf_member* m
 	// initialize conference
 	//
 
-	conf->next = NULL ;
-	conf->prev = NULL ;
-	conf->memberlist = NULL ;
-	conf->listener_frame = NULL ;
-
-	conf->memberlast = NULL ;
-
-	conf->membercount = 0 ;
-	conf->moderators = 0 ;
-
 	conf->conference_thread = -1 ;
-
-	conf->kick_flag = 0 ;
-
-	conf->id_count = 0;
 
 	// record start time
 	conf->time_entered = ast_tvnow();
 
 	// copy name to conference
 	strncpy( (char*)&(conf->name), name, sizeof(conf->name) - 1 ) ;
-
-	// zero volume
-	conf->volume = 0;
 
 	// initialize the conference lock
 	ast_rwlock_init( &conf->lock ) ;
@@ -579,8 +563,13 @@ struct ast_conference *remove_conf( struct ast_conference *conf )
 		if ( conf->from_slinear_paths[ c ] )
 		{
 			ast_translator_free_path( conf->from_slinear_paths[ c ] ) ;
-			conf->from_slinear_paths[ c ] = NULL ;
 		}
+	}
+
+	// speaker frame
+	if (conf->mixAstFrame)
+	{
+		free(conf->mixAstFrame) ;
 	}
 
 	AST_LIST_LOCK (conf->bucket ) ;

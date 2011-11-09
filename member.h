@@ -174,6 +174,9 @@ struct ast_conf_member
 
 	// speaker mix buffer
 	char *speakerBuffer;
+
+	// speaker mix frame
+	struct ast_frame *mixAstFrame;
 } ;
 
 //

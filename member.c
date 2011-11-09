@@ -907,6 +907,11 @@ struct ast_conf_member* delete_member( struct ast_conf_member* member )
 	{
 		free( member->speakerBuffer ) ;
 	}
+	// speaker frame
+	if ( member->mixAstFrame )
+	{
+		free( member->mixAstFrame ) ;
+	}
 #ifdef AST_CONF_CACHE_LAST_FRAME
 	if ( member->inFramesLast )
 	{
