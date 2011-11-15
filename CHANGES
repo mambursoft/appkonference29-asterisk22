@@ -248,3 +248,5 @@ Remove dtmf forwarding as this feature was required for video and video is no
 longer supported.
 
 Reuse asterisk frames used for speaker and listener mix buffers.
+
+Reuse conference frames used for speaker and listener mix buffers.

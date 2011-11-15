@@ -317,9 +317,6 @@ int member_exec( struct ast_channel* chan, void* data )
 int member_exec( struct ast_channel* chan, const char* data )
 #endif
 {
-//	struct timeval start, end ;
-//	start = ast_tvnow();
-
 	struct ast_conference *conf ;
 	char conf_name[CONF_NAME_LEN + 1]  = { 0 };
 	struct ast_conf_member *member ;
@@ -907,10 +904,14 @@ struct ast_conf_member* delete_member( struct ast_conf_member* member )
 	{
 		free( member->speakerBuffer ) ;
 	}
-	// speaker frame
+	// speaker frames
 	if ( member->mixAstFrame )
 	{
 		free( member->mixAstFrame ) ;
+	}
+	if ( member->mixConfFrame )
+	{
+		free( member->mixConfFrame );
 	}
 #ifdef AST_CONF_CACHE_LAST_FRAME
 	if ( member->inFramesLast )
@@ -934,7 +935,10 @@ struct ast_conf_member* delete_member( struct ast_conf_member* member )
 	struct ast_conf_member* nm = member->next ;
 
 	// free the member's copy of the spyee channel name
-	free(member->spyee_channel_name);
+	if ( member->spyee_channel_name )
+	{
+		free( member->spyee_channel_name );
+	}
 
 	// clear all sounds
 	struct ast_conf_soundq *sound = member->soundq;
@@ -1220,8 +1224,7 @@ void queue_outgoing_frame( struct ast_conf_member* member, const struct ast_fram
 	cfr->fr->delivery = delivery ;
 
 	//
-	// add new frame to speaking members incoming frame queue
-	// ( i.e. save this frame data, so we can distribute it in conference_exec later )
+	// add new frame to speaking members outgoing frame queue
 	//
 
 	if ( !member->outFrames ) {
@@ -1241,7 +1244,7 @@ void queue_frame_for_listener(
 )
 {
 	struct ast_frame* qf ;
-	struct conf_frame* frame = conf->listener_frame ;
+	conf_frame* frame = conf->listener_frame ;
 
 	if ( frame )
 	{
@@ -1494,13 +1497,13 @@ void member_process_outgoing_frames(struct ast_conference* conf,
 
 void member_process_spoken_frames(struct ast_conference* conf,
 				 struct ast_conf_member *member,
-				 struct conf_frame **spoken_frames,
+				 conf_frame **spoken_frames,
 				 long time_diff,
 				 int *listener_count,
 				 int *speaker_count
 	)
 {
-	struct conf_frame *cfr;
+	conf_frame *cfr;
 
 	// acquire member mutex
 	ast_mutex_lock( &member->lock ) ;

@@ -61,7 +61,7 @@ static void conference_exec( struct ast_conference *conf )
 {
 #endif
 	struct ast_conf_member *member;
-	struct conf_frame *spoken_frames, *send_frames;
+	conf_frame *spoken_frames, *send_frames;
 
 	// count number of speakers, number of listeners
 	int speaker_count ;
@@ -566,10 +566,14 @@ struct ast_conference *remove_conf( struct ast_conference *conf )
 		}
 	}
 
-	// speaker frame
+	// speaker frames
 	if (conf->mixAstFrame)
 	{
 		free(conf->mixAstFrame) ;
+	}
+	if (conf->mixConfFrame)
+	{
+		free(conf->mixConfFrame);
 	}
 
 	AST_LIST_LOCK (conf->bucket ) ;

@@ -143,7 +143,7 @@ struct ast_conf_member
 	// spyer pointer to spyee or vice versa
 	struct ast_conf_member* spy_partner ;
 	// spyee pointer to whisper frame
-	struct conf_frame* whisper_frame ;
+	conf_frame* whisper_frame ;
 
 	// start time
 	struct timeval time_entered ;
@@ -175,8 +175,9 @@ struct ast_conf_member
 	// speaker mix buffer
 	char *speakerBuffer;
 
-	// speaker mix frame
+	// speaker mix frames
 	struct ast_frame *mixAstFrame;
+	conf_frame *mixConfFrame;
 } ;
 
 //
@@ -206,7 +207,7 @@ conf_frame* get_outgoing_frame( struct ast_conf_member* member ) ;
 
 void member_process_spoken_frames(struct ast_conference* conf,
 				  struct ast_conf_member *member,
-				  struct conf_frame **spoken_frames,
+				  conf_frame **spoken_frames,
 				  long time_diff,
 				 int *listener_count,
 				 int *speaker_count);

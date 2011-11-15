@@ -295,7 +295,7 @@ conf_frame* mix_multiple_speakers(
 			// clear speaker buffer
 			memset(cf_spoken->member->speakerBuffer,0,AST_CONF_BUFFER_SIZE);
 
-			if (!(cf_sendFrames = create_conf_frame(cf_spoken->member, cf_sendFrames, NULL)))
+			if (!(cf_sendFrames = create_mix_frame(cf_spoken->member, cf_sendFrames, &cf_spoken->member->mixConfFrame)))
 				return NULL ;
 
 			cf_sendFrames->mixed_buffer = cf_spoken->member->speakerBuffer + AST_FRIENDLY_OFFSET ;
@@ -331,7 +331,7 @@ conf_frame* mix_multiple_speakers(
 			// copy listener buffer for whisper
 			memcpy(cf_spoken->member->speakerBuffer,conf->listenerBuffer,AST_CONF_BUFFER_SIZE);
 
-			if (!(cf_sendFrames = create_conf_frame( cf_spoken->member->spy_partner, cf_sendFrames, NULL )))
+			if (!(cf_sendFrames = create_mix_frame( cf_spoken->member->spy_partner, cf_sendFrames, &cf_spoken->member->mixConfFrame )))
 				return NULL ;
 
 			cf_sendFrames->mixed_buffer = cf_spoken->member->speakerBuffer + AST_FRIENDLY_OFFSET ;
@@ -358,7 +358,7 @@ conf_frame* mix_multiple_speakers(
 
 	if ( listeners > 0 )
 	{
-		if (!(cf_sendFrames = create_conf_frame( NULL, cf_sendFrames, NULL )))
+		if (!(cf_sendFrames = create_mix_frame( NULL, cf_sendFrames, &conf->mixConfFrame )))
 			return NULL ;
 		cf_sendFrames->mixed_buffer = conf->listenerBuffer + AST_FRIENDLY_OFFSET ;
 		if (!(cf_sendFrames->fr = create_slinear_frame( &conf->mixAstFrame, cf_sendFrames->mixed_buffer )))
@@ -444,14 +444,17 @@ conf_frame* delete_conf_frame( conf_frame* cf )
 
 	conf_frame* nf = cf->next ;
 
-	free( cf ) ;
+	if ( !cf->mixed_buffer )
+	{
+		free( cf ) ;
+	}
 
 	return nf ;
 }
 
 conf_frame* create_conf_frame( struct ast_conf_member* member, conf_frame* next, const struct ast_frame* fr )
 {
-	conf_frame* cf = ast_calloc( 1, sizeof( struct conf_frame ) ) ;
+	conf_frame* cf = ast_calloc( 1, sizeof( conf_frame ) ) ;
 
 	if ( !cf )
 	{
@@ -473,6 +476,32 @@ conf_frame* create_conf_frame( struct ast_conf_member* member, conf_frame* next,
 	}
 
 	return cf ;
+}
+
+conf_frame* create_mix_frame( struct ast_conf_member* member, conf_frame* next, conf_frame** cf )
+{
+	if (!*cf)
+	{
+		if (!(*cf = ast_calloc( 1, sizeof( conf_frame ))))
+		{
+			ast_log( LOG_ERROR, "unable to allocate memory for conf frame\n" ) ;
+			return NULL ;
+		}
+	}
+	else
+	{
+		memset(*cf,0,sizeof( conf_frame )) ;
+	}
+
+	(*cf)->member = member ;
+
+	if (next)
+	{
+		(*cf)->next = next ;
+		next->prev = *cf ;
+	}
+
+	return *cf ;
 }
 
 //
