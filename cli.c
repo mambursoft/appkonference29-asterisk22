@@ -255,7 +255,7 @@ char *conference_kickchannel(struct ast_cli_entry *e, int cmd, struct ast_cli_ar
 
 	const char *channel = argv[2];
 
-	struct ast_conf_member *member = find_member(channel, 1);
+	ast_conf_member *member = find_member(channel, 1);
 
 	if ( member )
 	{
@@ -386,7 +386,7 @@ char *conference_mutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_ar
 
 	const char *channel = argv[2];
 
-	struct ast_conf_member *member = find_member(channel, 1);
+	ast_conf_member *member = find_member(channel, 1);
 	if( member )
 	{
 		member->mute_audio = 1;
@@ -522,7 +522,7 @@ char *conference_unmutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_
 
 	const char *channel = argv[2];
 
-	struct ast_conf_member *member = find_member(channel, 1);
+	ast_conf_member *member = find_member(channel, 1);
 	if( member )
 	{
 		member->mute_audio = 0;

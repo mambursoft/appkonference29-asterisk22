@@ -32,13 +32,13 @@
 //
 
 // mixing
-conf_frame* mix_frames( struct ast_conference* conf, conf_frame* frames_in, int speaker_count, int listener_count ) ;
-conf_frame* mix_multiple_speakers( struct ast_conference* conf, conf_frame* frames_in, int speakers, int listeners ) ;
-conf_frame* mix_single_speaker( struct ast_conference* conf, conf_frame* frames_in ) ;
+conf_frame* mix_frames( ast_conference* conf, conf_frame* frames_in, int speaker_count, int listener_count ) ;
+conf_frame* mix_multiple_speakers( ast_conference* conf, conf_frame* frames_in, int speakers, int listeners ) ;
+conf_frame* mix_single_speaker( ast_conference* conf, conf_frame* frames_in ) ;
 
 // frame creation and deletion
-conf_frame* create_conf_frame( struct ast_conf_member* member, conf_frame* next, const struct ast_frame* fr ) ;
-conf_frame* create_mix_frame( struct ast_conf_member* member, conf_frame* next, conf_frame** cf ) ;
+conf_frame* create_conf_frame( ast_conf_member* member, conf_frame* next, const struct ast_frame* fr ) ;
+conf_frame* create_mix_frame( ast_conf_member* member, conf_frame* next, conf_frame** cf ) ;
 conf_frame* delete_conf_frame( conf_frame* cf ) ;
 
 #define copy_conf_frame(src) create_conf_frame( src->member, NULL, src->fr )

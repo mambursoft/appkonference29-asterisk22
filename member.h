@@ -24,7 +24,6 @@
 //
 
 #include "app_conference.h"
-#include "conf_frame.h"
 #include "conference.h"
 
 //
@@ -52,7 +51,7 @@ struct ast_conf_member
 
 	struct ast_channel* chan ; // member's channel
 
-	struct ast_conference* conf ; // member's conference
+	ast_conference* conf ; // member's conference
 
 	ast_cond_t delete_var ; // delete cv
 	char delete_flag ; // delete flag
@@ -130,10 +129,10 @@ struct ast_conf_member
 	short local_speaking_state; // This flag will be true only if this member is speaking
 
 	// pointer to next member in linked list
-	struct ast_conf_member* next ;
+	ast_conf_member* next ;
 
 	// pointer to prev member in linked list
-	struct ast_conf_member* prev ;
+	ast_conf_member* prev ;
 
 	// pointer to member's bucket list head
 	struct channel_bucket *bucket;
@@ -141,7 +140,7 @@ struct ast_conf_member
 	AST_LIST_ENTRY(ast_conf_member) hash_entry ;
 
 	// spyer pointer to spyee or vice versa
-	struct ast_conf_member* spy_partner ;
+	ast_conf_member* spy_partner ;
 	// spyee pointer to whisper frame
 	conf_frame* whisper_frame ;
 
@@ -170,7 +169,7 @@ struct ast_conf_member
 	struct ast_trans_pvt* from_slinear ;
 
 	// For playing sounds
-	struct ast_conf_soundq *soundq;
+	ast_conf_soundq *soundq;
 
 	// speaker mix buffer
 	char *speakerBuffer;
@@ -190,29 +189,29 @@ int member_exec( struct ast_channel* chan, void* data ) ;
 int member_exec( struct ast_channel* chan, const char* data ) ;
 #endif
 
-struct ast_conf_member* create_member( struct ast_channel* chan, const char* data, char* conf_name ) ;
-struct ast_conf_member* delete_member( struct ast_conf_member* member ) ;
+ast_conf_member* create_member( struct ast_channel* chan, const char* data, char* conf_name ) ;
+ast_conf_member* delete_member( ast_conf_member* member ) ;
 
 #ifdef	CACHE_CONTROL_BLOCKS
 void freembrblocks(void);
 #endif
 
 // incoming queue
-void queue_incoming_frame( struct ast_conf_member* member, struct ast_frame* fr ) ;
-conf_frame* get_incoming_frame( struct ast_conf_member* member ) ;
+void queue_incoming_frame( ast_conf_member* member, struct ast_frame* fr ) ;
+conf_frame* get_incoming_frame( ast_conf_member* member ) ;
 
 // outgoing queue
-void queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery ) ;
-conf_frame* get_outgoing_frame( struct ast_conf_member* member ) ;
+void queue_outgoing_frame( ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery ) ;
+conf_frame* get_outgoing_frame( ast_conf_member* member ) ;
 
-void member_process_spoken_frames(struct ast_conference* conf,
-				  struct ast_conf_member *member,
+void member_process_spoken_frames(ast_conference* conf,
+				  ast_conf_member *member,
 				  conf_frame **spoken_frames,
 				  long time_diff,
 				 int *listener_count,
 				 int *speaker_count);
 
-void member_process_outgoing_frames(struct ast_conference* conf,
-				    struct ast_conf_member *member);
+void member_process_outgoing_frames(ast_conference* conf,
+				    ast_conf_member *member);
 
 #endif

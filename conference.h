@@ -24,7 +24,6 @@
 //
 
 #include "app_conference.h"
-#include "conf_frame.h"
 #include "member.h"
 
 //
@@ -55,10 +54,10 @@ struct ast_conference
 	int volume;
 
 	// single-linked list of members in conference
-	struct ast_conf_member* memberlist ;
+	ast_conf_member* memberlist ;
 
 	// pointer to last member in list
-	struct ast_conf_member* memberlast ;
+	ast_conf_member* memberlast ;
 
 	int membercount ;
         int id_count;
@@ -69,8 +68,8 @@ struct ast_conference
 	ast_rwlock_t lock ;
 
 	// pointers to conference in doubly-linked list
-	struct ast_conference* next ;
-	struct ast_conference* prev ;
+	ast_conference* next ;
+	ast_conference* prev ;
 
 	// pointer to conference's bucket list head
 	struct conference_bucket *bucket;
@@ -109,16 +108,16 @@ int count_exec( struct ast_channel* chan, void* data ) ;
 int count_exec( struct ast_channel* chan, const char* data ) ;
 #endif
 
-struct ast_conference* join_conference( struct ast_conf_member* member, char* conf_name, char* max_users_flag ) ;
+ast_conference* join_conference( ast_conf_member* member, char* conf_name, char* max_users_flag ) ;
 
 // Find a particular member, locked if lock flag set.
-struct ast_conf_member *find_member( const char *chan, const char lock ) ;
+ast_conf_member *find_member( const char *chan, const char lock ) ;
 
-void queue_frame_for_listener( struct ast_conference* conf, struct ast_conf_member* member ) ;
-void queue_frame_for_speaker( struct ast_conference* conf, struct ast_conf_member* member ) ;
-void queue_silent_frame( struct ast_conference* conf, struct ast_conf_member* member ) ;
+void queue_frame_for_listener( ast_conference* conf, ast_conf_member* member ) ;
+void queue_frame_for_speaker( ast_conference* conf, ast_conf_member* member ) ;
+void queue_silent_frame( ast_conference* conf, ast_conf_member* member ) ;
 
-void remove_member( struct ast_conf_member* member, struct ast_conference* conf, char* conf_name ) ;
+void remove_member( ast_conf_member* member, ast_conference* conf, char* conf_name ) ;
 
 // called by app_confernce.c:load_module()
 void init_conference( void ) ;

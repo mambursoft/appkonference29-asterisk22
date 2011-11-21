@@ -209,4 +209,9 @@ struct conference_bucket *conference_table ;
 AST_LIST_HEAD (channel_bucket, ast_conf_member) ;
 struct channel_bucket *channel_table ;
 
+typedef struct ast_conference ast_conference ;
+typedef struct ast_conf_member ast_conf_member ;
+typedef struct ast_conf_soundq ast_conf_soundq ;
+typedef struct conf_frame conf_frame ;
+
 #endif

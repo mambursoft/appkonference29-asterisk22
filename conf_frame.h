@@ -29,7 +29,7 @@
 // struct declarations
 //
 
-typedef struct conf_frame
+struct conf_frame
 {
 	// frame audio data
 	struct ast_frame* fr ;
@@ -38,18 +38,18 @@ typedef struct conf_frame
 	struct ast_frame* converted[ AC_SUPPORTED_FORMATS ] ;
 
 	// pointer to the frame's owner
-	struct ast_conf_member* member ; // who sent this frame
+	ast_conf_member* member ; // who sent this frame
 
 	// linked-list pointers
-	struct conf_frame* next ;
-	struct conf_frame* prev ;
+	conf_frame* next ;
+	conf_frame* prev ;
 
 	// pointer to mixing buffer
 	char* mixed_buffer ;
 
 	// conference + speaker volume
 	int talk_volume ;
-} conf_frame ;
+} ;
 
 
 #endif

@@ -101,7 +101,7 @@ static void unmix_slinear_frame( char *dst, const char *src1, const char *src2, 
 
 #endif
 
-conf_frame* mix_frames( struct ast_conference* conf, conf_frame* frames_in, int speaker_count, int listener_count )
+conf_frame* mix_frames( ast_conference* conf, conf_frame* frames_in, int speaker_count, int listener_count )
 {
 	if ( speaker_count == 1 )
 	{
@@ -112,7 +112,7 @@ conf_frame* mix_frames( struct ast_conference* conf, conf_frame* frames_in, int 
 
 	if ( speaker_count == 2 && listener_count == 0 )
 	{
-		struct ast_conf_member* mbr = NULL ;
+		ast_conf_member* mbr = NULL ;
 
 		// copy orignal frame to converted array so speaker doesn't need to re-encode it
 		frames_in->converted[ frames_in->member->read_format_index ] = frames_in->fr ;
@@ -159,7 +159,7 @@ conf_frame* mix_frames( struct ast_conference* conf, conf_frame* frames_in, int 
 
 }
 
-conf_frame* mix_single_speaker( struct ast_conference* conf, conf_frame* frames_in )
+conf_frame* mix_single_speaker( ast_conference* conf, conf_frame* frames_in )
 {
 	//
 	// 'mix' the frame
@@ -225,7 +225,7 @@ conf_frame* mix_single_speaker( struct ast_conference* conf, conf_frame* frames_
 }
 
 conf_frame* mix_multiple_speakers(
-	struct ast_conference* conf,	
+	ast_conference* conf,	
 	conf_frame* frames_in,
 	int speakers,
 	int listeners
@@ -378,7 +378,7 @@ conf_frame* mix_multiple_speakers(
 
 	while ( cf_spoken )
 	{
-		struct ast_conf_member *spy_partner = cf_spoken->member->spy_partner ;
+		ast_conf_member *spy_partner = cf_spoken->member->spy_partner ;
 
 		if ( !spy_partner || cf_spoken->member->spyer )
 		{
@@ -452,7 +452,7 @@ conf_frame* delete_conf_frame( conf_frame* cf )
 	return nf ;
 }
 
-conf_frame* create_conf_frame( struct ast_conf_member* member, conf_frame* next, const struct ast_frame* fr )
+conf_frame* create_conf_frame( ast_conf_member* member, conf_frame* next, const struct ast_frame* fr )
 {
 	conf_frame* cf = ast_calloc( 1, sizeof( conf_frame ) ) ;
 
@@ -478,7 +478,7 @@ conf_frame* create_conf_frame( struct ast_conf_member* member, conf_frame* next,
 	return cf ;
 }
 
-conf_frame* create_mix_frame( struct ast_conf_member* member, conf_frame* next, conf_frame** cf )
+conf_frame* create_mix_frame( ast_conf_member* member, conf_frame* next, conf_frame** cf )
 {
 	if (!*cf)
 	{

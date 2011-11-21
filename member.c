@@ -24,12 +24,12 @@
 #include "asterisk/musiconhold.h"
 
 #ifdef	CACHE_CONTROL_BLOCKS
-struct ast_conf_member *mbrblocklist = NULL;
+ast_conf_member *mbrblocklist = NULL;
 AST_MUTEX_DEFINE_STATIC(mbrblocklist_lock);
 #endif
 
 // process an incoming frame.  Returns 0 normally, 1 if hangup was received.
-static int process_incoming(struct ast_conf_member *member, struct ast_conference *conf, struct ast_frame *f)
+static int process_incoming(ast_conf_member *member, ast_conference *conf, struct ast_frame *f)
 {
 	if (f->frametype == AST_FRAME_VOICE)
 	{
@@ -183,7 +183,7 @@ static int process_incoming(struct ast_conf_member *member, struct ast_conferenc
 }
 
 // get the next frame from the soundq;  must be called with member locked.
-static struct ast_frame *get_next_soundframe(struct ast_conf_member *member, struct ast_frame
+static struct ast_frame *get_next_soundframe(ast_conf_member *member, struct ast_frame
     *exampleframe) {
     struct ast_frame *f;
 
@@ -193,7 +193,7 @@ again2:
     f=(member->soundq->stream && !member->soundq->stopped ? ast_readframe(member->soundq->stream) : NULL);
 
     if(!f) { // we're done with this sound; remove it from the queue, and try again
-	struct ast_conf_soundq *toboot = member->soundq;
+	ast_conf_soundq *toboot = member->soundq;
 
 	if (!toboot->stopped && !toboot->stream)
 	{
@@ -248,7 +248,7 @@ again2:
 
 // process outgoing frames for the channel, playing either normal conference audio,
 // or requested sounds
-static int process_outgoing(struct ast_conf_member *member)
+static int process_outgoing(ast_conf_member *member)
 {
 	conf_frame* cf ; // frame read from the output queue
 	struct ast_frame *f;
@@ -317,9 +317,9 @@ int member_exec( struct ast_channel* chan, void* data )
 int member_exec( struct ast_channel* chan, const char* data )
 #endif
 {
-	struct ast_conference *conf ;
+	ast_conference *conf ;
 	char conf_name[CONF_NAME_LEN + 1]  = { 0 };
-	struct ast_conf_member *member ;
+	ast_conf_member *member ;
 
 	struct ast_frame *f ; // frame received from ast_read()
 
@@ -519,9 +519,9 @@ int member_exec( struct ast_channel* chan, const char* data )
 // manange member functions
 //
 
-struct ast_conf_member* create_member( struct ast_channel *chan, const char* data, char* conf_name )
+ast_conf_member* create_member( struct ast_channel *chan, const char* data, char* conf_name )
 {
-	struct ast_conf_member *member;
+	ast_conf_member *member;
 #ifdef	CACHE_CONTROL_BLOCKS
 	if ( mbrblocklist )
 	{
@@ -530,13 +530,13 @@ struct ast_conf_member* create_member( struct ast_channel *chan, const char* dat
 		member = mbrblocklist;
 		mbrblocklist = mbrblocklist->next;
 		ast_mutex_unlock ( &mbrblocklist_lock ) ;
-		memset(member,0,sizeof(struct ast_conf_member));
+		memset(member,0,sizeof(ast_conf_member));
 	}
 	else
 	{
 #endif
 		// allocate new member control block
-		if ( !(member = ast_calloc( 1,  sizeof( struct ast_conf_member ) )) )
+		if ( !(member = ast_calloc( 1,  sizeof( ast_conf_member ) )) )
 		{
 			ast_log( LOG_ERROR, "unable to calloc ast_conf_member\n" ) ;
 			return NULL ;
@@ -865,7 +865,7 @@ struct ast_conf_member* create_member( struct ast_channel *chan, const char* dat
 	return member ;
 }
 
-struct ast_conf_member* delete_member( struct ast_conf_member* member )
+ast_conf_member* delete_member( ast_conf_member* member )
 {
 	ast_mutex_lock ( &member->lock ) ;
 
@@ -932,7 +932,7 @@ struct ast_conf_member* delete_member( struct ast_conf_member* member )
 
 	// get a pointer to the next
 	// member so we can return it
-	struct ast_conf_member* nm = member->next ;
+	ast_conf_member* nm = member->next ;
 
 	// free the member's copy of the spyee channel name
 	if ( member->spyee_channel_name )
@@ -941,8 +941,8 @@ struct ast_conf_member* delete_member( struct ast_conf_member* member )
 	}
 
 	// clear all sounds
-	struct ast_conf_soundq *sound = member->soundq;
-	struct ast_conf_soundq *next;
+	ast_conf_soundq *sound = member->soundq;
+	ast_conf_soundq *next;
 
 	while ( sound )
 	{
@@ -969,7 +969,7 @@ struct ast_conf_member* delete_member( struct ast_conf_member* member )
 // incoming frame functions
 //
 
-conf_frame* get_incoming_frame( struct ast_conf_member *member )
+conf_frame* get_incoming_frame( ast_conf_member *member )
 {
 #ifdef AST_CONF_CACHE_LAST_FRAME
 	conf_frame *cf_result;
@@ -1089,7 +1089,7 @@ conf_frame* get_incoming_frame( struct ast_conf_member *member )
 	return cfr ;
 }
 
-void queue_incoming_frame( struct ast_conf_member* member, struct ast_frame* fr )
+void queue_incoming_frame( ast_conf_member* member, struct ast_frame* fr )
 {
 	ast_mutex_lock(&member->lock);
 
@@ -1156,7 +1156,7 @@ void queue_incoming_frame( struct ast_conf_member* member, struct ast_frame* fr 
 // outgoing frame functions
 //
 
-conf_frame* get_outgoing_frame( struct ast_conf_member *member )
+conf_frame* get_outgoing_frame( ast_conf_member *member )
 {
 	conf_frame* cfr ;
 
@@ -1196,7 +1196,7 @@ conf_frame* get_outgoing_frame( struct ast_conf_member *member )
 	return NULL ;
 }
 
-void queue_outgoing_frame( struct ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery )
+void queue_outgoing_frame( ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery )
 {
 	//
 	// we have to drop frames, so we'll drop new frames
@@ -1239,8 +1239,8 @@ void queue_outgoing_frame( struct ast_conf_member* member, const struct ast_fram
 //
 
 void queue_frame_for_listener(
-	struct ast_conference* conf,
-	struct ast_conf_member* member
+	ast_conference* conf,
+	ast_conf_member* member
 )
 {
 	struct ast_frame* qf ;
@@ -1309,8 +1309,8 @@ void queue_frame_for_listener(
 }
 
 void queue_frame_for_speaker(
-	struct ast_conference* conf,
-	struct ast_conf_member* member
+	ast_conference* conf,
+	ast_conf_member* member
 )
 {
 	struct ast_frame* qf ;
@@ -1363,8 +1363,8 @@ void queue_frame_for_speaker(
 
 
 void queue_silent_frame(
-	struct ast_conference* conf,
-	struct ast_conf_member* member
+	ast_conference* conf,
+	ast_conf_member* member
 )
 {
   int c;
@@ -1443,8 +1443,8 @@ void queue_silent_frame(
 
 
 
-void member_process_outgoing_frames(struct ast_conference* conf,
-				  struct ast_conf_member *member)
+void member_process_outgoing_frames(ast_conference* conf,
+				  ast_conf_member *member)
 {
 	ast_mutex_lock(&member->lock);
 
@@ -1495,8 +1495,8 @@ void member_process_outgoing_frames(struct ast_conference* conf,
 	ast_mutex_unlock(&member->lock);
 }
 
-void member_process_spoken_frames(struct ast_conference* conf,
-				 struct ast_conf_member *member,
+void member_process_spoken_frames(ast_conference* conf,
+				 ast_conf_member *member,
 				 conf_frame **spoken_frames,
 				 long time_diff,
 				 int *listener_count,
@@ -1563,7 +1563,7 @@ void member_process_spoken_frames(struct ast_conference* conf,
 #ifdef	CACHE_CONTROL_BLOCKS
 void freembrblocks( void )
 {
-	struct ast_conf_member *mbrblock;
+	ast_conf_member *mbrblock;
 	while ( mbrblocklist )
 	{
 		mbrblock = mbrblocklist;
