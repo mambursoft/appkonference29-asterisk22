@@ -65,12 +65,7 @@ struct ast_conf_member
 	char *spyee_channel_name ; // spyee  channel name
 	char spyer ; // spyer flag
 	int max_users ; // zero or max users for this conference
-#if ( SILDET == 2 )
-	// voice flags
-	int vad_flag;
-	int denoise_flag;
-	int agc_flag;
-#endif
+
 	int via_telephone;
 	// video conference params
 	int id;
@@ -93,11 +88,7 @@ struct ast_conf_member
 	// is this person a moderator?
 	int ismoderator;
 	int kick_conferees;
-#if ( SILDET == 2 )
-	// vad voice probability thresholds
-	float vad_prob_start ;
-	float vad_prob_continue ;
-#endif
+
 	// ready flag
 	short ready_for_outgoing ;
 
@@ -107,12 +98,7 @@ struct ast_conf_member
 	unsigned int inFramesCount ;
 	// frames needed by conference_exec
 	unsigned int inFramesNeeded ;
-#ifdef	AST_CONF_CACHE_LAST_FRAME
-	// used when caching last frame
-	conf_frame* inFramesLast ;
-	unsigned int inFramesRepeatLast ;
-	unsigned short okayToCacheLast ;
-#endif
+
 	// LL output frame queue
 	conf_frame* outFrames ;
 	conf_frame* outFramesTail ;
@@ -151,6 +137,15 @@ struct ast_conf_member
 	char kick_flag ;
 
 #if ( SILDET == 2 )
+	// voice flags
+	int vad_flag;
+	int denoise_flag;
+	int agc_flag;
+
+	// vad voice probability thresholds
+	float vad_prob_start ;
+	float vad_prob_continue ;
+
 	// pointer to speex preprocessor dsp
 	SpeexPreprocessState *dsp ;
         // number of frames to ignore speex_preprocess()

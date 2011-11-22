@@ -668,7 +668,7 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 	for ( i = 0 ; i < strlen( flags ) ; ++i )
 	{
 		{
-			// flags are L, l, V, D, A, R, M, x, a, T, H
+			// flags are L, l, a, T, V, D, A, R, M, x, H
 			switch ( flags[i] )
 			{
 				// mute/no_recv options
@@ -679,6 +679,12 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 				member->norecv_audio = 1;
 				break;
 #if ( SILDET == 2 )
+				//Telephone connection
+			case 'a':
+				member->vad_flag = 1 ;
+			case 'T':
+				member->via_telephone = 1;
+				break;
 				// speex preprocessing options
 			case 'V':
 				member->vad_flag = 1 ;
@@ -699,14 +705,6 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 				break;
 			case 'x':
 				member->kick_conferees = 1;
-				break;
-#if ( SILDET == 2 )
-				//Telephone connection
-			case 'a':
-				member->vad_flag = 1 ;
-#endif
-			case 'T':
-				member->via_telephone = 1;
 				break;
 			case 'H':
 				member->hold_flag = 1;
@@ -913,12 +911,6 @@ ast_conf_member* delete_member( ast_conf_member* member )
 	{
 		free( member->mixConfFrame );
 	}
-#ifdef AST_CONF_CACHE_LAST_FRAME
-	if ( member->inFramesLast )
-	{
-		delete_conf_frame( member->inFramesLast ) ;
-	}
-#endif
 #if ( SILDET == 2 )
 	if ( member->dsp )
 	{
@@ -971,64 +963,16 @@ ast_conf_member* delete_member( ast_conf_member* member )
 
 conf_frame* get_incoming_frame( ast_conf_member *member )
 {
-#ifdef AST_CONF_CACHE_LAST_FRAME
-	conf_frame *cf_result;
-#endif
 	ast_mutex_lock(&member->lock);
 
  	//
  	// repeat last frame a couple times to smooth transition
  	//
 
-#ifdef AST_CONF_CACHE_LAST_FRAME
-	if ( !member->inFramesCount )
-	{
-		// nothing to do if there's no cached frame
-		if ( !member->inFramesLast ) {
-			ast_mutex_unlock(&member->lock);
-			return NULL ;
-		}
-
-		// turn off 'okay to cache' flag
-		member->okayToCacheLast = 0 ;
-
-		if ( member->inFramesRepeatLast >= AST_CONF_CACHE_LAST_FRAME )
-		{
-			// already used this frame AST_CONF_CACHE_LAST_FRAME times
-
-			// reset repeat count
-			member->inFramesRepeatLast = 0 ;
-
-			// clear the cached frame
-			delete_conf_frame( member->inFramesLast ) ;
-			member->inFramesLast = NULL ;
-
-			// return null
-			ast_mutex_unlock(&member->lock);
-			return NULL ;
-		}
-		else
-		{
-			// increment counter
-			member->inFramesRepeatLast++ ;
-
-			// return a copy of the cached frame
-			cf_result = copy_conf_frame( member->inFramesLast ) ;
-			ast_mutex_unlock(&member->lock);
-			return cf_result;
-		}
-	}
-	else if ( !member->okayToCacheLast && member->inFramesCount >= 3 )
-	{
-		// turn on 'okay to cache' flag
-		member->okayToCacheLast = 1 ;
-	}
-#else
 	if ( !member->inFramesCount ) {
 		ast_mutex_unlock(&member->lock);
 		return NULL ;
 	}
-#endif // AST_CONF_CACHE_LAST_FRAME
 
 	//
 	// return the next frame in the queue
@@ -1062,28 +1006,6 @@ conf_frame* get_incoming_frame( ast_conf_member *member )
 
 	// decriment frame count
 	member->inFramesCount-- ;
-
-#ifdef AST_CONF_CACHE_LAST_FRAME
-	// copy frame if queue is now empty
-	if (
-		!member->inFramesCount
-		&& member->okayToCacheLast == 1
-	)
-	{
-		// reset repeat count
-		member->inFramesRepeatLast = 0 ;
-
-		// clear cached frame
-		if ( member->inFramesLast )
-		{
-			delete_conf_frame( member->inFramesLast ) ;
-			member->inFramesLast = NULL ;
-		}
-
-		// cache new frame
-		member->inFramesLast = copy_conf_frame( cfr ) ;
-	}
-#endif // AST_CONF_CACHE_LAST_FRAME
 
 	ast_mutex_unlock(&member->lock);
 	return cfr ;

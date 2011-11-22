@@ -252,3 +252,9 @@ Reuse asterisk frames used for speaker and listener mix buffers.
 Reuse conference frames used for speaker and listener mix buffers.
 
 Typedef conference control blocks, conference frame header and soundq header.
+
+Remove unused silence detection defines and cleanup member control block
+silence detection definitions.
+
+Remove unnecessary last frame cache code from conference thread's get incoming
+frame routine.
