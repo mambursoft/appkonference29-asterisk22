@@ -258,3 +258,7 @@ silence detection definitions.
 
 Remove unnecessary last frame cache code from conference thread's get incoming
 frame routine.
+
+Added another library for silence detection. The new library is enabled by
+setting the silence detection compiler flag, SILDET, to one. The new library is
+the default setting and the old library is deprecated.

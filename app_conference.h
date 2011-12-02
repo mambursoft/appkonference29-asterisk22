@@ -44,19 +44,22 @@
 #include <asterisk/translate.h>
 #include <asterisk/channel.h>
 #include <asterisk/file.h>
-//#include <asterisk/channel_pvt.h>
 #include <asterisk/cli.h>
 
+#if	SILDET == 1
+#include "libwebrtc/webrtc_vad.h"
 
-#if (SILDET == 2)
+// number of frames to ignore after speech detected
+#define AST_CONF_FRAMES_TO_IGNORE 20
+
+// modes: quality 0, low bitrate 1, aggressive 2, very aggressive 3
+#define AST_CONF_VAD_MODE 0
+
+#elif	 SILDET == 2
 #include "libspeex/speex_preprocess.h"
 
-//
-// silence detection values
-//
-
-// number of frames to ignore speex_preprocess() after speech detected
-#define AST_CONF_SKIP_SPEEX_PREPROCESS 20
+// number of frames to ignore after speech detected
+#define AST_CONF_FRAMES_TO_IGNORE 20
 
 // our speex probability values
 #define AST_CONF_PROB_START 0.05

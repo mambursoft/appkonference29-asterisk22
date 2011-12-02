@@ -13,8 +13,10 @@ exten => <ext>,<pri>,Konference(<confname>,<flags>,<optional args>,<more optiona
 	'L' : member starts with audio muted
 	'l' : member starts unable to receive audio
 
-	Speex preprocessing options (SILDET=2)
-	'T' : telephone, enable speex preprocessing
+	Enable preprocessing:
+	'T' : telephone, enable preprocessing
+
+	Preprocessing (SILDET=2) options:
 	'V' : enable Voice Activity Detection 
 	'D' : enable De-noise
 	'A' : enable Automatic Gain Control

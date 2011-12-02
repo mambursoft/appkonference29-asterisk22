@@ -41,7 +41,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 			ast_frfree( f ) ;
 			return 0;
 		}
-#if ( SILDET == 2 )
+#if	SILDET == 1 || SILDET == 2
 		// reset silence detection flag
 		int silent_frame = 0 ;
 		//
@@ -65,20 +65,28 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 			)
 		{
 			// send the frame to the preprocessor
+#if	SILDET == 1
+#if	ASTERISK == 14
+			if (!WebRtcVad_Process( member->dsp, AST_CONF_SAMPLE_RATE, f->data, AST_CONF_BLOCK_SAMPLES ))
+#else
+			if (!WebRtcVad_Process( member->dsp, AST_CONF_SAMPLE_RATE, f->data.ptr, AST_CONF_BLOCK_SAMPLES ))
+#endif
+#elif	SILDET == 2
 #if	ASTERISK == 14
 			if (!speex_preprocess( member->dsp, f->data, NULL ))
 #else
 			if (!speex_preprocess( member->dsp, f->data.ptr, NULL ))
 #endif
+#endif
 			{
 				//
 				// we ignore the preprocessor's outcome if we've seen voice frames
-				// in within the last AST_CONF_SKIP_SPEEX_PREPROCESS frames
+				// in within the last AST_CONF_FRAMES_TO_SKIP frames
 				//
-				if ( member->ignore_speex_count > 0 )
+				if ( member->ignore_vad_result > 0 )
 				{
 					// skip speex_preprocess(), and decrement counter
-					if (!--member->ignore_speex_count ) {
+					if (!--member->ignore_vad_result ) {
 						manager_event(
 							EVENT_FLAG_CONF,
 							"ConferenceState",
@@ -99,7 +107,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 			}
 			else
 			{
-				if (!member->ignore_speex_count) {
+				if (!member->ignore_vad_result) {
 					manager_event(
 						EVENT_FLAG_CONF,
 						"ConferenceState",
@@ -112,7 +120,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 					) ;
 				}
 				// voice detected, reset skip count
-				member->ignore_speex_count = AST_CONF_SKIP_SPEEX_PREPROCESS ;
+				member->ignore_vad_result = AST_CONF_FRAMES_TO_IGNORE ;
 			}
 		}
 		if ( !silent_frame )
@@ -552,7 +560,7 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 	ast_cond_init( &member->delete_var, NULL ) ;
 
 	// Default values for parameters that can get overwritten by dialplan arguments
-#if ( SILDET == 2 )
+#if	SILDET == 2
 	member->vad_prob_start = AST_CONF_PROB_START;
 	member->vad_prob_continue = AST_CONF_PROB_CONTINUE;
 #endif
@@ -590,7 +598,7 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 
 	while ( (token = strsep(&stringp, argument_delimiter )) )
 	{
-#if ( SILDET == 2 )
+#if	SILDET == 2
 		static const char arg_vad_prob_start[] = "vad_prob_start";
 		static const char arg_vad_prob_continue[] = "vad_prob_continue";
 #endif
@@ -617,7 +625,7 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 		{
 			member->spyee_channel_name = ast_malloc( strlen( value ) + 1 ) ;
 			strcpy( member->spyee_channel_name, value ) ;
-#if ( SILDET == 2 )
+#if	SILDET == 2
 		} else if ( !strncasecmp(key, arg_vad_prob_start, sizeof(arg_vad_prob_start) - 1) )
 		{
 			member->vad_prob_start = strtof(value, (char **)NULL);
@@ -678,17 +686,23 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 			case 'l':
 				member->norecv_audio = 1;
 				break;
-#if ( SILDET == 2 )
+#if	SILDET == 1
+				//Telephone connection
+			case 'a':
+			case 'T':
+				member->via_telephone = 1;
+				break;
+#elif	SILDET == 2
 				//Telephone connection
 			case 'a':
 				member->vad_flag = 1 ;
 			case 'T':
 				member->via_telephone = 1;
 				break;
-				// speex preprocessing options
 			case 'V':
 				member->vad_flag = 1 ;
 				break ;
+				// speex preprocessing options
 			case 'D':
 				member->denoise_flag = 1 ;
 				break ;
@@ -716,22 +730,34 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 		}
 	}
 
-#if ( SILDET == 2 )
 	//
 	// configure silence detection and preprocessing
 	// if the user is coming in via the telephone,
 	// and is not listen-only
 	//
+#if	SILDET == 1
 	if ( member->via_telephone )
 	{
-		// create a speex preprocessor
-		member->dsp = speex_preprocess_state_init( AST_CONF_BLOCK_SAMPLES, AST_CONF_SAMPLE_RATE ) ;
+		// create a webrtc preprocessor
 
-		if ( !member->dsp )
+		if ( !WebRtcVad_Create(&member->dsp) )
+		{
+			WebRtcVad_Init(member->dsp) ;
+#if	AST_CONF_VAD_MODE
+			WebRtcVad_set_mode(member->dsp, AST_CONF_VAD_MODE) ;
+#endif
+		}
+		else
 		{
 			ast_log( LOG_WARNING, "unable to initialize member dsp, channel => %s\n", chan->name ) ;
 		}
-		else
+	}
+#elif	SILDET == 2
+	if ( member->via_telephone )
+	{
+		// create a speex preprocessor
+
+		if ( (member->dsp = speex_preprocess_state_init( AST_CONF_BLOCK_SAMPLES, AST_CONF_SAMPLE_RATE ) ))
 		{
 			// set speex preprocessor options
 			speex_preprocess_ctl( member->dsp, SPEEX_PREPROCESS_SET_VAD, &(member->vad_flag) ) ;
@@ -741,6 +767,10 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 			speex_preprocess_ctl( member->dsp, SPEEX_PREPROCESS_SET_PROB_START, &member->vad_prob_start ) ;
 			speex_preprocess_ctl( member->dsp, SPEEX_PREPROCESS_SET_PROB_CONTINUE, &member->vad_prob_continue ) ;
 		}
+		else
+		{
+			ast_log( LOG_WARNING, "unable to initialize member dsp, channel => %s\n", chan->name ) ;
+		}
 	}
 #endif
 	//
@@ -749,7 +779,7 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 
 	// set member's audio formats, taking dsp preprocessing into account
 	// ( chan->nativeformats, AST_FORMAT_SLINEAR, AST_FORMAT_ULAW, AST_FORMAT_GSM )
-#if ( SILDET == 2 )
+#if	SILDET == 1 || SILDET == 2
 #ifndef	AC_USE_G722
 	member->read_format = ( !member->dsp ? chan->nativeformats : AST_FORMAT_SLINEAR ) ;
 #else
@@ -911,7 +941,13 @@ ast_conf_member* delete_member( ast_conf_member* member )
 	{
 		free( member->mixConfFrame );
 	}
-#if ( SILDET == 2 )
+
+#if	SILDET == 1
+	if ( member->dsp )
+	{
+		WebRtcVad_Free( member->dsp ) ;
+	}
+#elif	SILDET == 2
 	if ( member->dsp )
 	{
 		speex_preprocess_state_destroy( member->dsp ) ;

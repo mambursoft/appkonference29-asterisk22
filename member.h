@@ -66,7 +66,6 @@ struct ast_conf_member
 	char spyer ; // spyer flag
 	int max_users ; // zero or max users for this conference
 
-	int via_telephone;
 	// video conference params
 	int id;
 	// muting options - this member will not be heard/seen
@@ -136,8 +135,17 @@ struct ast_conf_member
 	// flag indicating we should remove this member
 	char kick_flag ;
 
-#if ( SILDET == 2 )
+#if	SILDET == 1
 	// voice flags
+	int via_telephone;
+	// pointer to webrtc preprocessor dsp
+	VadInst *dsp ;
+        // number of "silent" frames to ignore
+	int ignore_vad_result;
+
+#elif	SILDET == 2
+	// voice flags
+	int via_telephone;
 	int vad_flag;
 	int denoise_flag;
 	int agc_flag;
@@ -148,8 +156,8 @@ struct ast_conf_member
 
 	// pointer to speex preprocessor dsp
 	SpeexPreprocessState *dsp ;
-        // number of frames to ignore speex_preprocess()
-	int ignore_speex_count;
+        // number of "silent" frames to ignore
+	int ignore_vad_result;
 #endif
 
 	// audio format this member is using
