@@ -431,7 +431,7 @@ conf_frame* delete_conf_frame( conf_frame* cf )
 
 	if ( cf->fr )
 	{
-		ast_frame_free( cf->fr, !cf->mixed_buffer ) ;
+		ast_frfree( cf->fr ) ;
 	}
 
 	for ( c = 1 ; c < AC_SUPPORTED_FORMATS ; ++c )
