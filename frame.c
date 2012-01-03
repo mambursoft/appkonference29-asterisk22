@@ -574,6 +574,9 @@ struct ast_frame* get_silent_slinear_frame( void )
 #if     ASTERISK == 14
 					.subclass = AST_FORMAT_SLINEAR,
 					.data = &(data[AST_FRIENDLY_OFFSET]),
+#elif	ASTERISK == 16
+					.subclass = AST_FORMAT_SLINEAR,
+					.data.ptr = &(data[AST_FRIENDLY_OFFSET]),
 #else
 					.subclass.integer = AST_FORMAT_SLINEAR,
 					.data.ptr = &(data[AST_FRIENDLY_OFFSET]),
