@@ -311,6 +311,24 @@ void init_conference( void )
 
 	get_silent_frame() ;
 	ast_log( LOG_NOTICE, "allocated conference silent frame\n" ) ;
+
+#if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
+	int fd;
+	if ( (fd = open(SPEAKER_SCOREBOARD_FILE,O_CREAT|O_TRUNC|O_RDWR,0644)) > -1 )
+	{
+		if ( (ftruncate(fd, SPEAKER_SCOREBOARD_SIZE)) == -1 )
+			ast_log(LOG_ERROR, "unable to truncate scoreboard file!?\n");
+
+		if ( (speaker_scoreboard = (char*)mmap(NULL, SPEAKER_SCOREBOARD_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED )
+			ast_log(LOG_ERROR,"unable to mmap speaker scoreboard!?\n");
+
+		close(fd);
+	}
+	else
+	{
+		ast_log(LOG_ERROR, "unable to open scoreboard file!?\n");
+	}
+#endif
 }
 
 #ifdef	CACHE_CONTROL_BLOCKS
@@ -348,6 +366,11 @@ void dealloc_conference( void )
 
 	delete_conf_frame( get_silent_frame() );
 	ast_log( LOG_NOTICE, "deallocated conference silent frame\n" ) ;
+
+#if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
+	if ( speaker_scoreboard )
+		munmap(speaker_scoreboard, SPEAKER_SCOREBOARD_SIZE);
+#endif
 }
 
 ast_conference* join_conference( ast_conf_member* member, char* conf_name, char* max_users_flag )
@@ -696,7 +719,7 @@ static void add_member( ast_conf_member *member, ast_conference *conf )
 	if (member->ismoderator)
 		conf->moderators++;
 
-	member->id = ( !conf->memberlast ? 1 : conf->memberlast->id + 1 ) ;
+	member->conf_id = ( !conf->memberlast ? 1 : conf->memberlast->conf_id + 1 ) ;
 
 	if ( !conf->memberlist )
 		conf->memberlist = conf->memberlast = member ;
@@ -802,7 +825,7 @@ void remove_member( ast_conf_member* member, ast_conference* conf, char* conf_na
 		conf_name,
 		member->type,
 		member->chan->uniqueid,
-		member->id,
+		member->conf_id,
 		member->flags,
 		member->chan->name,
 #if	ASTERISK == 14 || ASTERISK == 16
@@ -885,13 +908,13 @@ void list_members ( int fd, const char *name )
 				{
 					snprintf(volume_str, 10, "%d:%d", member->talk_volume, member->listen_volume);
 					if ( member->spyee_channel_name && member->spy_partner )
-						snprintf(spy_str, 10, "%d", member->spy_partner->id);
+						snprintf(spy_str, 10, "%d", member->spy_partner->conf_id);
 					else
 						strcpy(spy_str , "*");
 					duration = (int)(ast_tvdiff_ms(ast_tvnow(),member->time_entered) / 1000);
 					snprintf(duration_str, 10, "%02d:%02d:%02d",  duration / 3600, (duration % 3600) / 60, duration % 60);
 					ast_cli( fd, "%-20d %-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-80s\n",
-					member->id, member->flags, !member->mute_audio ? "Unmuted" : "Muted", volume_str, duration_str , spy_str, member->chan->name);
+					member->conf_id, member->flags, !member->mute_audio ? "Unmuted" : "Muted", volume_str, duration_str , spy_str, member->chan->name);
 					member = member->next;
 				}
 
@@ -939,13 +962,13 @@ void list_all( int fd )
 			{
 				snprintf(volume_str, 10, "%d:%d", member->talk_volume, member->listen_volume);
 				if ( member->spyee_channel_name && member->spy_partner )
-					snprintf(spy_str, 10, "%d", member->spy_partner->id);
+					snprintf(spy_str, 10, "%d", member->spy_partner->conf_id);
 				else
 					strcpy(spy_str , "*");
 				duration = (int)(ast_tvdiff_ms(ast_tvnow(),member->time_entered) / 1000);
 				snprintf(duration_str, 10, "%02d:%02d:%02d",  duration / 3600, (duration % 3600) / 60, duration % 60);
 				ast_cli( fd, "%-20d %-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-80s\n",
-				member->id, member->flags, !member->mute_audio ? "Unmuted" : "Muted", volume_str, duration_str , spy_str, member->chan->name);
+				member->conf_id, member->flags, !member->mute_audio ? "Unmuted" : "Muted", volume_str, duration_str , spy_str, member->chan->name);
 				member = member->next;
 			}
 
@@ -982,7 +1005,7 @@ void kick_member (  const char* confname, int user_id)
 				member = conf->memberlist ;
 				while (member )
 				  {
-				    if (member->id == user_id)
+				    if (member->conf_id == user_id)
 				      {
 					      ast_mutex_lock( &member->lock ) ;
 					      member->kick_flag = 1;
@@ -1061,8 +1084,11 @@ void mute_member ( const char* confname, int user_id )
 				member = conf->memberlist ;
 				while (member )
 				  {
-				    if (member->id == user_id)
+				    if (member->conf_id == user_id)
 				      {
+#if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
+						*(speaker_scoreboard + member->score_id) = '\x00';
+#endif
 					      ast_mutex_lock( &member->lock ) ;
 					      member->mute_audio = 1;
 					      ast_mutex_unlock( &member->lock ) ;
@@ -1111,6 +1137,9 @@ void mute_conference (  const char* confname)
 				  {
 				    if ( !member->ismoderator )
 				      {
+#if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
+						*(speaker_scoreboard + member->score_id) = '\x00';
+#endif
 					      ast_mutex_lock( &member->lock ) ;
 					      member->mute_audio = 1;
 					      ast_mutex_unlock( &member->lock ) ;
@@ -1159,7 +1188,7 @@ void unmute_member ( const char* confname, int user_id )
 				member = conf->memberlist ;
 				while (member )
 				  {
-				    if (member->id == user_id)
+				    if (member->conf_id == user_id)
 				      {
 					      ast_mutex_lock( &member->lock ) ;
 					      member->mute_audio = 0;

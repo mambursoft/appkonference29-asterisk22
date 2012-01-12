@@ -46,6 +46,12 @@ REVISION = $(shell svnversion -n .)
 # cache_control_blocks ( 0 == OFF, 1 == ON )
 CACHE_CONTROL_BLOCKS ?= 1
 
+# score board ( 0 == OFF, 1 == ON )
+SPEAKER_SCOREBOARD ?= 0
+
+# score board table size
+SPEAKER_SCOREBOARD_SIZE ?= 4096
+
 # channel table size
 CHANNEL_TABLE_SIZE ?= 997
 
@@ -131,6 +137,9 @@ CPPFLAGS += -DONEMIXTHREAD
 
 ifeq ($(CACHE_CONTROL_BLOCKS), 1)
 CPPFLAGS += -DCACHE_CONTROL_BLOCKS
+ifeq ($(SPEAKER_SCOREBOARD), 1)
+CPPFLAGS += -DSPEAKER_SCOREBOARD -DSPEAKER_SCOREBOARD_SIZE=$(SPEAKER_SCOREBOARD_SIZE)
+endif
 endif
 
 ifeq ($(REALTIME), 1)

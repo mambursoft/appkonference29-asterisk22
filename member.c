@@ -26,6 +26,10 @@
 #ifdef	CACHE_CONTROL_BLOCKS
 ast_conf_member *mbrblocklist = NULL;
 AST_MUTEX_DEFINE_STATIC(mbrblocklist_lock);
+#ifdef	SPEAKER_SCOREBOARD
+int last_score_id = 0 ;
+AST_MUTEX_DEFINE_STATIC(speaker_scoreboard_lock);
+#endif
 #endif
 
 // process an incoming frame.  Returns 0 normally, 1 if hangup was received.
@@ -87,6 +91,9 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 				{
 					// skip speex_preprocess(), and decrement counter
 					if (!--member->ignore_vad_result ) {
+#if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
+						*(speaker_scoreboard + member->score_id) = '\x00';
+#else
 						manager_event(
 							EVENT_FLAG_CONF,
 							"ConferenceState",
@@ -97,6 +104,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 							member->flags,
 							"silent"
 						) ;
+#endif
 					}
 				}
 				else
@@ -108,6 +116,9 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 			else
 			{
 				if (!member->ignore_vad_result) {
+#if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
+					*(speaker_scoreboard + member->score_id) = '\x01';
+#else
 					manager_event(
 						EVENT_FLAG_CONF,
 						"ConferenceState",
@@ -118,6 +129,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 						member->flags,
 						"speaking"
 					) ;
+#endif
 				}
 				// voice detected, reset skip count
 				member->ignore_vad_result = AST_CONF_FRAMES_TO_IGNORE ;
@@ -407,6 +419,9 @@ int member_exec( struct ast_channel* chan, const char* data )
 		"Type: %s\r\n"
 		"UniqueID: %s\r\n"
 		"Member: %d\r\n"
+#if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
+		"ScoreID: %d\r\n"
+#endif
 		"Flags: %s\r\n"
 		"Channel: %s\r\n"
 		"CallerID: %s\r\n"
@@ -416,7 +431,10 @@ int member_exec( struct ast_channel* chan, const char* data )
 		conf->name,
 		member->type,
 		member->chan->uniqueid,
-		member->id,
+		member->conf_id,
+#if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
+		member->score_id,
+#endif
 		member->flags,
 		member->chan->name,
 #if	ASTERISK == 14 || ASTERISK == 16
@@ -531,6 +549,9 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 {
 	ast_conf_member *member;
 #ifdef	CACHE_CONTROL_BLOCKS
+#ifdef	SPEAKER_SCOREBOARD
+	int score_id ;
+#endif
 	if ( mbrblocklist )
 	{
 		// get member control block from the free list
@@ -538,6 +559,9 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 		member = mbrblocklist;
 		mbrblocklist = mbrblocklist->next;
 		ast_mutex_unlock ( &mbrblocklist_lock ) ;
+#ifdef	SPEAKER_SCOREBOARD
+		score_id = member->score_id ;
+#endif
 		memset(member,0,sizeof(ast_conf_member));
 	}
 	else
@@ -550,7 +574,18 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 			return NULL ;
 		}
 #ifdef	CACHE_CONTROL_BLOCKS
+#ifdef	SPEAKER_SCOREBOARD
+		ast_mutex_lock ( &speaker_scoreboard_lock ) ;
+		score_id = (last_score_id < SPEAKER_SCOREBOARD_SIZE ? ++last_score_id : 0) ;
+		ast_mutex_unlock ( &speaker_scoreboard_lock ) ;
 	}
+	// initialize score board identifier
+	member->score_id = score_id ;
+	// initialize score board entry
+	*(speaker_scoreboard + score_id) = '\x00';
+#else
+	}
+#endif
 #endif
 
 	// initialize mutex
@@ -651,12 +686,6 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 	if ( !(*(member->type)) ) {
 		strcpy( member->type, AST_CONF_TYPE_DEFAULT ) ;
 	}
-
-	// start of day video ids
-	member->id = -1;
-
-	// ( not currently used )
-	// member->samplesperframe = AST_CONF_BLOCK_SAMPLES ;
 
 	// record start time
 	// init dropped frame timestamps

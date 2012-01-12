@@ -28,6 +28,9 @@
 #include <math.h>
 #include <stdio.h>
 
+#if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
+#include <sys/mman.h>
+#endif
 
 #include <pthread.h>
 
@@ -191,6 +194,11 @@
 #define EVENT_FLAG_CONF EVENT_FLAG_USER
 
 const char *argument_delimiter ;
+
+#if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
+#define	SPEAKER_SCOREBOARD_FILE "/tmp/speaker-scoreboard"
+char *speaker_scoreboard;
+#endif
 
 AST_LIST_HEAD (conference_bucket, ast_conference) ;
 struct conference_bucket *conference_table ;

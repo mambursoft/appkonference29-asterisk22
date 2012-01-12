@@ -389,6 +389,9 @@ char *conference_mutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_ar
 	ast_conf_member *member = find_member(channel, 1);
 	if( member )
 	{
+#if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
+		*(speaker_scoreboard + member->score_id) = '\x00';
+#endif
 		member->mute_audio = 1;
 
 		if ( !--member->use_count && member->delete_flag )

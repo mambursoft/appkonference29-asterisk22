@@ -66,8 +66,12 @@ struct ast_conf_member
 	char spyer ; // spyer flag
 	int max_users ; // zero or max users for this conference
 
-	// video conference params
-	int id;
+	// block ids
+	int conf_id;
+#if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
+	int score_id;
+#endif
+
 	// muting options - this member will not be heard/seen
 	int mute_audio;
 	int muted; // should incoming audio be muted while we play?

@@ -262,3 +262,9 @@ frame routine.
 Added another library for silence detection. The new library is enabled by
 setting the silence detection compiler flag, SILDET, to one. The new library is
 the default setting and the old library is deprecated.
+
+Added a scoreboard for member speaking/silent state changes.  The scoreboard is
+enabled by setting a two compiler flags: SPEAKER_SCOREBOARD and
+CACHE_CONTROL_BLOCKS.  Member speaking/silent state change events are not
+queued to the manager when the scoreboard is enabled. By default,
+speaking/silent events are enabled and the scoreboard is disabled.
