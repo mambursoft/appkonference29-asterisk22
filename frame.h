@@ -37,20 +37,21 @@ conf_frame* mix_multiple_speakers( ast_conference* conf, conf_frame* frames_in, 
 conf_frame* mix_single_speaker( ast_conference* conf, conf_frame* frames_in ) ;
 
 // frame creation and deletion
-conf_frame* create_conf_frame( ast_conf_member* member, conf_frame* next, const struct ast_frame* fr ) ;
+conf_frame* create_conf_frame( ast_conf_member* member, const struct ast_frame* fr ) ;
 conf_frame* create_mix_frame( ast_conf_member* member, conf_frame* next, conf_frame** cf ) ;
 conf_frame* delete_conf_frame( conf_frame* cf ) ;
-
-#define copy_conf_frame(src) create_conf_frame( src->member, NULL, src->fr )
 
 // convert frame function
 struct ast_frame* convert_frame( struct ast_trans_pvt* trans, struct ast_frame* fr, int consume ) ;
 
-// slinear frame functions
+// slinear frame function
 struct ast_frame* create_slinear_frame( struct ast_frame** fr, char* data ) ;
 
-// silent frame functions
+// silent frame function
 conf_frame* get_silent_frame( void ) ;
-struct ast_frame* get_silent_slinear_frame( void ) ;
+
+#if	defined(CACHE_CONF_FRAMES) && defined(ONEMIXTHREAD)
+void freeconfframes( void ) ;
+#endif
 
 #endif

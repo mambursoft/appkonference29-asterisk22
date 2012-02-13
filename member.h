@@ -96,15 +96,14 @@ struct ast_conf_member
 	short ready_for_outgoing ;
 
 	// input frame queue
-	conf_frame* inFrames ;
-	conf_frame* inFramesTail ;
+	AST_LIST_HEAD_NOLOCK(, ast_frame) inFrames ;
 	unsigned int inFramesCount ;
+
 	// frames needed by conference_exec
 	unsigned int inFramesNeeded ;
 
-	// LL output frame queue
-	conf_frame* outFrames ;
-	conf_frame* outFramesTail ;
+	// output frame queue
+	AST_LIST_HEAD_NOLOCK(, ast_frame) outFrames ;
 	unsigned int outFramesCount ;
 
 	// relay dtmf to manager?
@@ -208,8 +207,8 @@ void queue_incoming_frame( ast_conf_member* member, struct ast_frame* fr ) ;
 conf_frame* get_incoming_frame( ast_conf_member* member ) ;
 
 // outgoing queue
-void queue_outgoing_frame( ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery ) ;
-conf_frame* get_outgoing_frame( ast_conf_member* member ) ;
+void queue_outgoing_frame( ast_conf_member* member, struct ast_frame* fr, struct timeval delivery ) ;
+struct ast_frame* get_outgoing_frame( ast_conf_member* member ) ;
 
 void member_process_spoken_frames(ast_conference* conf,
 				  ast_conf_member *member,

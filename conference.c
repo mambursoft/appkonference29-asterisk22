@@ -42,8 +42,7 @@ AST_MUTEX_DEFINE_STATIC(conflist_lock);
 
 static int conference_count = 0 ;
 
-// Forward funtcion declarations
-static void add_milliseconds( struct timeval* tv, long ms ) ;
+// Forward function declarations
 static ast_conference* find_conf(const char* name);
 static ast_conference* create_conf(char* name, ast_conf_member* member);
 ast_conference* remove_conf(ast_conference* conf);
@@ -109,8 +108,20 @@ static void conference_exec( ast_conference *conf )
 			usleep( time_sleep * 1000 ) ;
 			continue ;
 		}
+
 		// adjust the timer base ( it will be used later to timestamp outgoing frames )
-		add_milliseconds( &base, AST_CONF_FRAME_INTERVAL ) ;
+
+		// add the microseconds to the microseconds field
+		base.tv_usec += ( AST_CONF_FRAME_INTERVAL * 1000 ) ;
+
+		// calculate the number of seconds to increment
+		long s = ( base.tv_usec / 1000000 ) ;
+
+		// adjust the microseconds field
+		if ( s > 0 ) base.tv_usec -= ( s * 1000000 ) ;
+
+		// increment the seconds field
+		base.tv_sec += s ;
 
 		//
 		// check thread frequency
@@ -309,9 +320,6 @@ void init_conference( void )
 
 	argument_delimiter = ( !strcmp(PACKAGE_VERSION,"1.4") ? "|" : "," ) ;
 
-	get_silent_frame() ;
-	ast_log( LOG_NOTICE, "allocated conference silent frame\n" ) ;
-
 #if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
 	int fd;
 	if ( (fd = open(SPEAKER_SCOREBOARD_FILE,O_CREAT|O_TRUNC|O_RDWR,0644)) > -1 )
@@ -339,7 +347,7 @@ void freeconfblocks( void )
 	{
 		confblock = confblocklist;
 		confblocklist = confblocklist->next;
-		free( confblock );
+		ast_free( confblock );
 	}
 }
 #endif
@@ -364,8 +372,13 @@ void dealloc_conference( void )
 	ast_log( LOG_NOTICE, "deallocated conference control blocks\n" ) ;
 #endif
 
-	delete_conf_frame( get_silent_frame() );
-	ast_log( LOG_NOTICE, "deallocated conference silent frame\n" ) ;
+	conf_frame *cf = get_silent_frame();
+	for ( i = 1; i < AC_SUPPORTED_FORMATS ; ++i )
+		if ( cf->converted[ i ] ) ast_frfree( cf->converted[ i ] ) ;
+
+#if	defined(CACHE_CONF_FRAMES) && defined(ONEMIXTHREAD)
+	freeconfframes();
+#endif
 
 #if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
 	if ( speaker_scoreboard )
@@ -541,7 +554,7 @@ static ast_conference* create_conf( char* name, ast_conf_member* member )
 			ast_log( LOG_ERROR, "unable to start conference thread for conference %s\n", conf->name ) ;
 
 			// clean up conference
-			free( conf ) ;
+			ast_free( conf ) ;
 			return NULL ;
 		}
 #ifdef	ONEMIXTHREAD
@@ -592,11 +605,11 @@ ast_conference *remove_conf( ast_conference *conf )
 	// speaker frames
 	if (conf->mixAstFrame)
 	{
-		free(conf->mixAstFrame) ;
+		ast_free(conf->mixAstFrame) ;
 	}
 	if (conf->mixConfFrame)
 	{
-		free(conf->mixConfFrame);
+		ast_free(conf->mixConfFrame);
 	}
 
 	AST_LIST_LOCK (conf->bucket ) ;
@@ -622,7 +635,7 @@ ast_conference *remove_conf( ast_conference *conf )
 	conf->next = confblocklist;
 	confblocklist = conf;
 #else
-	free( conf ) ;	
+	ast_free( conf ) ;	
 #endif
 	// update conference count
 	--conference_count ;
@@ -1495,20 +1508,4 @@ int count_exec( struct ast_channel* chan, const char* data )
 		res = ast_say_number(chan, count, "", chan->language, (char *) NULL);
 	}
 	return res;
-}
-
-// increment a timeval by ms milliseconds
-void add_milliseconds(struct timeval* tv, long ms)
-{
-	// add the microseconds to the microseconds field
-	tv->tv_usec += ( ms * 1000 ) ;
-
-	// calculate the number of seconds to increment
-	long s = ( tv->tv_usec / 1000000 ) ;
-
-	// adjust the microsends field
-	if ( s > 0 ) tv->tv_usec -= ( s * 1000000 ) ;
-
-	// increment the seconds field
-	tv->tv_sec += s ;
 }

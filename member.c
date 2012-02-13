@@ -244,7 +244,7 @@ again2:
 	ast_mutex_lock( &member->lock ) ;
 	member->soundq = toboot->next;
 
-	free(toboot);
+	ast_free(toboot);
 	if(member->soundq) goto again;
 
 	member->muted = 0;
@@ -270,7 +270,7 @@ again2:
 // or requested sounds
 static int process_outgoing(ast_conf_member *member)
 {
-	conf_frame* cf ; // frame read from the output queue
+	struct ast_frame* cf ; // frame read from the output queue
 	struct ast_frame *f;
 
 	for(;;)
@@ -285,7 +285,7 @@ static int process_outgoing(ast_conf_member *member)
 		}
 
 
-		struct ast_frame *realframe = f = cf->fr;
+		struct ast_frame *realframe = f = cf;
 
 		// if we're playing sounds, we can just replace the frame with the
 		// next sound frame, and send it instead
@@ -301,7 +301,9 @@ static int process_outgoing(ast_conf_member *member)
 		} else {
 			if (member->moh_flag) {
 				member->ready_for_outgoing = 0;
-				delete_conf_frame( cf ) ;
+				do {
+					ast_frfree( cf ) ;
+				} while ( (cf = get_outgoing_frame( member ) ));
 				ast_moh_start(member->chan, NULL, NULL);
 				ast_mutex_unlock(&member->lock);
 				return 0;
@@ -313,7 +315,7 @@ static int process_outgoing(ast_conf_member *member)
 		ast_write( member->chan, f ) ;
 
 		// clean up frame
-		delete_conf_frame( cf ) ;
+		ast_frfree( cf ) ;
 		
 		// free sound frame
 		if ( f != realframe )
@@ -621,7 +623,7 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 	else
 	{
 		ast_log( LOG_ERROR, "create_member unable to parse member data: channel name = %s, data = %s\n", chan->name, data ) ;
-		free( member ) ;
+		ast_free( member ) ;
 		return NULL ;
 	}
 
@@ -939,36 +941,29 @@ ast_conf_member* delete_member( ast_conf_member* member )
 	//
 	// delete the members frames
 	//
-
-	conf_frame* cf ;
+	struct ast_frame* fr ;
 
 	// incoming frames
-	cf = member->inFrames ;
+	while ( (fr = AST_LIST_REMOVE_HEAD(&member->inFrames, frame_list)))
+		ast_frfree(fr) ;
 
-	while ( cf )
-	{
-		cf = delete_conf_frame( cf ) ;
-	}
 	// outgoing frames
-	cf = member->outFrames ;
+	while ( (fr = AST_LIST_REMOVE_HEAD(&member->outFrames, frame_list)))
+		ast_frfree(fr) ;
 
-	while ( cf )
-	{
-		cf = delete_conf_frame( cf ) ;
-	}
 	// speaker buffer
 	if ( member->speakerBuffer )
 	{
-		free( member->speakerBuffer ) ;
+		ast_free( member->speakerBuffer ) ;
 	}
 	// speaker frames
 	if ( member->mixAstFrame )
 	{
-		free( member->mixAstFrame ) ;
+		ast_free( member->mixAstFrame ) ;
 	}
 	if ( member->mixConfFrame )
 	{
-		free( member->mixConfFrame );
+		ast_free( member->mixConfFrame );
 	}
 
 #if	SILDET == 1
@@ -994,7 +989,7 @@ ast_conf_member* delete_member( ast_conf_member* member )
 	// free the member's copy of the spyee channel name
 	if ( member->spyee_channel_name )
 	{
-		free( member->spyee_channel_name );
+		ast_free( member->spyee_channel_name );
 	}
 
 	// clear all sounds
@@ -1006,7 +1001,7 @@ ast_conf_member* delete_member( ast_conf_member* member )
 		next = sound->next;
 		if ( sound->stream )
 			ast_closestream( sound->stream );
-		free( sound );
+		ast_free( sound );
 		sound = next;
 	}
 
@@ -1017,7 +1012,7 @@ ast_conf_member* delete_member( ast_conf_member* member )
 	mbrblocklist = member;
 	ast_mutex_unlock ( &mbrblocklist_lock ) ;
 #else
-	free( member ) ;
+	ast_free( member ) ;
 #endif
 	return nm ;
 }
@@ -1030,49 +1025,32 @@ conf_frame* get_incoming_frame( ast_conf_member *member )
 {
 	ast_mutex_lock(&member->lock);
 
- 	//
- 	// repeat last frame a couple times to smooth transition
- 	//
-
-	if ( !member->inFramesCount ) {
+	if ( !member->inFramesCount )
+	{
 		ast_mutex_unlock(&member->lock);
 		return NULL ;
 	}
 
-	//
-	// return the next frame in the queue
-	//
+	// get first frame
+	struct ast_frame* fr = AST_LIST_REMOVE_HEAD(&member->inFrames, frame_list);
 
-	conf_frame* cfr = NULL ;
-
-	// get first frame in line
-	cfr = member->inFramesTail ;
-
-	// if it's the only frame, reset the queue,
-	// else, move the second frame to the front
-	if ( member->inFramesTail == member->inFrames )
-	{
-		member->inFramesTail = NULL ;
-		member->inFrames = NULL ;
-	}
-	else
-	{
-		// move the pointer to the next frame
-		member->inFramesTail = member->inFramesTail->prev ;
-
-		// reset it's 'next' pointer
-		if ( member->inFramesTail )
-			member->inFramesTail->next = NULL ;
-	}
-
-	// separate the conf frame from the list
-	cfr->next = NULL ;
-	cfr->prev = NULL ;
-
-	// decriment frame count
+	// decrement frame count
 	member->inFramesCount-- ;
 
 	ast_mutex_unlock(&member->lock);
+
+	conf_frame *cfr  = create_conf_frame(member, NULL );
+
+	if ( cfr )
+	{
+		cfr->fr = fr ;
+	}
+	else
+	{
+		ast_log( LOG_ERROR, "unable to malloc conf_frame\n" ) ;
+		ast_frfree( fr ) ;
+	}
+
 	return cfr ;
 }
 
@@ -1095,8 +1073,9 @@ void queue_incoming_frame( ast_conf_member* member, struct ast_frame* fr )
 
 			if ( diff >= time_limit )
 			{
-				// delete the frame
-				delete_conf_frame( get_incoming_frame( member ) ) ;
+				// drop a frame
+				ast_frfree( AST_LIST_REMOVE_HEAD(&member->inFrames, frame_list) );
+				member->inFramesCount-- ;
 
 				member->last_in_dropped = ast_tvnow();
 			}
@@ -1107,7 +1086,6 @@ void queue_incoming_frame( ast_conf_member* member, struct ast_frame* fr )
 	// if we have to drop frames, we'll drop new frames
 	// because it's easier ( and doesn't matter much anyway ).
 	//
-
 	if ( member->inFramesCount >= AST_CONF_MAX_QUEUE )
 	{
 		ast_mutex_unlock(&member->lock);
@@ -1115,12 +1093,11 @@ void queue_incoming_frame( ast_conf_member* member, struct ast_frame* fr )
 	}
 
 	//
-	// create new conf frame from passed data frame
+	// create new frame from passed data frame
 	//
-	conf_frame* cfr = create_conf_frame( member, member->inFrames, fr ) ;
-	if ( !cfr)
+	if ( !(fr = ast_frdup( fr )) )
 	{
-		ast_log( LOG_ERROR, "unable to malloc conf_frame\n" ) ;
+		ast_log( LOG_ERROR, "unable to malloc incoming ast_frame\n" ) ;
 		ast_mutex_unlock(&member->lock);
 		return ;
 	}
@@ -1129,11 +1106,8 @@ void queue_incoming_frame( ast_conf_member* member, struct ast_frame* fr )
 	// add new frame to speaking members incoming frame queue
 	// ( i.e. save this frame data, so we can distribute it in conference_exec later )
 	//
+	AST_LIST_INSERT_TAIL(&member->inFrames, fr, frame_list);
 
-	if ( !member->inFrames) {
-		member->inFramesTail = cfr ;
-	}
-	member->inFrames = cfr ;
 	member->inFramesCount++ ;
 
 	ast_mutex_unlock(&member->lock);
@@ -1143,47 +1117,26 @@ void queue_incoming_frame( ast_conf_member* member, struct ast_frame* fr )
 // outgoing frame functions
 //
 
-conf_frame* get_outgoing_frame( ast_conf_member *member )
+struct ast_frame* get_outgoing_frame( ast_conf_member *member )
 {
-	conf_frame* cfr ;
-
 	ast_mutex_lock(&member->lock);
 
 	if ( member->outFramesCount > AST_CONF_MIN_QUEUE )
 	{
-		cfr = member->outFramesTail ;
+		struct ast_frame* fr = AST_LIST_REMOVE_HEAD(&member->outFrames, frame_list);
 
-		// if it's the only frame, reset the queu,
-		// else, move the second frame to the front
-		if ( member->outFramesTail == member->outFrames )
-		{
-			member->outFrames = NULL ;
-			member->outFramesTail = NULL ;
-		}
-		else
-		{
-			// move the pointer to the next frame
-			member->outFramesTail = member->outFramesTail->prev ;
-
-			// reset it's 'next' pointer
-			if ( member->outFramesTail )
-				member->outFramesTail->next = NULL ;
-		}
-
-		// separate the conf frame from the list
-		cfr->next = NULL ;
-		cfr->prev = NULL ;
-
-		// decriment frame count
+		// decrement frame count
 		member->outFramesCount-- ;
 		ast_mutex_unlock(&member->lock);
-		return cfr ;
+		return fr ;
 	}
+
 	ast_mutex_unlock(&member->lock);
+
 	return NULL ;
 }
 
-void queue_outgoing_frame( ast_conf_member* member, const struct ast_frame* fr, struct timeval delivery )
+void queue_outgoing_frame( ast_conf_member* member, struct ast_frame* fr, struct timeval delivery )
 {
 	//
 	// we have to drop frames, so we'll drop new frames
@@ -1195,35 +1148,24 @@ void queue_outgoing_frame( ast_conf_member* member, const struct ast_frame* fr, 
 	}
 
 	//
-	// create new conf frame from passed data frame
+	// create new frame from passed data frame
 	//
-
-	conf_frame* cfr = create_conf_frame( member, member->outFrames, fr ) ;
-
-	if ( !cfr )
+	if ( !(fr  = ast_frdup(fr)) )
 	{
-		ast_log( LOG_ERROR, "unable to create new conf frame\n" ) ;
-
+		ast_log( LOG_ERROR, "unable to malloc outgoing ast_frame\n" ) ;
 		return ;
 	}
 
 	// set delivery timestamp
-	cfr->fr->delivery = delivery ;
+	fr->delivery = delivery ;
 
 	//
 	// add new frame to speaking members outgoing frame queue
 	//
+	AST_LIST_INSERT_TAIL(&member->outFrames, fr, frame_list);
 
-	if ( !member->outFrames ) {
-		member->outFramesTail = cfr ;
-	}
-	member->outFrames = cfr ;
 	member->outFramesCount++ ;
 }
-
-//
-// outgoing frame functions
-//
 
 void queue_frame_for_listener(
 	ast_conference* conf,
@@ -1555,7 +1497,7 @@ void freembrblocks( void )
 	{
 		mbrblock = mbrblocklist;
 		mbrblocklist = mbrblocklist->next;
-		free( mbrblock );
+		ast_free( mbrblock );
 	}
 }
 #endif

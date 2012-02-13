@@ -268,3 +268,7 @@ enabled by setting a two compiler flags: SPEAKER_SCOREBOARD and
 CACHE_CONTROL_BLOCKS.  Member speaking/silent state change events are not
 queued to the manager when the scoreboard is enabled. By default,
 speaking/silent events are enabled and the scoreboard is disabled.
+
+Changed the incoming and outgoing frame queues to use ast_frames as the queue
+item rather than conf_frames. The advantage of this is that it avoids
+unecessary memory allocation in the frame queueing code.

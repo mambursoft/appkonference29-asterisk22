@@ -19,6 +19,10 @@
 #include "asterisk/autoconfig.h"
 #include "frame.h"
 
+#if	defined(CACHE_CONF_FRAMES) && defined(ONEMIXTHREAD)
+AST_LIST_HEAD_NOLOCK_STATIC(confFrameList, conf_frame) ;
+#endif
+
 #ifdef	VECTORS
 
 typedef short v4si __attribute__ ((vector_size (16))); 
@@ -107,7 +111,6 @@ conf_frame* mix_frames( ast_conference* conf, conf_frame* frames_in, int speaker
 	{
 		// pass-through frames
 		return mix_single_speaker( conf, frames_in ) ;
-		//printf("mix single speaker\n");
 	}
 
 	if ( speaker_count == 2 && listener_count == 0 )
@@ -193,7 +196,7 @@ conf_frame* mix_single_speaker( ast_conference* conf, conf_frame* frames_in )
 		if ( !frames_in->member->spyer
 			&& conf->membercount > 2 )
 		{
-			conf_frame *spy_frame = copy_conf_frame(frames_in);
+			conf_frame *spy_frame = create_conf_frame(frames_in->member, frames_in->fr);
 
 			if ( spy_frame )
 			{
@@ -446,17 +449,27 @@ conf_frame* delete_conf_frame( conf_frame* cf )
 
 	if ( !cf->mixed_buffer )
 	{
-		free( cf ) ;
+#if	defined(CACHE_CONF_FRAMES) && defined(ONEMIXTHREAD)
+		memset(cf,0,sizeof(conf_frame));
+		AST_LIST_INSERT_HEAD(&confFrameList, cf, frame_list) ;
+#else
+		ast_free( cf ) ;
+#endif
 	}
 
 	return nf ;
 }
 
-conf_frame* create_conf_frame( ast_conf_member* member, conf_frame* next, const struct ast_frame* fr )
+conf_frame* create_conf_frame( ast_conf_member* member, const struct ast_frame* fr )
 {
-	conf_frame* cf = ast_calloc( 1, sizeof( conf_frame ) ) ;
+	conf_frame* cf ;
 
-	if ( !cf )
+#if	defined(CACHE_CONF_FRAMES) & defined(ONEMIXTHREAD)
+	cf  = AST_LIST_REMOVE_HEAD(&confFrameList, frame_list) ;
+	if ( !cf && !(cf = ast_calloc( 1, sizeof( conf_frame ) )) )
+#else
+	if ( !(cf  = ast_calloc( 1, sizeof( conf_frame ))) )
+#endif
 	{
 		ast_log( LOG_ERROR, "unable to allocate memory for conf frame\n" ) ;
 		return NULL ;
@@ -464,15 +477,14 @@ conf_frame* create_conf_frame( ast_conf_member* member, conf_frame* next, const 
 
 	cf->member = member ;
 
-	if ( next )
-	{
-		cf->next = next ;
-		next->prev = cf ;
-	}
-
 	if ( fr )
 	{
-		cf->fr = ast_frdup(( struct ast_frame* )( fr ));
+		if (!(cf->fr = ast_frdup(( struct ast_frame* )( fr ))))
+		{
+			ast_free(cf) ;
+			ast_log( LOG_ERROR, "unable to allocate memory for conf frame\n" ) ;
+			return NULL ;
+		}
 	}
 
 	return cf ;
@@ -505,7 +517,7 @@ conf_frame* create_mix_frame( ast_conf_member* member, conf_frame* next, conf_fr
 }
 
 //
-// slinear frame functions
+// slinear frame function
 //
 
 struct ast_frame* create_slinear_frame(struct ast_frame **f, char* data )
@@ -545,28 +557,10 @@ struct ast_frame* create_slinear_frame(struct ast_frame **f, char* data )
 }
 
 //
-// silent frame functions
+// silent frame function
 //
 
 conf_frame* get_silent_frame( void )
-{
-	static conf_frame* static_silent_frame ;
-
-	if ( !static_silent_frame )
-	{
-		struct ast_frame* fr = get_silent_slinear_frame() ;
-
-		if ( !(static_silent_frame = create_conf_frame( NULL, NULL, 0 )) )
-			return NULL ;
-
-		// init the 'converted' slinear silent frame
-		static_silent_frame->fr = static_silent_frame->converted[ AC_SLINEAR_INDEX ] = fr ;
-	}
-
-	return static_silent_frame ;
-}
-
-struct ast_frame* get_silent_slinear_frame( void )
 {
 	static char data[AST_CONF_BUFFER_SIZE] ;
 
@@ -585,5 +579,18 @@ struct ast_frame* get_silent_slinear_frame( void )
 					.offset = AST_FRIENDLY_OFFSET,
 					.datalen = AST_CONF_FRAME_DATA_SIZE } ;
 
-	return &fr;
+	static conf_frame cfr =  { .fr = &fr, .converted[AC_SLINEAR_INDEX] = &fr} ;
+
+	return &cfr;
 }
+
+#if	defined(CACHE_CONF_FRAMES) && defined(ONEMIXTHREAD)
+void freeconfframes( void )
+{
+	conf_frame *cfr ;
+	while ( (cfr = AST_LIST_REMOVE_HEAD(&confFrameList, frame_list)) )
+	{
+		ast_free( cfr ) ;
+	}
+}
+#endif
