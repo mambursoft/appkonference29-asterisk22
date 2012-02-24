@@ -119,13 +119,10 @@ void queue_silent_frame( ast_conference* conf, ast_conf_member* member ) ;
 
 void remove_member( ast_conf_member* member, ast_conference* conf, char* conf_name ) ;
 
-// called by app_confernce.c:load_module()
-void init_conference( void ) ;
+// called by app_conference.c:load_module()
+int init_conference( void ) ;
+// called by app_conference.c:unload_module()
 void dealloc_conference( void ) ;
-
-#ifdef	CACHE_CONTROL_BLOCKS
-void freeconfblocks( void ) ;
-#endif
 
 // cli functions
 void end_conference( const char *name, int hangup ) ;

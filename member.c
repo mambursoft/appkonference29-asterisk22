@@ -24,12 +24,13 @@
 #include "asterisk/musiconhold.h"
 
 #ifdef	CACHE_CONTROL_BLOCKS
-ast_conf_member *mbrblocklist = NULL;
 AST_MUTEX_DEFINE_STATIC(mbrblocklist_lock);
+
 #ifdef	SPEAKER_SCOREBOARD
-int last_score_id = 0 ;
+static int last_score_id = 0 ;
 AST_MUTEX_DEFINE_STATIC(speaker_scoreboard_lock);
 #endif
+
 #endif
 
 // process an incoming frame.  Returns 0 normally, 1 if hangup was received.
@@ -47,7 +48,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 		}
 #if	SILDET == 1 || SILDET == 2
 		// reset silence detection flag
-		int silent_frame = 0 ;
+		int is_silent_frame = 0 ;
 		//
 		// make sure we have a valid dsp and frame type
 		//
@@ -110,7 +111,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 				else
 				{
 					// set silent_frame flag
-					silent_frame = 1 ;
+					is_silent_frame = 1 ;
 				}
 			}
 			else
@@ -135,7 +136,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 				member->ignore_vad_result = AST_CONF_FRAMES_TO_IGNORE ;
 			}
 		}
-		if ( !silent_frame )
+		if ( !is_silent_frame )
 #endif
 			queue_incoming_frame( member, f );
 	}
@@ -1291,32 +1292,14 @@ void queue_frame_for_speaker(
 }
 
 
+
 void queue_silent_frame(
 	ast_conference* conf,
 	ast_conf_member* member
 )
 {
-  int c;
-
-	//
-	// initialize static variables
-	//
-
-	static conf_frame* silent_frame = NULL ;
-	static struct ast_frame* qf = NULL ;
-
-	if ( !silent_frame )
-	{
-		if ( !( silent_frame = get_silent_frame() ) )
-		{
-			ast_log( LOG_WARNING, "unable to initialize static silent frame\n" ) ;
-			return ;
-		}
-	}
-
-
 	// get the appropriate silent frame
-	qf = silent_frame->converted[ member->write_format_index ] ;
+	struct ast_frame* qf = silent_conf_frame->converted[ member->write_format_index ] ;
 
 	if ( !qf  )
 	{
@@ -1332,12 +1315,13 @@ void queue_silent_frame(
 #endif
 		if ( trans )
 		{
+			int c;
 			// attempt ( five times ) to get a silent frame
 			// to make sure we provice the translator with enough data
 			for ( c = 0 ; c < 5 ; ++c )
 			{
 				// translate the frame
-				qf = ast_translate( trans, silent_frame->fr, 0 ) ;
+				qf = ast_translate( trans, silent_conf_frame->fr, 0 ) ;
 
 				// break if we get a frame
 				if ( qf ) break ;
@@ -1349,7 +1333,7 @@ void queue_silent_frame(
 				qf = ast_frisolate( qf ) ;
 
 				// cache the new, isolated frame
-				silent_frame->converted[ member->write_format_index ] = qf ;
+				silent_conf_frame->converted[ member->write_format_index ] = qf ;
 			}
 
 			ast_translator_free_path( trans ) ;
@@ -1488,16 +1472,3 @@ void member_process_spoken_frames(ast_conference* conf,
 
 	return;
 }
-
-#ifdef	CACHE_CONTROL_BLOCKS
-void freembrblocks( void )
-{
-	ast_conf_member *mbrblock;
-	while ( mbrblocklist )
-	{
-		mbrblock = mbrblocklist;
-		mbrblocklist = mbrblocklist->next;
-		ast_free( mbrblock );
-	}
-}
-#endif

@@ -31,13 +31,9 @@
 //
 
 // single-linked list of current conferences
-ast_conference *conflist = NULL ;
-#ifdef	CACHE_CONTROL_BLOCKS
-ast_conference *confblocklist = NULL ;
-#endif
+static ast_conference *conflist = NULL ;
 
 // mutex for synchronizing access to conflist
-//static ast_mutex_t conflist_lock = AST_MUTEX_INITIALIZER ;
 AST_MUTEX_DEFINE_STATIC(conflist_lock);
 
 static int conference_count = 0 ;
@@ -45,7 +41,7 @@ static int conference_count = 0 ;
 // Forward function declarations
 static ast_conference* find_conf(const char* name);
 static ast_conference* create_conf(char* name, ast_conf_member* member);
-ast_conference* remove_conf(ast_conference* conf);
+static ast_conference* remove_conf(ast_conference* conf);
 static void add_member(ast_conf_member* member, ast_conference* conf);
 
 //
@@ -303,45 +299,65 @@ done42:
 //
 
 // called by app_conference.c:load_module()
-void init_conference( void )
+int init_conference( void )
 {
-	ast_mutex_init( &conflist_lock ) ;
-
 	int i;
-	channel_table = ast_malloc (CHANNEL_TABLE_SIZE * sizeof (struct channel_bucket) ) ;
+	//init channel entries
 	for ( i = 0; i < CHANNEL_TABLE_SIZE; i++)
 		AST_LIST_HEAD_INIT (&channel_table[i]) ;
-	ast_log( LOG_NOTICE, "initialized channel table, size = %d\n", CHANNEL_TABLE_SIZE ) ;
 
-	conference_table = ast_malloc (CONFERENCE_TABLE_SIZE * sizeof (struct conference_bucket) ) ;
+	//init conference entries
 	for ( i = 0; i < CONFERENCE_TABLE_SIZE; i++)
 		AST_LIST_HEAD_INIT (&conference_table[i]) ;
-	ast_log( LOG_NOTICE, "initialized conference table, size = %d\n", CONFERENCE_TABLE_SIZE ) ;
 
+	//set delimiter
 	argument_delimiter = ( !strcmp(PACKAGE_VERSION,"1.4") ? "|" : "," ) ;
 
 #if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
+	//init speaker scoreboard
 	int fd;
 	if ( (fd = open(SPEAKER_SCOREBOARD_FILE,O_CREAT|O_TRUNC|O_RDWR,0644)) > -1 )
 	{
 		if ( (ftruncate(fd, SPEAKER_SCOREBOARD_SIZE)) == -1 )
+		{
 			ast_log(LOG_ERROR, "unable to truncate scoreboard file!?\n");
+			close(fd);
+			return -1;
+		}
 
 		if ( (speaker_scoreboard = (char*)mmap(NULL, SPEAKER_SCOREBOARD_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED )
+		{
 			ast_log(LOG_ERROR,"unable to mmap speaker scoreboard!?\n");
+			close(fd);
+			return -1;
+		}
 
 		close(fd);
 	}
 	else
 	{
 		ast_log(LOG_ERROR, "unable to open scoreboard file!?\n");
+		return -1;
 	}
 #endif
+	return 0;
 }
 
-#ifdef	CACHE_CONTROL_BLOCKS
-void freeconfblocks( void )
+
+// called by app_conference.c:unload_module()
+void dealloc_conference( void )
 {
+	int i;
+	//destroy channel entires
+	for ( i = 0; i < CHANNEL_TABLE_SIZE; i++)
+		AST_LIST_HEAD_DESTROY (&channel_table[i]) ;
+
+	//destroy conference entries
+	for ( i = 0; i < CONFERENCE_TABLE_SIZE; i++)
+		AST_LIST_HEAD_DESTROY (&conference_table[i]) ;
+
+#ifdef	CACHE_CONTROL_BLOCKS
+	//free conference blocks
 	ast_conference *confblock;
 	while ( confblocklist )
 	{
@@ -349,35 +365,27 @@ void freeconfblocks( void )
 		confblocklist = confblocklist->next;
 		ast_free( confblock );
 	}
-}
+	
+	//free member blocks
+	ast_conf_member *mbrblock;
+	while ( mbrblocklist )
+	{
+		mbrblock = mbrblocklist;
+		mbrblocklist = mbrblocklist->next;
+		ast_free( mbrblock );
+	}
 #endif
-
-// called by app_conference.c:unload_module()
-void dealloc_conference( void )
-{
-	int i;
-	for ( i = 0; i < CHANNEL_TABLE_SIZE; i++)
-		AST_LIST_HEAD_DESTROY (&channel_table[i]) ;
-	free( channel_table ) ;
-	ast_log( LOG_NOTICE, "destroyed channel table\n" ) ;
-
-	for ( i = 0; i < CONFERENCE_TABLE_SIZE; i++)
-		AST_LIST_HEAD_DESTROY (&conference_table[i]) ;
-	free( conference_table ) ;
-	ast_log( LOG_NOTICE, "destroyed conference table\n" ) ;
-
-#ifdef	CACHE_CONTROL_BLOCKS
-	freeconfblocks();
-	freembrblocks();
-	ast_log( LOG_NOTICE, "deallocated conference control blocks\n" ) ;
-#endif
-
-	conf_frame *cf = get_silent_frame();
+	//free silent frames
 	for ( i = 1; i < AC_SUPPORTED_FORMATS ; ++i )
-		if ( cf->converted[ i ] ) ast_frfree( cf->converted[ i ] ) ;
+		if ( silent_conf_frame->converted[ i ] ) ast_frfree( silent_conf_frame->converted[ i ] ) ;
 
 #if	defined(CACHE_CONF_FRAMES) && defined(ONEMIXTHREAD)
-	freeconfframes();
+	//free conf frames
+	conf_frame *cfr ;
+	while ( (cfr = AST_LIST_REMOVE_HEAD(&confFrameList, frame_list)) )
+	{
+		ast_free( cfr ) ;
+	}
 #endif
 
 #if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)

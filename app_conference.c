@@ -113,7 +113,7 @@ static int load_module( void )
 
 	ast_log( LOG_NOTICE, "Loading app_konference module revision=%s, asterisk version=%.1f\n", revision, (float)ASTERISK/10) ;
 
-	init_conference() ;
+	res |= init_conference() ;
 
 	register_conference_cli() ;
 

@@ -198,10 +198,6 @@ int member_exec( struct ast_channel* chan, const char* data ) ;
 ast_conf_member* create_member( struct ast_channel* chan, const char* data, char* conf_name ) ;
 ast_conf_member* delete_member( ast_conf_member* member ) ;
 
-#ifdef	CACHE_CONTROL_BLOCKS
-void freembrblocks(void);
-#endif
-
 // incoming queue
 void queue_incoming_frame( ast_conf_member* member, struct ast_frame* fr ) ;
 conf_frame* get_incoming_frame( ast_conf_member* member ) ;

@@ -47,11 +47,4 @@ struct ast_frame* convert_frame( struct ast_trans_pvt* trans, struct ast_frame* 
 // slinear frame function
 struct ast_frame* create_slinear_frame( struct ast_frame** fr, char* data ) ;
 
-// silent frame function
-conf_frame* get_silent_frame( void ) ;
-
-#if	defined(CACHE_CONF_FRAMES) && defined(ONEMIXTHREAD)
-void freeconfframes( void ) ;
-#endif
-
 #endif

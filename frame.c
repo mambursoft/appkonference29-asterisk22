@@ -19,9 +19,26 @@
 #include "asterisk/autoconfig.h"
 #include "frame.h"
 
-#if	defined(CACHE_CONF_FRAMES) && defined(ONEMIXTHREAD)
-AST_LIST_HEAD_NOLOCK_STATIC(confFrameList, conf_frame) ;
+static char data[AST_CONF_BUFFER_SIZE] ;
+
+static struct ast_frame fr = { .frametype = AST_FRAME_VOICE, 
+#if     ASTERISK == 14
+				.subclass = AST_FORMAT_SLINEAR,
+				.data = &(data[AST_FRIENDLY_OFFSET]),
+#elif	ASTERISK == 16
+				.subclass = AST_FORMAT_SLINEAR,
+				.data.ptr = &(data[AST_FRIENDLY_OFFSET]),
+#else
+				.subclass.integer = AST_FORMAT_SLINEAR,
+				.data.ptr = &(data[AST_FRIENDLY_OFFSET]),
 #endif
+				.samples = AST_CONF_BLOCK_SAMPLES,
+				.offset = AST_FRIENDLY_OFFSET,
+				.datalen = AST_CONF_FRAME_DATA_SIZE } ;
+
+static conf_frame cfr =  { .fr = &fr, .converted[AC_SLINEAR_INDEX] = &fr } ;
+
+conf_frame *silent_conf_frame = &cfr ;
 
 #ifdef	VECTORS
 
@@ -555,42 +572,3 @@ struct ast_frame* create_slinear_frame(struct ast_frame **f, char* data )
 #endif
 	return *f ;
 }
-
-//
-// silent frame function
-//
-
-conf_frame* get_silent_frame( void )
-{
-	static char data[AST_CONF_BUFFER_SIZE] ;
-
-	static struct ast_frame fr = {	.frametype = AST_FRAME_VOICE, 
-#if     ASTERISK == 14
-					.subclass = AST_FORMAT_SLINEAR,
-					.data = &(data[AST_FRIENDLY_OFFSET]),
-#elif	ASTERISK == 16
-					.subclass = AST_FORMAT_SLINEAR,
-					.data.ptr = &(data[AST_FRIENDLY_OFFSET]),
-#else
-					.subclass.integer = AST_FORMAT_SLINEAR,
-					.data.ptr = &(data[AST_FRIENDLY_OFFSET]),
-#endif
-					.samples = AST_CONF_BLOCK_SAMPLES,
-					.offset = AST_FRIENDLY_OFFSET,
-					.datalen = AST_CONF_FRAME_DATA_SIZE } ;
-
-	static conf_frame cfr =  { .fr = &fr, .converted[AC_SLINEAR_INDEX] = &fr} ;
-
-	return &cfr;
-}
-
-#if	defined(CACHE_CONF_FRAMES) && defined(ONEMIXTHREAD)
-void freeconfframes( void )
-{
-	conf_frame *cfr ;
-	while ( (cfr = AST_LIST_REMOVE_HEAD(&confFrameList, frame_list)) )
-	{
-		ast_free( cfr ) ;
-	}
-}
-#endif
