@@ -272,3 +272,8 @@ speaking/silent events are enabled and the scoreboard is disabled.
 Changed the incoming and outgoing frame queues to use ast_frames as the queue
 item rather than conf_frames. The advantage of this is that it avoids
 unecessary memory allocation in the frame queueing code.
+
+Removed end_conference "hang_up" option because it doesn't work and because it
+doesn't make sense to hang up the channel in the conference application.  Use
+ast_soft_hangup to exit the application when a member is kicked from
+conference.

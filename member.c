@@ -514,11 +514,6 @@ int member_exec( struct ast_channel* chan, const char* data )
 
 		}
 
-		if (conf->kick_flag || member->kick_flag) {
-			pbx_builtin_setvar_helper(member->chan, "KONFERENCE", "KICKED" );
-			break;
-		}
-		
 		if ( member->moh_stop ) {
 			ast_moh_stop(member->chan);
 			member->moh_stop = 0;
@@ -539,6 +534,9 @@ int member_exec( struct ast_channel* chan, const char* data )
 	//
 	// clean up
 	//
+
+	if ( member->chan->_softhangup == AST_SOFTHANGUP_ASYNCGOTO )
+		pbx_builtin_setvar_helper(member->chan, "KONFERENCE", "KICKED" );
 
 	remove_member( member, conf, conf_name ) ;
 	return 0 ;

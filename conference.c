@@ -652,7 +652,7 @@ ast_conference *remove_conf( ast_conference *conf )
 
 }
 
-void end_conference(const char *name, int hangup )
+void end_conference(const char *name)
 {
 	ast_conference *conf;
 
@@ -671,12 +671,8 @@ void end_conference(const char *name, int hangup )
 		while ( member )
 		{
 			// acquire member mutex and request hangup
-			// or just kick
 			ast_mutex_lock( &member->lock ) ;
-			if (hangup)
-				ast_softhangup( member->chan, 1 ) ;
-			else
-				member->kick_flag = 1;
+			ast_softhangup(member->chan, AST_SOFTHANGUP_ASYNCGOTO);
 			ast_mutex_unlock( &member->lock ) ;
 
 			// go on to the next member
@@ -737,11 +733,16 @@ static void add_member( ast_conf_member *member, ast_conference *conf )
 		}
 	}
 
+	// update moderator count
 	if (member->ismoderator)
 		conf->moderators++;
 
+	// calculate member identifier
 	member->conf_id = ( !conf->memberlast ? 1 : conf->memberlast->conf_id + 1 ) ;
 
+	//
+	// add member to list
+	//
 	if ( !conf->memberlist )
 		conf->memberlist = conf->memberlast = member ;
 	else {
@@ -749,6 +750,8 @@ static void add_member( ast_conf_member *member, ast_conference *conf )
 		conf->memberlast->next = member ;
 		conf->memberlast = member ;
 	}
+
+	// set pointer to conference
 	member->conf = conf ;
 
 	// release the conference lock
@@ -760,62 +763,62 @@ static void add_member( ast_conf_member *member, ast_conference *conf )
 void remove_member( ast_conf_member* member, ast_conference* conf, char* conf_name )
 {
 	int membercount ;
-	short moderators ;
-	long tt ;
-	//
-	// loop through the member list looking
-	// for the requested member
-	//
+	int moderators ;
 
 	ast_rwlock_wrlock( &conf->lock );
 
-	if ( member->ismoderator && member->kick_conferees && conf->moderators == 1 )
-		conf->kick_flag = 1 ;
-
-	ast_conf_member *member_temp = member->prev ;
-
-	// calculate time in conference (in seconds)
-	tt = ast_tvdiff_ms(ast_tvnow(),
-			member->time_entered) / 1000;
 	//
-	// if this is the first member in the linked-list,
-	// skip over the first member in the list, else
+	// remove member from list
 	//
-	// point the previous 'next' to the current 'next',
-	// thus skipping the current member in the list
-	//
-	if ( !member_temp )
+	if ( !member->prev )
 		conf->memberlist = member->next ;
 	else
-		member_temp->next = member->next ;
+		member->prev->next = member->next ;
 
-	if(member->next) member->next->prev =  member_temp ; // dbl links
+	if ( member->next )
+		member->next->prev =  member->prev ; // dbl links
 
 	if ( conf->memberlast == member )
-		conf->memberlast = ( !member_temp ? NULL : member_temp );
+		conf->memberlast = member->prev ;
 
-	// update conference count
+	// update member count
 	membercount = --conf->membercount;
 
 	if ( member->hold_flag == 1 && conf->membercount == 1 && conf->memberlist->hold_flag == 1 )
 	{
-			ast_mutex_lock( &conf->memberlist->lock ) ;
-			conf->memberlist->moh_flag = 1 ;
-			ast_mutex_unlock( &conf->memberlist->lock ) ;
+		ast_mutex_lock( &conf->memberlist->lock ) ;
+		conf->memberlist->moh_flag = 1 ;
+		ast_mutex_unlock( &conf->memberlist->lock ) ;
 	}
 
 	// update moderator count
 	moderators = (!member->ismoderator ? conf->moderators : --conf->moderators );
+
+	// if this the last moderator and the flag is set then kick the rest
+	if ( member->ismoderator && member->kick_conferees && !conf->moderators )
+	{
+		ast_conf_member *member_temp = conf->memberlist ;
+		while ( member_temp )
+		{
+			ast_softhangup(member_temp->chan, AST_SOFTHANGUP_ASYNCGOTO);
+			member_temp = member_temp->next ;
+		}
+	}
 
 	//
 	// if spying sever connection to spyee
 	//
 	if ( member->spy_partner )
 	{
-		member->spy_partner->spy_partner = NULL;
-		member->spy_partner->spyer = 0;
-		member->spy_partner = NULL;
-		member->spyer = 0;
+		if ( member->spyer )
+		{
+			member->spy_partner->spy_partner = NULL;
+			member->spy_partner->spyer = 0;
+		}
+		else
+		{
+			ast_softhangup(member->spy_partner->chan, AST_SOFTHANGUP_ASYNCGOTO);
+		}
 	}
 
 	ast_rwlock_unlock( &conf->lock );
@@ -840,7 +843,7 @@ void remove_member( ast_conf_member* member, ast_conference* conf, char* conf_na
 		"Channel: %s\r\n"
 		"CallerID: %s\r\n"
 		"CallerIDName: %s\r\n"
-		"Duration: %ld\r\n"
+		"Duration: %d\r\n"
 		"Moderators: %d\r\n"
 		"Count: %d\r\n",
 		conf_name,
@@ -856,7 +859,7 @@ void remove_member( ast_conf_member* member, ast_conference* conf, char* conf_na
 		member->chan->caller.id.number.str ? member->chan->caller.id.number.str : "unknown",
 		member->chan->caller.id.name.str ? member->chan->caller.id.name.str: "unknown",
 #endif
-		tt,
+		ast_tvdiff_ms(ast_tvnow(),member->time_entered) / 1000,
 		moderators,
 		membercount
 	) ;
@@ -1028,10 +1031,9 @@ void kick_member (  const char* confname, int user_id)
 				  {
 				    if (member->conf_id == user_id)
 				      {
-					      ast_mutex_lock( &member->lock ) ;
-					      member->kick_flag = 1;
-					      //ast_soft_hangup(member->chan);
-					      ast_mutex_unlock( &member->lock ) ;
+					ast_mutex_lock( &member->lock ) ;
+					ast_softhangup(member->chan, AST_SOFTHANGUP_ASYNCGOTO);
+					ast_mutex_unlock( &member->lock ) ;
 				      }
 				    member = member->next;
 				  }
@@ -1068,7 +1070,7 @@ void kick_all ( void )
 			while (member )
 			{
 				ast_mutex_lock( &member->lock ) ;
-				member->kick_flag = 1;
+				ast_softhangup(member->chan, AST_SOFTHANGUP_ASYNCGOTO);
 				ast_mutex_unlock( &member->lock ) ;
 				member = member->next;
 			}

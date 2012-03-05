@@ -82,9 +82,6 @@ struct ast_conference
 	// keep track of current delivery time
 	struct timeval delivery_time ;
 
-	// flag indicating we should remove this member
-	char kick_flag ;
-
 	// listener mix buffer
 #ifdef	VECTORS
 	char listenerBuffer[ AST_CONF_BUFFER_SIZE ] __attribute((aligned(16))) ;
@@ -125,7 +122,7 @@ int init_conference( void ) ;
 void dealloc_conference( void ) ;
 
 // cli functions
-void end_conference( const char *name, int hangup ) ;
+void end_conference( const char *name ) ;
 
 void list_members ( int fd, const char* name );
 void list_conferences ( int fd );

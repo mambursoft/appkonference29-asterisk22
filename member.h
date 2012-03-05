@@ -135,9 +135,6 @@ struct ast_conf_member
 	// start time
 	struct timeval time_entered ;
 
-	// flag indicating we should remove this member
-	char kick_flag ;
-
 #if	SILDET == 1
 	// voice flags
 	int via_telephone;

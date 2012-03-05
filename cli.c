@@ -259,7 +259,7 @@ char *conference_kickchannel(struct ast_cli_entry *e, int cmd, struct ast_cli_ar
 
 	if ( member )
 	{
-		member->kick_flag = 1;
+		ast_softhangup(member->chan, AST_SOFTHANGUP_ASYNCGOTO);
 
 		if ( !--member->use_count && member->delete_flag )
 			ast_cond_signal ( &member->delete_var ) ;
@@ -889,10 +889,8 @@ char *conference_end(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
 	// conference name
 	const char* name = argv[2] ;
 
-	int hangup = (argc == 4 && !strcmp(argv[3], "nohangup") ? 0 : 1) ;
-
 	// get the conference
-	end_conference( name, hangup ) ;
+	end_conference( name ) ;
 
 	return SUCCESS ;
 }
