@@ -276,4 +276,9 @@ unecessary memory allocation in the frame queueing code.
 Removed end_conference "hang_up" option because it doesn't work and because it
 doesn't make sense to hang up the channel in the conference application.  Use
 ast_soft_hangup to exit the application when a member is kicked from
-conference.
+
+Deprecate kick member, mute member, and unmute member because they're redundant
+and less efficient than kick channel, mute channel, and unmute channel.
+
+Deprecate the sound complete message because it isn't used in either the
+manager or the web application.

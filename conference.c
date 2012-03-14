@@ -31,12 +31,12 @@
 //
 
 // single-linked list of current conferences
-static ast_conference *conflist = NULL ;
+static ast_conference *conflist;
 
 // mutex for synchronizing access to conflist
 AST_MUTEX_DEFINE_STATIC(conflist_lock);
 
-static int conference_count = 0 ;
+static int conference_count;
 
 // Forward function declarations
 static ast_conference* find_conf(const char* name);
@@ -714,25 +714,32 @@ static void add_member( ast_conf_member *member, ast_conference *conf )
 
 	// update conference count
 	conf->membercount++;
-
-	if ( member->hold_flag == 1 )
+#ifdef	HOLD_OPTION
+	if ( member->hold_flag )
 	{
 		if  ( conf->membercount == 1 )
 		{
 			ast_mutex_lock( &member->lock ) ;
-			member->moh_flag = 1 ;
+			member->ready_for_outgoing = 0;
+
+			struct ast_frame *f; 
+			while ( (f = get_outgoing_frame( conf->memberlist )) )
+			{
+				ast_frfree(f);
+			}
+
+			ast_moh_start(member->chan, NULL, NULL);
 			ast_mutex_unlock( &member->lock ) ;
 		}
-		else if ( conf->membercount == 2 && conf->memberlist->hold_flag == 1)
+		else if ( conf->membercount == 2 && conf->memberlist->hold_flag )
 		{
 			ast_mutex_lock( &conf->memberlist->lock ) ;
-			conf->memberlist->moh_flag = 0 ;
+			ast_moh_stop(conf->memberlist->chan);
 			conf->memberlist->ready_for_outgoing = 1;
-			conf->memberlist->moh_stop = 1;
 			ast_mutex_unlock( &conf->memberlist->lock ) ;
 		}
 	}
-
+#endif
 	// update moderator count
 	if (member->ismoderator)
 		conf->moderators++;
@@ -783,14 +790,22 @@ void remove_member( ast_conf_member* member, ast_conference* conf, char* conf_na
 
 	// update member count
 	membercount = --conf->membercount;
-
-	if ( member->hold_flag == 1 && conf->membercount == 1 && conf->memberlist->hold_flag == 1 )
+#ifdef	HOLD_OPTION
+	if ( member->hold_flag && conf->membercount == 1 && conf->memberlist->hold_flag )
 	{
 		ast_mutex_lock( &conf->memberlist->lock ) ;
-		conf->memberlist->moh_flag = 1 ;
+		conf->memberlist->ready_for_outgoing = 0;
+
+		struct ast_frame *f; 
+		while ( (f = get_outgoing_frame( conf->memberlist )) )
+		{
+			ast_frfree(f);
+		}
+
+		ast_moh_start(conf->memberlist->chan, NULL, NULL) ;
 		ast_mutex_unlock( &conf->memberlist->lock ) ;
 	}
-
+#endif
 	// update moderator count
 	moderators = (!member->ismoderator ? conf->moderators : --conf->moderators );
 
@@ -843,7 +858,7 @@ void remove_member( ast_conf_member* member, ast_conference* conf, char* conf_na
 		"Channel: %s\r\n"
 		"CallerID: %s\r\n"
 		"CallerIDName: %s\r\n"
-		"Duration: %d\r\n"
+		"Duration: %ld\r\n"
 		"Moderators: %d\r\n"
 		"Count: %d\r\n",
 		conf_name,
@@ -859,7 +874,7 @@ void remove_member( ast_conf_member* member, ast_conference* conf, char* conf_na
 		member->chan->caller.id.number.str ? member->chan->caller.id.number.str : "unknown",
 		member->chan->caller.id.name.str ? member->chan->caller.id.name.str: "unknown",
 #endif
-		ast_tvdiff_ms(ast_tvnow(),member->time_entered) / 1000,
+		(long)ast_tvdiff_ms(ast_tvnow(),member->time_entered) / 1000,
 		moderators,
 		membercount
 	) ;
@@ -1006,7 +1021,7 @@ void list_all( int fd )
 		ast_mutex_unlock( &conflist_lock ) ;
 	}
 }
-
+#ifdef	KICK_MEMBER
 void kick_member (  const char* confname, int user_id)
 {
 	ast_conf_member *member;
@@ -1048,7 +1063,7 @@ void kick_member (  const char* confname, int user_id)
 		ast_mutex_unlock( &conflist_lock ) ;
 	}
 }
-
+#endif
 void kick_all ( void )
 {
   ast_conf_member *member;
@@ -1084,7 +1099,7 @@ void kick_all ( void )
 	}
 
 }
-
+#ifdef	MUTE_MEMBER
 void mute_member ( const char* confname, int user_id )
 {
   ast_conf_member *member;
@@ -1135,7 +1150,7 @@ void mute_member ( const char* confname, int user_id )
 		ast_mutex_unlock( &conflist_lock ) ;
 	}
 }
-
+#endif
 void mute_conference (  const char* confname)
 {
   ast_conf_member *member;
@@ -1188,7 +1203,7 @@ void mute_conference (  const char* confname)
 	}
 
 }
-
+#ifdef	UNMUTE_MEMBER
 void unmute_member ( const char* confname, int user_id )
 {
   ast_conf_member *member;
@@ -1236,7 +1251,7 @@ void unmute_member ( const char* confname, int user_id )
 		ast_mutex_unlock( &conflist_lock ) ;
 	}
 }
-
+#endif
 void unmute_conference ( const char* confname )
 {
   ast_conf_member *member;
@@ -1320,7 +1335,7 @@ void play_sound_channel(int fd, const char *channel, const char * const *file, i
 
 	if( (member = find_member(channel, 1)) )
 	{
-		if (!member->norecv_audio && !member->moh_flag
+		if (!member->norecv_audio && !member->chan->generatordata
 				&& (!tone || !member->soundq))
 		{
 			while ( n-- > 0 ) {
@@ -1377,9 +1392,29 @@ void start_moh_channel(int fd, const char *channel)
 
 	if ( (member = find_member(channel, 1)) )
 	{
-		if (!member->norecv_audio && !member->moh_flag)
-		{
-			member->moh_flag = member->muted = 1;
+		if (!member->norecv_audio)
+			{
+			// clear all sounds
+			ast_conf_soundq *next;
+			ast_conf_soundq *sound = member->soundq;
+
+			while ( sound )
+			{
+				next = sound->next;
+				sound->stopped = 1;
+				sound = next;
+			}
+
+			member->muted = 1;
+			member->ready_for_outgoing = 0;
+
+			struct ast_frame *f; 
+			while ( (f = get_outgoing_frame( member )) )
+			{
+				ast_frfree(f);
+			}
+
+			ast_moh_start(member->chan, NULL, NULL);
 		}
 
 		if ( !--member->use_count && member->delete_flag )
@@ -1394,12 +1429,12 @@ void stop_moh_channel(int fd, const char *channel)
 
 	if ( (member = find_member(channel, 1)) )
 	{
-		if (!member->norecv_audio && member->moh_flag)
+		if (!member->norecv_audio)
 		{
-			member->moh_stop = 1;
-
-			member->moh_flag = member->muted = 0;
+			member->muted = 0;
 			member->ready_for_outgoing = 1;
+
+			ast_moh_stop(member->chan);
 		}
 
 		if ( !--member->use_count && member->delete_flag )

@@ -27,7 +27,7 @@
 AST_MUTEX_DEFINE_STATIC(mbrblocklist_lock);
 
 #ifdef	SPEAKER_SCOREBOARD
-static int last_score_id = 0 ;
+static int last_score_id ;
 AST_MUTEX_DEFINE_STATIC(speaker_scoreboard_lock);
 #endif
 
@@ -232,6 +232,7 @@ again2:
 		ast_closestream(toboot->stream);
 		//ast_log( LOG_WARNING, "finished playing a sound: name = %s, stream = %p\n", toboot->name, toboot->stream);
 		// notify applications via mgr interface that this sound has been played
+#ifdef	SOUND_COMPLETE_EVENTS
 		manager_event(
 			EVENT_FLAG_CONF,
 			"ConferenceSoundComplete",
@@ -240,6 +241,7 @@ again2:
 			member->chan->name,
 			toboot->name
 		);
+#endif
 	}
 
 	ast_mutex_lock( &member->lock ) ;
@@ -300,15 +302,6 @@ static int process_outgoing(ast_conf_member *member)
 				f = realframe;
 			}
 		} else {
-			if (member->moh_flag) {
-				member->ready_for_outgoing = 0;
-				do {
-					ast_frfree( cf ) ;
-				} while ( (cf = get_outgoing_frame( member ) ));
-				ast_moh_start(member->chan, NULL, NULL);
-				ast_mutex_unlock(&member->lock);
-				return 0;
-			}
 			ast_mutex_unlock(&member->lock);
 		}
 
@@ -464,7 +457,11 @@ int member_exec( struct ast_channel* chan, const char* data )
 	//
 
 	// tell conference_exec we're ready for frames
+#ifndef	HOLD_OPTION
 	member->ready_for_outgoing = 1 ;
+#else
+	member->ready_for_outgoing = !member->chan->generatordata ? 1 : 0 ;
+#endif
 	while ( 42 == 42 )
 	{
 		// make sure we have a channel to process
@@ -481,29 +478,12 @@ int member_exec( struct ast_channel* chan, const char* data )
 		// wait for an event on this channel
 		left = ast_waitfor( chan, AST_CONF_WAITFOR_LATENCY ) ;
 
-		if ( left < 0 )
-		{
-			// an error occured
-			ast_log(
-				LOG_NOTICE,
-				"an error occured waiting for a frame, channel => %s, error => %d\n",
-				chan->name, left
-			) ;
-			break; // out of the 42==42
-		}
-		else if ( left == 0 )
-		{
-			// no frame has arrived yet
-			// ast_log( LOG_NOTICE, "no frame available from channel, channel => %s\n", chan->name ) ;
-		}
-		else if ( left > 0 )
+		if ( left > 0 )
 		{
 			// a frame has come in before the latency timeout
 			// was reached, so we process the frame
 
-			f = ast_read( chan ) ;
-
-			if ( !f )
+			if ( !(f = ast_read( chan)) )
 			{
 				// They probably want to hangup...
 				break ;
@@ -513,10 +493,20 @@ int member_exec( struct ast_channel* chan, const char* data )
 			if(process_incoming(member, conf, f)) break;
 
 		}
-
-		if ( member->moh_stop ) {
-			ast_moh_stop(member->chan);
-			member->moh_stop = 0;
+		else if ( left == 0 )
+		{
+			// no frame has arrived yet
+			// ast_log( LOG_NOTICE, "no frame available from channel, channel => %s\n", chan->name ) ;
+		}
+		else if ( left < 0 )
+		{
+			// an error occured
+			ast_log(
+				LOG_NOTICE,
+				"an error occured waiting for a frame, channel => %s, error => %d\n",
+				chan->name, left
+			) ;
+			break; // out of the 42==42
 		}
 
 		//-----------------//
@@ -750,10 +740,11 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 			case 'x':
 				member->kick_conferees = 1;
 				break;
+#ifdef	HOLD_OPTION
 			case 'H':
 				member->hold_flag = 1;
 				break;
-
+#endif
 			default:
 				break ;
 			}
@@ -1361,7 +1352,7 @@ void member_process_outgoing_frames(ast_conference* conf,
 
 	// skip members that are not ready
 	// skip no receive audio clients
-	if ( !member->ready_for_outgoing || member->norecv_audio == 1 )
+	if ( !member->ready_for_outgoing || member->norecv_audio )
 	{
 		ast_mutex_unlock(&member->lock);
 		return ;
@@ -1392,7 +1383,7 @@ void member_process_outgoing_frames(ast_conference* conf,
 		else
 		{
 			// spyee -- use member translator if spyee speaking or spyer whispering to spyee
-			if ( member->local_speaking_state == 1 || member->spy_partner->local_speaking_state == 1 )
+			if ( member->local_speaking_state || member->spy_partner->local_speaking_state )
 			{
 				queue_frame_for_speaker( conf, member ) ;
 			}
@@ -1435,7 +1426,7 @@ void member_process_spoken_frames(ast_conference* conf,
 		// Decrement speaker count for us and for driven members
 		// This happens only for the first missed frame, since we want to
 		// decrement only on state transitions
-		if ( member->local_speaking_state == 1 )
+		if ( member->local_speaking_state )
 		{
 			member->local_speaking_state = 0;
 		}

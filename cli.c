@@ -177,7 +177,7 @@ char *conference_list(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) 
 	}
 	return SUCCESS ;
 }
-
+#ifdef	KICK_MEMBER
 //
 // kick member <member id>
 //
@@ -220,7 +220,7 @@ char *conference_kick(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) 
 
 	return SUCCESS ;
 }
-
+#endif
 //
 // kick member <channel>
 //
@@ -268,7 +268,7 @@ char *conference_kickchannel(struct ast_cli_entry *e, int cmd, struct ast_cli_ar
 
 	return SUCCESS ;
 }
-
+#ifdef	MUTE_MEMBER
 //
 // mute member <member id>
 //
@@ -311,7 +311,7 @@ char *conference_mute(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) 
 
 	return SUCCESS ;
 }
-
+#endif
 //
 // mute conference
 //
@@ -408,6 +408,7 @@ char *conference_mutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_ar
 
 	return SUCCESS ;
 }
+#ifdef	UNMUTE_MEMBER
 //
 // unmute member <member id>
 //
@@ -450,7 +451,7 @@ char *conference_unmute(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a
 
 	return SUCCESS ;
 }
-
+#endif
 //
 // unmute conference
 //
@@ -904,12 +905,18 @@ static struct ast_cli_entry app_konference_commands[] = {
 	AST_CLI_DEFINE(conference_version, conference_version_summary),
 	AST_CLI_DEFINE(conference_restart, conference_restart_summary),
 	AST_CLI_DEFINE(conference_list, conference_list_summary),
+#ifdef	KICK_MEMBER
 	AST_CLI_DEFINE(conference_kick, conference_kick_summary),
+#endif
 	AST_CLI_DEFINE(conference_kickchannel, conference_kickchannel_summary),
+#ifdef	MUTE_MEMBER
 	AST_CLI_DEFINE(conference_mute, conference_mute_summary),
+#endif
 	AST_CLI_DEFINE(conference_muteconference, conference_muteconference_summary),
 	AST_CLI_DEFINE(conference_mutechannel, conference_mutechannel_summary),
+#ifdef	UNMUTE_MEMBER
 	AST_CLI_DEFINE(conference_unmute, conference_unmute_summary),
+#endif
 	AST_CLI_DEFINE(conference_unmuteconference, conference_unmuteconference_summary),
 	AST_CLI_DEFINE(conference_unmutechannel, conference_unmutechannel_summary),
 	AST_CLI_DEFINE(conference_play_sound, conference_play_sound_summary),
@@ -931,12 +938,18 @@ void register_conference_cli( void )
 	ast_cli_register( &cli_version );
 	ast_cli_register( &cli_restart );
 	ast_cli_register( &cli_list );
+#ifdef	KICK_MEMBER
 	ast_cli_register( &cli_kick );
+#endif
 	ast_cli_register( &cli_kickchannel );
+#ifdef	MUTE_MEMBER
 	ast_cli_register( &cli_mute );
+#endif
 	ast_cli_register( &cli_muteconference );
 	ast_cli_register( &cli_mutechannel );
+#ifdef	UNMUTE_MEMBER
 	ast_cli_register( &cli_unmute );
+#endif
 	ast_cli_register( &cli_unmuteconference );
 	ast_cli_register( &cli_unmutechannel );
 	ast_cli_register( &cli_play_sound ) ;
@@ -958,12 +971,18 @@ void unregister_conference_cli( void )
 	ast_cli_unregister( &cli_version );
 	ast_cli_unregister( &cli_restart );
 	ast_cli_unregister( &cli_list );
+#ifdef	KICK_MEMBER
 	ast_cli_unregister( &cli_kick );
+#endif
 	ast_cli_unregister( &cli_kickchannel );
+#ifdef	MUTE_MEMBER
 	ast_cli_unregister( &cli_mute );
+#endif
 	ast_cli_unregister( &cli_muteconference );
 	ast_cli_unregister( &cli_mutechannel );
+#ifdef	UNMUTE_MEMBER
 	ast_cli_unregister( &cli_unmute );
+#endif
 	ast_cli_unregister( &cli_unmuteconference );
 	ast_cli_unregister( &cli_unmutechannel );
 	ast_cli_unregister( &cli_play_sound ) ;

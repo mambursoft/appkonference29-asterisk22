@@ -78,14 +78,10 @@ struct ast_conf_member
 	// volume level adjustment for this member
 	int talk_volume;
 	int listen_volume;
-
-	// moh flags
-	char moh_flag;
-	char moh_stop;
-
+#ifdef	HOLD_OPTION
 	// hold option flag
 	char hold_flag;
-
+#endif
 	// this member will not hear/see
 	int norecv_audio;
 	// is this person a moderator?
