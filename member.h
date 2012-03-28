@@ -95,18 +95,12 @@ struct ast_conf_member
 	AST_LIST_HEAD_NOLOCK(, ast_frame) inFrames ;
 	unsigned int inFramesCount ;
 
-	// frames needed by conference_exec
-	unsigned int inFramesNeeded ;
-
 	// output frame queue
 	AST_LIST_HEAD_NOLOCK(, ast_frame) outFrames ;
 	unsigned int outFramesCount ;
 
 	// relay dtmf to manager?
 	short dtmf_relay;
-
-	// time we last dropped a frame
-	struct timeval last_in_dropped ;
 
 	// used for determining need to mix frames
 	// and for management interface notification
@@ -202,7 +196,6 @@ struct ast_frame* get_outgoing_frame( ast_conf_member* member ) ;
 void member_process_spoken_frames(ast_conference* conf,
 				  ast_conf_member *member,
 				  conf_frame **spoken_frames,
-				  long time_diff,
 				 int *listener_count,
 				 int *speaker_count);
 

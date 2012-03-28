@@ -186,4 +186,4 @@ $(TARGET): $(OBJS)
 	$(CC) $(SOLINK) -o $@ $(OBJS)
 
 install:
-	$(INSTALL) -m 755 $(TARGET) $(INSTALL_MODULES_DIR)
+	if [ -f $(TARGET) ]; then $(INSTALL) -m 755 $(TARGET) $(INSTALL_MODULES_DIR); fi

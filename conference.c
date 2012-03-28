@@ -232,7 +232,7 @@ static void conference_exec( ast_conference *conf )
 			// loop over member list to retrieve queued frames
 			while ( member )
 			{
-				member_process_spoken_frames(conf,member,&spoken_frames,time_diff,
+				member_process_spoken_frames(conf,member,&spoken_frames,
 							     &listener_count, &speaker_count);
 
 				member = member->next;
