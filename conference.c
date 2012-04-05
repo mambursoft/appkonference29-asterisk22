@@ -30,7 +30,7 @@
 // static variables
 //
 
-// single-linked list of current conferences
+// list of current conferences
 static ast_conference *conflist;
 
 // mutex for synchronizing access to conflist
@@ -47,104 +47,66 @@ static void add_member(ast_conf_member* member, ast_conference* conf);
 //
 // main conference function
 //
-#ifdef	ONEMIXTHREAD
+
 static void conference_exec()
 {
-	ast_conference *conf = NULL ;
-#else
-static void conference_exec( ast_conference *conf )
-{
-#endif
-	ast_conf_member *member;
-	conf_frame *spoken_frames, *send_frames;
-
-	// count number of speakers, number of listeners
-	int speaker_count ;
-	int listener_count ;
+	// thread frequency variable
+	int tf_count = 0 ;
 
 	// timer timestamps
-	struct timeval base, curr ;
-	base = ast_tvnow();
+	struct timeval base, tf_base;
 
-	// holds differences of curr and base
-	long time_diff = 0 ;
-	long time_sleep = 0 ;
-	//
-	// variables for checking thread frequency
-	//
+	// conference epoch - 20 milliseconds
+	struct timeval epoch = ast_tv(0, AST_CONF_FRAME_INTERVAL * 1000);
 
-	// count to AST_CONF_FRAMES_PER_SECOND
-	int tf_count = 0 ;
-	long tf_diff = 0 ;
-	float tf_frequency = 0.0 ;
-
-	struct timeval tf_base, tf_curr ;
-	tf_base = ast_tvnow();
-
-	int res;
+	// set base timestamps
+	base = tf_base = ast_tvnow();
 
 	//
-	// main conference thread loop
+	// conference thread loop
 	//
 
-	while ( 42 == 42 )
+	while ( 42 )
 	{
 		// update the current timestamp
-		curr = ast_tvnow();
+		struct timeval curr = ast_tvnow();
 
 		// calculate difference in timestamps
-		time_diff = ast_tvdiff_ms(curr, base);
+		long time_diff = ast_tvdiff_ms(curr, base);
 
 		// calculate time we should sleep
-		time_sleep = AST_CONF_FRAME_INTERVAL - time_diff ;
+		long time_sleep = AST_CONF_FRAME_INTERVAL - time_diff ;
 
 		if ( time_sleep > 0 )
 		{
-			// sleep for sleep_time ( as milliseconds )
+			// sleep for time_sleep ( as microseconds )
 			usleep( time_sleep * 1000 ) ;
-			continue ;
 		}
 
-		// adjust the timer base ( it will be used later to timestamp outgoing frames )
-
-		// add the microseconds to the microseconds field
-		base.tv_usec += ( AST_CONF_FRAME_INTERVAL * 1000 ) ;
-
-		// calculate the number of seconds to increment
-		long s = ( base.tv_usec / 1000000 ) ;
-
-		// adjust the microseconds field
-		if ( s > 0 ) base.tv_usec -= ( s * 1000000 ) ;
-
-		// increment the seconds field
-		base.tv_sec += s ;
+		// increment the timer base ( it will be used later to timestamp outgoing frames )
+		base = ast_tvadd(base, epoch) ;
 
 		//
 		// check thread frequency
 		//
 
-
 		if ( ++tf_count >= AST_CONF_FRAMES_PER_SECOND )
 		{
 			// update current timestamp
-			tf_curr = ast_tvnow();
+			struct timeval tf_curr = ast_tvnow();
 
 			// compute timestamp difference
-			tf_diff = ast_tvdiff_ms(tf_curr, tf_base);
+			long tf_diff = ast_tvdiff_ms(tf_curr, tf_base);
 
 			// compute sampling frequency
-			tf_frequency = ( float )( tf_diff ) / ( float )( tf_count ) ;
+			float tf_frequency = ( float )( tf_diff ) / ( float )( tf_count ) ;
 
-			if (
-				( tf_frequency <= ( float )( AST_CONF_FRAME_INTERVAL - 1 ) )
-				|| ( tf_frequency >= ( float )( AST_CONF_FRAME_INTERVAL + 1 ) )
-			)
+			if ( ( tf_frequency <= ( float )( AST_CONF_FRAME_INTERVAL - 1 ) )
+				|| ( tf_frequency >= ( float )( AST_CONF_FRAME_INTERVAL + 1 ) ))
 			{
-				ast_log(
-					LOG_WARNING,
+				ast_log( LOG_WARNING,
 					"processed frame frequency variation, tf_count => %d, tf_diff => %ld, tf_frequency => %2.4f\n",
-						tf_count, tf_diff, tf_frequency
-				) ;
+					tf_count, tf_diff, tf_frequency) ;
 			}
 
 			// reset values
@@ -152,20 +114,15 @@ static void conference_exec( ast_conference *conf )
 			tf_count = 0 ;
 		}
 
-		//-----------------//
-		// INCOMING FRAMES //
-		//-----------------//
-#ifdef	ONEMIXTHREAD	
 		//
-		// get the first conference
+		// process the conference list
 		//
 
-		if ( !(res = ast_mutex_trylock(&conflist_lock) )  ) {
-			conf = conflist ;
-			ast_mutex_unlock(&conflist_lock) ;
-		}
-		while ( conf ) {
-#endif
+		// get the first entry
+		ast_conference *conf  = conflist ;
+
+		while ( conf )
+		{
 			// acquire the conference lock
 			ast_rwlock_rdlock(&conf->lock);
 
@@ -176,122 +133,82 @@ static void conference_exec( ast_conference *conf )
 
 			if ( !conf->membercount )
 			{
-				if ( (res = ast_mutex_trylock(&conflist_lock))  )
+				if ( ast_mutex_trylock(&conflist_lock) )
 				{
 					ast_rwlock_unlock(&conf->lock);
-#ifdef	ONEMIXTHREAD	
+
 					// get the next conference
 					conf = conf->next ;
-#endif
+
 					continue ;
 				}
-#ifdef	ONEMIXTHREAD
+
 				conf = remove_conf( conf ) ;
 
 				if ( !conference_count )
-					goto done42 ;
-#else
-				remove_conf( conf ) ;
-#endif
-				// We don't need to release the conf mutex, since it was destroyed anyway
+				{
+					// release the conference list lock
+					ast_mutex_unlock(&conflist_lock);
+
+					// exit the conference thread
+					pthread_exit( NULL ) ;
+				}
 
 				// release the conference list lock
 				ast_mutex_unlock(&conflist_lock);
-#ifdef	ONEMIXTHREAD
+
 				continue ; // next conference
-#else
-				break ; // main loop
-#endif
 			}
 
 			//
-			// Start processing frames
+			// process conference frames
 			//
+
+			// conference member
+			ast_conf_member *member;
 
 			// update the current delivery time
 			conf->delivery_time = base ;
 
-			//
-			// loop through the list of members
-			// ( conf->memberlist is a single-linked list )
-			//
-
 			// reset speaker and listener count
-			speaker_count = 0 ;
-			listener_count = 0 ;
-
-			// get list of conference members
-			member = conf->memberlist ;
+			int speaker_count = 0 ;
+			int listener_count = 0 ;
 
 			// reset pointer lists
-			spoken_frames = NULL ;
+			conf_frame *spoken_frames = NULL ;
 
 			// reset listener frame
 			conf->listener_frame = NULL ;
 
-			// loop over member list to retrieve queued frames
-			while ( member )
+			// loop over member list and retrieve incoming frames
+			for ( member = conf->memberlist ; member ; member = member->next )
 			{
 				member_process_spoken_frames(conf,member,&spoken_frames,
 							     &listener_count, &speaker_count);
-
-				member = member->next;
 			}
 
-			//---------------//
-			// MIXING FRAMES //
-			//---------------//
+			// mix incoming frames and get batch of outgoing frames
+			conf_frame *send_frames = spoken_frames ? mix_frames(conf, spoken_frames, speaker_count, listener_count) : NULL ;
 
-			// mix frames and get batch of outgoing frames
-			send_frames = spoken_frames ? mix_frames(conf, spoken_frames, speaker_count, listener_count) : NULL ;
-
-			//-----------------//
-			// OUTGOING FRAMES //
-			//-----------------//
-
-			//
-			// loop over member list to queue outgoing frames
-			//
+			// loop over member list and send outgoing frames
 			for ( member = conf->memberlist ; member ; member = member->next )
 			{
 				member_process_outgoing_frames(conf, member);
 			}
 
-			//---------//
-			// CLEANUP //
-			//---------//
-
-			// clean up send frames
+			// delete send frames
 			while ( send_frames )
 			{
-				// delete the frame
 				send_frames = delete_conf_frame( send_frames ) ;
 			}
 
 			// release conference lock
 			ast_rwlock_unlock( &conf->lock ) ;
-#ifdef	ONEMIXTHREAD
+
 			// get the next conference
 			conf = conf->next ;
 		}
-#endif
-			// !!! TESTING !!!
-			// usleep( 1 ) ;
 	}
-#ifdef	ONEMIXTHREAD
-done42:
-	ast_mutex_unlock(&conflist_lock);
-#endif
-	// end while ( 42 == 42 )
-
-	//
-	// exit the conference thread
-	//
-
-	// exit the thread
-	pthread_exit( NULL ) ;
-
-	return ;
 }
 
 //
@@ -311,7 +228,7 @@ int init_conference( void )
 		AST_LIST_HEAD_INIT (&conference_table[i]) ;
 
 	//set delimiter
-	argument_delimiter = ( !strcmp(PACKAGE_VERSION,"1.4") ? "|" : "," ) ;
+	argument_delimiter = !strcmp(PACKAGE_VERSION,"1.4") ? "|" : "," ;
 
 #if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
 	//init speaker scoreboard
@@ -379,7 +296,7 @@ void dealloc_conference( void )
 	for ( i = 1; i < AC_SUPPORTED_FORMATS ; ++i )
 		if ( silent_conf_frame->converted[ i ] ) ast_frfree( silent_conf_frame->converted[ i ] ) ;
 
-#if	defined(CACHE_CONF_FRAMES) && defined(ONEMIXTHREAD)
+#ifdef	CACHE_CONF_FRAMES
 	//free conf frames
 	conf_frame *cfr ;
 	while ( (cfr = AST_LIST_REMOVE_HEAD(&confFrameList, frame_list)) )
@@ -533,14 +450,10 @@ static ast_conference* create_conf( char* name, ast_conf_member* member )
 	//
 	// spawn thread for new conference, using conference_exec( conf )
 	//
-#ifdef	ONEMIXTHREAD
-	if (!conflist) {
+	if (!conflist)
+	{
 		if ( !(ast_pthread_create( &conf->conference_thread, NULL, (void*)conference_exec, NULL )) )
 		{
-#else
-		if ( !(ast_pthread_create( &conf->conference_thread, NULL, (void*)conference_exec, conf )) )
-		{
-#endif
 			// detach the thread so it doesn't leak
 			pthread_detach( conf->conference_thread ) ;
 #ifdef	REALTIME
@@ -550,7 +463,8 @@ static ast_conference* create_conf( char* name, ast_conf_member* member )
 
 			pthread_getschedparam(conf->conference_thread, &policy, &param);
 
-			if ( policy == SCHED_RR ) {
+			if ( policy == SCHED_RR )
+			{
 				++param.sched_priority;
 				policy = SCHED_FIFO;
 				pthread_setschedparam(conf->conference_thread, policy, &param);
@@ -565,9 +479,8 @@ static ast_conference* create_conf( char* name, ast_conf_member* member )
 			ast_free( conf ) ;
 			return NULL ;
 		}
-#ifdef	ONEMIXTHREAD
 	}
-#endif
+
 	// add the initial member
 	add_member( member, conf ) ;
 
@@ -745,7 +658,7 @@ static void add_member( ast_conf_member *member, ast_conference *conf )
 		conf->moderators++;
 
 	// calculate member identifier
-	member->conf_id = ( !conf->memberlast ? 1 : conf->memberlast->conf_id + 1 ) ;
+	member->conf_id = !conf->memberlast ? 1 : conf->memberlast->conf_id + 1 ;
 
 	//
 	// add member to list
@@ -807,7 +720,7 @@ void remove_member( ast_conf_member* member, ast_conference* conf, char* conf_na
 	}
 #endif
 	// update moderator count
-	moderators = (!member->ismoderator ? conf->moderators : --conf->moderators );
+	moderators = !member->ismoderator ? conf->moderators : --conf->moderators ;
 
 	// if this the last moderator and the flag is set then kick the rest
 	if ( member->ismoderator && member->kick_conferees && !conf->moderators )

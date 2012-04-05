@@ -587,10 +587,10 @@ char *conference_play_sound(struct ast_cli_entry *e, int cmd, struct ast_cli_arg
 	const char * const *file = &argv[4];
 #endif
 
-	int mute = (argc > 5 && !strcmp(argv[argc-1], "mute")?1:0);
-	int tone = (argc > 5 && !strcmp(argv[argc-1], "tone")?1:0);
+	int mute = argc > 5 && !strcmp(argv[argc-1], "mute") ? 1 : 0;
+	int tone = argc > 5 && !strcmp(argv[argc-1], "tone") ? 1 : 0;
 
-	play_sound_channel(fd, channel, file, mute, tone, (!mute && !tone) ? argc - 4 : argc - 5);
+	play_sound_channel(fd, channel, file, mute, tone, !mute && !tone ? argc - 4 : argc - 5);
 
 	return SUCCESS ;
 }

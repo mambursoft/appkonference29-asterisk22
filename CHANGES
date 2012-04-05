@@ -282,3 +282,6 @@ and less efficient than kick channel, mute channel, and unmute channel.
 
 Deprecate the sound complete message because it isn't used in either the
 manager or the web application.
+
+Remove the support for managing each conference with its own thread since it
+doesn't scale very well as each conference contends for resources.

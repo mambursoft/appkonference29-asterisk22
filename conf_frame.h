@@ -37,7 +37,7 @@ struct conf_frame
 	// array of converted versions for listeners
 	struct ast_frame* converted[ AC_SUPPORTED_FORMATS ] ;
 
-#if	defined(CACHE_CONF_FRAMES) && defined(ONEMIXTHREAD)
+#ifdef	CACHE_CONF_FRAMES
 	// pointer to next frame in cache
 	AST_LIST_ENTRY(conf_frame) frame_list ;
 #endif

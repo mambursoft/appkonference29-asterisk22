@@ -466,7 +466,7 @@ conf_frame* delete_conf_frame( conf_frame* cf )
 
 	if ( !cf->mixed_buffer )
 	{
-#if	defined(CACHE_CONF_FRAMES) && defined(ONEMIXTHREAD)
+#ifdef	CACHE_CONF_FRAMES
 		memset(cf,0,sizeof(conf_frame));
 		AST_LIST_INSERT_HEAD(&confFrameList, cf, frame_list) ;
 #else
@@ -481,7 +481,7 @@ conf_frame* create_conf_frame( ast_conf_member* member, const struct ast_frame* 
 {
 	conf_frame* cf ;
 
-#if	defined(CACHE_CONF_FRAMES) & defined(ONEMIXTHREAD)
+#ifdef	CACHE_CONF_FRAMES
 	cf  = AST_LIST_REMOVE_HEAD(&confFrameList, frame_list) ;
 	if ( !cf && !(cf = ast_calloc( 1, sizeof( conf_frame ) )) )
 #else

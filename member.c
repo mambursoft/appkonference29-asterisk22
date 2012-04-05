@@ -196,7 +196,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 				// free the input frame
 				ast_frfree( f ) ;
 
-				// break out of the while ( 42 == 42 )
+				// break out of the while ( 42 )
 				return 1;
 			}
 			break;
@@ -218,7 +218,7 @@ static struct ast_frame *get_next_soundframe(ast_conf_member *member)
 {
 	struct ast_frame *f;
 
-	while (!(f=(member->soundq->stream && !member->soundq->stopped ? ast_readframe(member->soundq->stream) : NULL)))
+	while (!(f = member->soundq->stream && !member->soundq->stopped ? ast_readframe(member->soundq->stream) : NULL))
 	{
 		ast_conf_soundq *toboot = member->soundq;
 
@@ -321,14 +321,6 @@ int member_exec( struct ast_channel* chan, void* data )
 int member_exec( struct ast_channel* chan, const char* data )
 #endif
 {
-	ast_conference *conf ;
-	char conf_name[CONF_NAME_LEN + 1]  = { 0 };
-	ast_conf_member *member ;
-
-	struct ast_frame *f ; // frame received from ast_read()
-
-	int left = 0 ;
-
 	//
 	// If the call has not yet been answered, answer the call
 	// Note: asterisk apps seem to check _state, but it seems like it's safe
@@ -345,6 +337,9 @@ int member_exec( struct ast_channel* chan, const char* data )
 	//
 	// create a new member for the conference
  	//
+
+	char conf_name[CONF_NAME_LEN + 1]  = { 0 };
+	ast_conf_member *member ;
 
 	if ( !(member = create_member( chan, (const char*)( data ), conf_name )) )
 	{
@@ -376,11 +371,13 @@ int member_exec( struct ast_channel* chan, const char* data )
 	//
 
 	char max_users_flag = 0 ;
+	ast_conference *conf ;
+
 	if ( !(conf = join_conference( member, conf_name, &max_users_flag)) )
 	{
 		ast_log( LOG_NOTICE, "unable to setup member conference %s: max_users_flag is %d\n", conf_name, max_users_flag ) ;
 		delete_member( member) ;
-		return (max_users_flag ? 0 : -1 ) ;
+		return max_users_flag ? 0 : -1 ;
 	}
 
 	// add member to channel table
@@ -434,22 +431,21 @@ int member_exec( struct ast_channel* chan, const char* data )
 		return 0 ;
 	}
 
-	//
-	// process loop for new member ( this runs in it's own thread )
-	//
-
-	// tell conference_exec we're ready for frames
+	// tell conference thread we're ready for frames
 #ifndef	HOLD_OPTION
 	member->ready_for_outgoing = 1 ;
 #else
 	member->ready_for_outgoing = !member->chan->generatordata ? 1 : 0 ;
 #endif
-	while ( 42 == 42 )
-	{
-		//-----------------//
-		// INCOMING FRAMES //
-		//-----------------//
+	//
+	// member thread loop
+	//
 
+	int left ;
+	struct ast_frame *f ; // frame received from ast_read()
+
+	while ( 42 )
+	{
 		// wait for an event on this channel
 		if ( (left  = ast_waitfor(chan, AST_CONF_WAITFOR_LATENCY)) > 0 )
 		{
@@ -458,7 +454,7 @@ int member_exec( struct ast_channel* chan, const char* data )
 
 			if ( !(f = ast_read(chan)) || process_incoming(member, conf, f) )
 			{
-				// They probably want to hangup...
+				// they probably want to hangup...
 				break ;
 			}
 
@@ -476,13 +472,10 @@ int member_exec( struct ast_channel* chan, const char* data )
 				"an error occured waiting for a frame, channel => %s, error => %d\n",
 				chan->name, left
 			) ;
-			break; // out of the 42==42
+			break;
 		}
 
-		//-----------------//
-		// OUTGOING FRAMES //
-		//-----------------//
-
+		// process outgoing frames
 		process_outgoing(member) ;
 	}
 
@@ -532,7 +525,7 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 #ifdef	CACHE_CONTROL_BLOCKS
 #ifdef	SPEAKER_SCOREBOARD
 		ast_mutex_lock ( &speaker_scoreboard_lock ) ;
-		score_id = (last_score_id < SPEAKER_SCOREBOARD_SIZE ? ++last_score_id : 0) ;
+		score_id = last_score_id < SPEAKER_SCOREBOARD_SIZE ? ++last_score_id : 0 ;
 		ast_mutex_unlock ( &speaker_scoreboard_lock ) ;
 	}
 	// initialize score board identifier
@@ -763,9 +756,9 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 	// ( chan->nativeformats, AST_FORMAT_SLINEAR, AST_FORMAT_ULAW, AST_FORMAT_GSM )
 #if	SILDET == 1 || SILDET == 2
 #ifndef	AC_USE_G722
-	member->read_format = ( !member->dsp ? chan->nativeformats : AST_FORMAT_SLINEAR ) ;
+	member->read_format = !member->dsp ? chan->nativeformats : AST_FORMAT_SLINEAR ;
 #else
-	member->read_format = ( !member->dsp ? chan->nativeformats : AST_FORMAT_SLINEAR16 ) ;
+	member->read_format = !member->dsp ? chan->nativeformats : AST_FORMAT_SLINEAR16 ;
 #endif
 #else
 	member->read_format = chan->nativeformats ;
@@ -1099,11 +1092,8 @@ void queue_frame_for_listener(
 
 	if ( frame )
 	{
-		// first, try for a pre-converted frame
-		qf = (!member->listen_volume && !frame->talk_volume ? frame->converted[member->write_format_index] : 0);
-
-		// convert ( and store ) the frame
-		if ( !qf )
+		// try for a pre-converted frame; otherwise, convert ( and store ) the frame
+		if ( !(qf = !member->listen_volume && !frame->talk_volume ? frame->converted[member->write_format_index] : 0) )
 		{
 			if (!member->listen_volume )
 			{

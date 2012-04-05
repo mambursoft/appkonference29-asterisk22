@@ -128,15 +128,6 @@
 // maximum number of frames queued per member
 #define AST_CONF_MAX_QUEUE 100
 
-// minimum number of frames queued per member
-#define AST_CONF_MIN_QUEUE 0
-
-// number of queued frames before we start dropping
-#define AST_CONF_QUEUE_DROP_THRESHOLD 40
-
-// number of milliseconds between frame drops
-#define AST_CONF_QUEUE_DROP_TIME_LIMIT 750
-
 //
 // timer and sleep values
 //
@@ -144,22 +135,6 @@
 // milliseconds we're willing to wait for a channel
 // event before we check for outgoing frames
 #define AST_CONF_WAITFOR_LATENCY 40
-
-// milliseconds to sleep before trying to process frames
-#define AST_CONF_CONFERENCE_SLEEP 40
-
-// milliseconds to wait between state notification updates
-#define AST_CONF_NOTIFICATION_SLEEP 200
-
-//
-// warning threshold values
-//
-
-// number of frames behind before warning
-#define AST_CONF_OUTGOING_FRAMES_WARN 70
-
-// number of milliseconds off AST_CONF_FRAME_INTERVAL before warning
-#define AST_CONF_INTERVAL_WARNING 1000
 
 //
 // format translation values
@@ -211,7 +186,7 @@ struct conference_bucket conference_table[CONFERENCE_TABLE_SIZE] ;
 AST_LIST_HEAD (channel_bucket, ast_conf_member) ;
 struct channel_bucket channel_table[CHANNEL_TABLE_SIZE] ;
 
-#if	defined(CACHE_CONF_FRAMES) && defined(ONEMIXTHREAD)
+#ifdef	CACHE_CONF_FRAMES
 AST_LIST_HEAD_NOLOCK(confFrameList, conf_frame) confFrameList ;
 #endif
 
