@@ -285,3 +285,7 @@ manager or the web application.
 
 Remove the support for managing each conference with its own thread since it
 doesn't scale very well as each conference contends for resources.
+
+Use the linux file descriptor timer api for timing in the conference thread
+instead of usleep'ing. This feature is configurable and can be enabled by
+setting the preprocessor flag, TIMERFD, in the Makefile.

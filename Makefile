@@ -118,6 +118,13 @@ CPPFLAGS += -DCACHE_CONF_FRAMES
 #
 
 #
+# Uncomment this if you want to use timerfd for timing
+#
+# CPPFLAGS += -DTIMERFD
+# CPPFLAGS += -DTIMERFD_EXPIRATIONS
+#
+
+#
 # Uncomment this if you want G.729A support (need to have the actual codec installed)
 #
 # CPPFLAGS += -DAC_USE_G729A

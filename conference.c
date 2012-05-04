@@ -26,12 +26,22 @@
 
 #include "asterisk/musiconhold.h"
 
+#ifdef	TIMERFD
+#include <sys/timerfd.h>
+#include <errno.h>
+#endif
+
 //
 // static variables
 //
 
 // list of current conferences
 static ast_conference *conflist;
+
+#ifdef	TIMERFD
+// timer file descriptor
+static int timerfd ;
+#endif
 
 // mutex for synchronizing access to conflist
 AST_MUTEX_DEFINE_STATIC(conflist_lock);
@@ -68,6 +78,27 @@ static void conference_exec()
 
 	while ( 42 )
 	{
+#ifdef	TIMERFD
+		uint64_t expirations ;
+
+		// wait for start of epoch
+		if ( read(timerfd, &expirations, sizeof(expirations)) == -1 )
+		{
+			ast_log(LOG_ERROR, "unable to read timer!? %s\n", strerror(errno)) ;
+		}
+
+#ifdef	TIMERFD_EXPIRATIONS
+		// check expirations
+		if ( expirations != 1 )
+		{
+			ast_log(LOG_NOTICE, "timer read expirations = %ld!?\n", expirations) ;
+		}
+#endif
+
+		// process expirations
+		for ( ; expirations; expirations-- )
+		{
+#else
 		// update the current timestamp
 		struct timeval curr = ast_tvnow();
 
@@ -82,9 +113,7 @@ static void conference_exec()
 			// sleep for time_sleep ( as microseconds )
 			usleep( time_sleep * 1000 ) ;
 		}
-
-		// increment the timer base ( it will be used later to timestamp outgoing frames )
-		base = ast_tvadd(base, epoch) ;
+#endif
 
 		//
 		// check thread frequency
@@ -118,6 +147,9 @@ static void conference_exec()
 		// process the conference list
 		//
 
+		// increment the timer base ( it will be used later to timestamp outgoing frames )
+		base = ast_tvadd(base, epoch) ;
+
 		// get the first entry
 		ast_conference *conf  = conflist ;
 
@@ -149,7 +181,10 @@ static void conference_exec()
 				{
 					// release the conference list lock
 					ast_mutex_unlock(&conflist_lock);
-
+#ifdef	TIMERFD
+					// close timer file
+					close(timerfd) ;
+#endif
 					// exit the conference thread
 					pthread_exit( NULL ) ;
 				}
@@ -208,6 +243,9 @@ static void conference_exec()
 			// get the next conference
 			conf = conf->next ;
 		}
+#ifdef	TIMERFD
+		}
+#endif
 	}
 }
 
@@ -452,6 +490,37 @@ static ast_conference* create_conf( char* name, ast_conf_member* member )
 	//
 	if (!conflist)
 	{
+
+#ifdef	TIMERFD
+		// create timer
+		if ( (timerfd = timerfd_create(CLOCK_MONOTONIC,TFD_CLOEXEC)) == -1 )
+		{
+			ast_log(LOG_ERROR, "unable to create timer!? %s\n", strerror(errno));
+
+			// clean up conference
+			ast_free( conf ) ;
+			return NULL ;
+		}
+
+		// set interval to epoch
+		struct itimerspec timerspec = { .it_interval.tv_sec = 0,
+						.it_interval.tv_nsec = AST_CONF_FRAME_INTERVAL * 1000000,
+						.it_value.tv_sec = 0,
+						.it_value.tv_nsec = 1 } ;
+
+		// set timer
+		if ( timerfd_settime(timerfd, 0, &timerspec, 0) == -1 )
+		{
+			ast_log(LOG_NOTICE, "unable to set timer!? %s\n", strerror(errno)) ;
+
+			close(timerfd) ;
+
+			// clean up conference
+			ast_free( conf ) ;
+			return NULL ;
+		}
+#endif
+
 		if ( !(ast_pthread_create( &conf->conference_thread, NULL, (void*)conference_exec, NULL )) )
 		{
 			// detach the thread so it doesn't leak
