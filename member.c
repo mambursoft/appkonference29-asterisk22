@@ -424,7 +424,7 @@ int member_exec( struct ast_channel* chan, const char* data )
 	) ;
 
 	// if spyer setup failed, set variable and exit conference
-	if ( member->spyee_channel_name && !member->spyer )
+	if ( member->spyee_channel_name && !member->spy_partner )
 	{
 		remove_member( member, conf, conf_name ) ;
 		pbx_builtin_setvar_helper(member->chan, "KONFERENCE", "SPYFAILED" );
@@ -1300,7 +1300,7 @@ void member_process_outgoing_frames(ast_conference* conf,
 	else
 	{
 		// either a spyer or a spyee
-		if ( member->spyer )
+		if ( member->spyee_channel_name )
 		{
 			// spyer -- always use member translator
 			queue_frame_for_speaker( conf, member ) ;

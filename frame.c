@@ -210,7 +210,7 @@ conf_frame* mix_single_speaker( ast_conference* conf, conf_frame* frames_in )
 	else
 	{
 		// speaker is either a spyee or a spyer
-		if ( !frames_in->member->spyer
+		if ( !frames_in->member->spyee_channel_name
 			&& conf->membercount > 2 )
 		{
 			conf_frame *spy_frame = create_conf_frame(frames_in->member, frames_in->fr);
@@ -277,7 +277,7 @@ conf_frame* mix_multiple_speakers(
 			ast_frame_adjust_volume(cf_spoken->fr, cf_spoken->member->talk_volume + conf->volume);
 		}
 
-		if ( !cf_spoken->member->spyer )
+		if ( !cf_spoken->member->spyee_channel_name )
 		{
 			// add the speaker's voice
 #if	ASTERISK == 14
@@ -306,7 +306,7 @@ conf_frame* mix_multiple_speakers(
 
 	while ( cf_spoken )
 	{
-		if ( !cf_spoken->member->spyer )
+		if ( !cf_spoken->member->spyee_channel_name )
 		{
 			// allocate/reuse mix buffer for speaker
 			if ( !cf_spoken->member->speakerBuffer )
@@ -400,7 +400,7 @@ conf_frame* mix_multiple_speakers(
 	{
 		ast_conf_member *spy_partner = cf_spoken->member->spy_partner ;
 
-		if ( !spy_partner || cf_spoken->member->spyer )
+		if ( !spy_partner || cf_spoken->member->spyee_channel_name )
 		{
 			// delete the frame
 			cf_spoken = delete_conf_frame( cf_spoken ) ;

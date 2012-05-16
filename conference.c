@@ -690,7 +690,6 @@ static void add_member( ast_conf_member *member, ast_conference *conf )
 		{
 			spyee->spy_partner = member;
 			member->spy_partner = spyee;
-			member->spyer = 1;
 		}
 	}
 
@@ -807,10 +806,9 @@ void remove_member( ast_conf_member* member, ast_conference* conf, char* conf_na
 	//
 	if ( member->spy_partner )
 	{
-		if ( member->spyer )
+		if ( member->spyee_channel_name )
 		{
 			member->spy_partner->spy_partner = NULL;
-			member->spy_partner->spyer = 0;
 		}
 		else
 		{

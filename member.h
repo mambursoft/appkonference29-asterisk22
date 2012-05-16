@@ -63,7 +63,7 @@ struct ast_conf_member
 	char flags[MEMBER_FLAGS_LEN + 1] ;	// raw member-type flags
 	char type[MEMBER_TYPE_LEN + 1] ;		// conference type
 	char *spyee_channel_name ; // spyee  channel name
-	char spyer ; // spyer flag
+
 	int max_users ; // zero or max users for this conference
 
 	// block ids
