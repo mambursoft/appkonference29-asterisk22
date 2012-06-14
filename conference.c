@@ -72,6 +72,11 @@ static void conference_exec()
 	// set base timestamps
 	base = tf_base = ast_tvnow();
 
+	// current conference
+	ast_conference *conf = NULL;
+	// last conference list
+	ast_conference *lastconflist = NULL;
+
 	//
 	// conference thread loop
 	//
@@ -151,7 +156,15 @@ static void conference_exec()
 		base = ast_tvadd(base, epoch) ;
 
 		// get the first entry
-		ast_conference *conf  = conflist ;
+		if ( !ast_mutex_trylock(&conflist_lock) )
+		{
+			conf = lastconflist = conflist;
+			ast_mutex_unlock(&conflist_lock);
+		}
+		else
+		{
+			conf  = lastconflist;
+		}
 
 		while ( conf )
 		{
@@ -176,6 +189,12 @@ static void conference_exec()
 				}
 
 				conf = remove_conf( conf ) ;
+
+				if ( conf == conflist )
+				{
+					// update last conference list
+					lastconflist = conf ;
+				}
 
 				if ( !conference_count )
 				{
