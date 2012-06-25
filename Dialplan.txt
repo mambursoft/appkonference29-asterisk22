@@ -30,7 +30,6 @@ exten => <ext>,<pri>,Konference(<confname>,<flags>,<optional args>,<more optiona
 	Miscellaneous:
 	'x' : when the last moderator leaves, all conferees are kicked and conference ends.
 	'a' : V + T
-	'H' : play music on hold if only one member in conference
 
 	Future development (these are not implemented yet):
 	?
