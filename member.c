@@ -684,7 +684,7 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 				member->agc_flag = 1 ;
 				break ;
 #endif
-				// dtmf/moderator/video switching options
+				// dtmf/moderator options
 			case 'R':
 				member->dtmf_relay = 1;
 				break;

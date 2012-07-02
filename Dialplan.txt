@@ -24,11 +24,11 @@ exten => <ext>,<pri>,Konference(<confname>,<flags>,<optional args>,<more optiona
 	DTMF options:
 	'R' : enable DTMF relay: DTMF tones generate a manager event
 
-	Moderator/video switch options:
+	Moderator options:
 	'M' : member is a "moderator". When a moderator quits, all members are kicked and the conference is disabled.
+	'x' : when the last moderator leaves, all conferees are kicked and conference ends.
 
 	Miscellaneous:
-	'x' : when the last moderator leaves, all conferees are kicked and conference ends.
 	'a' : V + T
 
 	Future development (these are not implemented yet):
