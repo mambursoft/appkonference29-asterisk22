@@ -292,3 +292,7 @@ setting the preprocessor flag, TIMERFD, in the Makefile.
 
 Remove the description of the "H" option from Dialplan.txt because the option
 is deprecated and will be removed in a subsequent release.
+
+Use the *bsd kqueue periodic timer for timing in the conference thread instead
+of usleep'ing. This feature is configurable and can be enabled by setting the
+preprocessor flag, KQUEUE, in the Makefile.

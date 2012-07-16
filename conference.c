@@ -29,6 +29,10 @@
 #ifdef	TIMERFD
 #include <sys/timerfd.h>
 #include <errno.h>
+#elif	KQUEUE
+#include <sys/types.h>
+#include <sys/event.h>
+#include <sys/time.h>
 #endif
 
 //
@@ -40,7 +44,12 @@ static ast_conference *conflist;
 
 #ifdef	TIMERFD
 // timer file descriptor
-static int timerfd ;
+static int timerfd = -1 ;
+#elif	KQUEUE
+// kqueue file descriptor
+static int kqueuefd = -1 ;
+static struct kevent inqueue;
+static struct kevent outqueue;
 #endif
 
 // mutex for synchronizing access to conflist
@@ -102,6 +111,23 @@ static void conference_exec()
 
 		// process expirations
 		for ( ; expirations; expirations-- )
+		{
+#elif	KQUEUE
+		// wait for start of epoch
+		if ( kevent(kqueuefd, &inqueue, 1, &outqueue, 1, NULL) == -1 )
+		{
+			ast_log(LOG_NOTICE, "unable to read timer!? %s\n", strerror(errno)) ;
+		}
+#ifdef	KQUEUE_EXPIRATIONS
+		// check expirations
+		if ( outqueue.data != 1 ) 
+		{
+			ast_log(LOG_NOTICE, "kqueue expirations = %ld!?\n", outqueue.data);
+		}
+#endif
+
+		// process expirations
+		for ( ; outqueue.data; outqueue.data-- )
 		{
 #else
 		// update the current timestamp
@@ -203,6 +229,9 @@ static void conference_exec()
 #ifdef	TIMERFD
 					// close timer file
 					close(timerfd) ;
+#elif	KQUEUE
+					// close kqueue file
+					close(kqueuefd) ;
 #endif
 					// exit the conference thread
 					pthread_exit( NULL ) ;
@@ -263,6 +292,8 @@ static void conference_exec()
 			conf = conf->next ;
 		}
 #ifdef	TIMERFD
+		}
+#elif	KQUEUE
 		}
 #endif
 	}
@@ -538,6 +569,19 @@ static ast_conference* create_conf( char* name, ast_conf_member* member )
 			ast_free( conf ) ;
 			return NULL ;
 		}
+#elif	KQUEUE
+		// create timer
+		if ( (kqueuefd = kqueue()) == -1 )
+		{
+			ast_log(LOG_ERROR, "unable to create timer!? %s\n", strerror(errno));
+
+			// clean up conference
+			ast_free( conf ) ;
+			return NULL ;
+		}
+
+		// set interval to epoch
+		EV_SET(&inqueue, 1, EVFILT_TIMER, EV_ADD | EV_ENABLE, 0, AST_CONF_FRAME_INTERVAL, 0);
 #endif
 
 		if ( !(ast_pthread_create( &conf->conference_thread, NULL, (void*)conference_exec, NULL )) )

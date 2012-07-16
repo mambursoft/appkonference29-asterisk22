@@ -118,10 +118,17 @@ CPPFLAGS += -DCACHE_CONF_FRAMES
 #
 
 #
-# Uncomment this if you want to use timerfd for timing
+# Uncomment this if you want to use linux timerfd for timing
 #
 # CPPFLAGS += -DTIMERFD
 # CPPFLAGS += -DTIMERFD_EXPIRATIONS
+#
+
+#
+# Uncomment this if you want to use *bsd kqueue for timing
+#
+# CPPFLAGS += -DKQUEUE
+# CPPFLAGS += -DKQUEUE_EXPIRATIONS
 #
 
 #
