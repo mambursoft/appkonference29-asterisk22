@@ -296,3 +296,6 @@ is deprecated and will be removed in a subsequent release.
 Use the *bsd kqueue periodic timer for timing in the conference thread instead
 of usleep'ing. This feature is configurable and can be enabled by setting the
 preprocessor flag, KQUEUE, in the Makefile.
+
+Enable the speaker scoreboard in the Makefile now that asterikast has been
+updated to use it rather than conference state events.

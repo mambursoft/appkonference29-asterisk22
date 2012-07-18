@@ -47,7 +47,7 @@ REVISION = $(shell svnversion -n .)
 CACHE_CONTROL_BLOCKS ?= 1
 
 # score board ( 0 == OFF, 1 == ON )
-SPEAKER_SCOREBOARD ?= 0
+SPEAKER_SCOREBOARD ?= 1
 
 # score board table size
 SPEAKER_SCOREBOARD_SIZE ?= 4096
