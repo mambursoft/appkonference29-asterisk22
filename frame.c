@@ -433,16 +433,8 @@ conf_frame* mix_multiple_speakers(
 
 struct ast_frame* convert_frame( struct ast_trans_pvt* trans, struct ast_frame* fr, int consume )
 {
-	if ( !trans )
-	{
-		return fr ;
-	}
-
-	// convert the frame
-	struct ast_frame* translated_frame = ast_translate( trans, fr, consume ) ;
-
-	// return the translated frame
-	return translated_frame ;
+	// return translated frame
+	return !trans ? fr : ast_translate( trans, fr, consume ) ;
 }
 
 conf_frame* delete_conf_frame( conf_frame* cf )
