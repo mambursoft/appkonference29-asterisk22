@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2011 The WebRTC project authors. All Rights Reserved.
+ *  Copyright (c) 2012 The WebRTC project authors. All Rights Reserved.
  *
  *  Use of this source code is governed by a BSD-style license
  *  that can be found in the LICENSE file in the root of the source
@@ -8,229 +8,172 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-
-/*
- * This file includes the implementation of the VAD internal calls for
- * Downsampling and FindMinimum.
- * For function call descriptions; See vad_sp.h.
- */
-
 #include "vad_sp.h"
 
+#include <assert.h>
+
 #include "signal_processing_library.h"
+#include "vad_core.h"
 #include "typedefs.h"
-#include "vad_defines.h"
 
-// Allpass filter coefficients, upper and lower, in Q13
-// Upper: 0.64, Lower: 0.17
-static const WebRtc_Word16 kAllPassCoefsQ13[2] = {5243, 1392}; // Q13
+// Allpass filter coefficients, upper and lower, in Q13.
+// Upper: 0.64, Lower: 0.17.
+static const int16_t kAllPassCoefsQ13[2] = { 5243, 1392 };  // Q13.
+static const int16_t kSmoothingDown = 6553;  // 0.2 in Q15.
+static const int16_t kSmoothingUp = 32439;  // 0.99 in Q15.
 
-// Downsampling filter based on the splitting filter and the allpass functions
-// in vad_filterbank.c
-void WebRtcVad_Downsampling(WebRtc_Word16* signal_in,
-                            WebRtc_Word16* signal_out,
-                            WebRtc_Word32* filter_state,
-                            int inlen)
-{
-    WebRtc_Word16 tmp16_1, tmp16_2;
-    WebRtc_Word32 tmp32_1, tmp32_2;
-    int n, halflen;
+// TODO(bjornv): Move this function to vad_filterbank.c.
+// Downsampling filter based on splitting filter and allpass functions.
+void WebRtcVad_Downsampling(int16_t* signal_in,
+                            int16_t* signal_out,
+                            int32_t* filter_state,
+                            int in_length) {
+  int16_t tmp16_1 = 0, tmp16_2 = 0;
+  int32_t tmp32_1 = filter_state[0];
+  int32_t tmp32_2 = filter_state[1];
+  int n = 0;
+  int half_length = (in_length >> 1);  // Downsampling by 2 gives half length.
 
-    // Downsampling by 2 and get two branches
-    halflen = WEBRTC_SPL_RSHIFT_W16(inlen, 1);
+  // Filter coefficients in Q13, filter state in Q0.
+  for (n = 0; n < half_length; n++) {
+    // All-pass filtering upper branch.
+    tmp16_1 = (int16_t) ((tmp32_1 >> 1) +
+        WEBRTC_SPL_MUL_16_16_RSFT(kAllPassCoefsQ13[0], *signal_in, 14));
+    *signal_out = tmp16_1;
+    tmp32_1 = (int32_t) (*signal_in++) -
+        WEBRTC_SPL_MUL_16_16_RSFT(kAllPassCoefsQ13[0], tmp16_1, 12);
 
-    tmp32_1 = filter_state[0];
-    tmp32_2 = filter_state[1];
-
-    // Filter coefficients in Q13, filter state in Q0
-    for (n = 0; n < halflen; n++)
-    {
-        // All-pass filtering upper branch
-        tmp16_1 = (WebRtc_Word16)WEBRTC_SPL_RSHIFT_W32(tmp32_1, 1)
-                + (WebRtc_Word16)WEBRTC_SPL_MUL_16_16_RSFT((kAllPassCoefsQ13[0]),
-                                                           *signal_in, 14);
-        *signal_out = tmp16_1;
-        tmp32_1 = (WebRtc_Word32)(*signal_in++)
-                - (WebRtc_Word32)WEBRTC_SPL_MUL_16_16_RSFT((kAllPassCoefsQ13[0]), tmp16_1, 12);
-
-        // All-pass filtering lower branch
-        tmp16_2 = (WebRtc_Word16)WEBRTC_SPL_RSHIFT_W32(tmp32_2, 1)
-                + (WebRtc_Word16)WEBRTC_SPL_MUL_16_16_RSFT((kAllPassCoefsQ13[1]),
-                                                           *signal_in, 14);
-        *signal_out++ += tmp16_2;
-        tmp32_2 = (WebRtc_Word32)(*signal_in++)
-                - (WebRtc_Word32)WEBRTC_SPL_MUL_16_16_RSFT((kAllPassCoefsQ13[1]), tmp16_2, 12);
-    }
-    filter_state[0] = tmp32_1;
-    filter_state[1] = tmp32_2;
+    // All-pass filtering lower branch.
+    tmp16_2 = (int16_t) ((tmp32_2 >> 1) +
+        WEBRTC_SPL_MUL_16_16_RSFT(kAllPassCoefsQ13[1], *signal_in, 14));
+    *signal_out++ += tmp16_2;
+    tmp32_2 = (int32_t) (*signal_in++) -
+        WEBRTC_SPL_MUL_16_16_RSFT(kAllPassCoefsQ13[1], tmp16_2, 12);
+  }
+  // Store the filter states.
+  filter_state[0] = tmp32_1;
+  filter_state[1] = tmp32_2;
 }
 
-WebRtc_Word16 WebRtcVad_FindMinimum(VadInstT* inst,
-                                    WebRtc_Word16 x,
-                                    int n)
-{
-    int i, j, k, II = -1, offset;
-    WebRtc_Word16 meanV, alpha;
-    WebRtc_Word32 tmp32, tmp32_1;
-    WebRtc_Word16 *valptr, *idxptr, *p1, *p2, *p3;
+// Inserts |feature_value| into |low_value_vector|, if it is one of the 16
+// smallest values the last 100 frames. Then calculates and returns the median
+// of the five smallest values.
+int16_t WebRtcVad_FindMinimum(VadInstT* self,
+                              int16_t feature_value,
+                              int channel) {
+  int i = 0, j = 0;
+  int position = -1;
+  // Offset to beginning of the 16 minimum values in memory.
+  const int offset = (channel << 4);
+  int16_t current_median = 1600;
+  int16_t alpha = 0;
+  int32_t tmp32 = 0;
+  // Pointer to memory for the 16 minimum values and the age of each value of
+  // the |channel|.
+  int16_t* age = &self->index_vector[offset];
+  int16_t* smallest_values = &self->low_value_vector[offset];
 
-    // Offset to beginning of the 16 minimum values in memory
-    offset = WEBRTC_SPL_LSHIFT_W16(n, 4);
+  assert(channel < kNumChannels);
 
-    // Pointer to memory for the 16 minimum values and the age of each value
-    idxptr = &inst->index_vector[offset];
-    valptr = &inst->low_value_vector[offset];
+  // Each value in |smallest_values| is getting 1 loop older. Update |age|, and
+  // remove old values.
+  for (i = 0; i < 16; i++) {
+    if (age[i] != 100) {
+      age[i]++;
+    } else {
+      // Too old value. Remove from memory and shift larger values downwards.
+      for (j = i; j < 16; j++) {
+        smallest_values[j] = smallest_values[j + 1];
+        age[j] = age[j + 1];
+      }
+      age[15] = 101;
+      smallest_values[15] = 10000;
+    }
+  }
 
-    // Each value in low_value_vector is getting 1 loop older.
-    // Update age of each value in indexVal, and remove old values.
-    for (i = 0; i < 16; i++)
-    {
-        p3 = idxptr + i;
-        if (*p3 != 100)
-        {
-            *p3 += 1;
-        } else
-        {
-            p1 = valptr + i + 1;
-            p2 = p3 + 1;
-            for (j = i; j < 16; j++)
-            {
-                *(valptr + j) = *p1++;
-                *(idxptr + j) = *p2++;
-            }
-            *(idxptr + 15) = 101;
-            *(valptr + 15) = 10000;
+  // Check if |feature_value| is smaller than any of the values in
+  // |smallest_values|. If so, find the |position| where to insert the new value
+  // (|feature_value|).
+  if (feature_value < smallest_values[7]) {
+    if (feature_value < smallest_values[3]) {
+      if (feature_value < smallest_values[1]) {
+        if (feature_value < smallest_values[0]) {
+          position = 0;
+        } else {
+          position = 1;
         }
+      } else if (feature_value < smallest_values[2]) {
+        position = 2;
+      } else {
+        position = 3;
+      }
+    } else if (feature_value < smallest_values[5]) {
+      if (feature_value < smallest_values[4]) {
+        position = 4;
+      } else {
+        position = 5;
+      }
+    } else if (feature_value < smallest_values[6]) {
+      position = 6;
+    } else {
+      position = 7;
     }
-
-    // Check if x smaller than any of the values in low_value_vector.
-    // If so, find position.
-    if (x < *(valptr + 7))
-    {
-        if (x < *(valptr + 3))
-        {
-            if (x < *(valptr + 1))
-            {
-                if (x < *valptr)
-                {
-                    II = 0;
-                } else
-                {
-                    II = 1;
-                }
-            } else if (x < *(valptr + 2))
-            {
-                II = 2;
-            } else
-            {
-                II = 3;
-            }
-        } else if (x < *(valptr + 5))
-        {
-            if (x < *(valptr + 4))
-            {
-                II = 4;
-            } else
-            {
-                II = 5;
-            }
-        } else if (x < *(valptr + 6))
-        {
-            II = 6;
-        } else
-        {
-            II = 7;
+  } else if (feature_value < smallest_values[15]) {
+    if (feature_value < smallest_values[11]) {
+      if (feature_value < smallest_values[9]) {
+        if (feature_value < smallest_values[8]) {
+          position = 8;
+        } else {
+          position = 9;
         }
-    } else if (x < *(valptr + 15))
-    {
-        if (x < *(valptr + 11))
-        {
-            if (x < *(valptr + 9))
-            {
-                if (x < *(valptr + 8))
-                {
-                    II = 8;
-                } else
-                {
-                    II = 9;
-                }
-            } else if (x < *(valptr + 10))
-            {
-                II = 10;
-            } else
-            {
-                II = 11;
-            }
-        } else if (x < *(valptr + 13))
-        {
-            if (x < *(valptr + 12))
-            {
-                II = 12;
-            } else
-            {
-                II = 13;
-            }
-        } else if (x < *(valptr + 14))
-        {
-            II = 14;
-        } else
-        {
-            II = 15;
-        }
+      } else if (feature_value < smallest_values[10]) {
+        position = 10;
+      } else {
+        position = 11;
+      }
+    } else if (feature_value < smallest_values[13]) {
+      if (feature_value < smallest_values[12]) {
+        position = 12;
+      } else {
+        position = 13;
+      }
+    } else if (feature_value < smallest_values[14]) {
+      position = 14;
+    } else {
+      position = 15;
     }
+  }
 
-    // Put new min value on right position and shift bigger values up
-    if (II > -1)
-    {
-        for (i = 15; i > II; i--)
-        {
-            k = i - 1;
-            *(valptr + i) = *(valptr + k);
-            *(idxptr + i) = *(idxptr + k);
-        }
-        *(valptr + II) = x;
-        *(idxptr + II) = 1;
+  // If we have detected a new small value, insert it at the correct position
+  // and shift larger values up.
+  if (position > -1) {
+    for (i = 15; i > position; i--) {
+      smallest_values[i] = smallest_values[i - 1];
+      age[i] = age[i - 1];
     }
+    smallest_values[position] = feature_value;
+    age[position] = 1;
+  }
 
-    meanV = 0;
-    if ((inst->frame_counter) > 4)
-    {
-        j = 5;
-    } else
-    {
-        j = inst->frame_counter;
+  // Get |current_median|.
+  if (self->frame_counter > 2) {
+    current_median = smallest_values[2];
+  } else if (self->frame_counter > 0) {
+    current_median = smallest_values[0];
+  }
+
+  // Smooth the median value.
+  if (self->frame_counter > 0) {
+    if (current_median < self->mean_value[channel]) {
+      alpha = kSmoothingDown;  // 0.2 in Q15.
+    } else {
+      alpha = kSmoothingUp;  // 0.99 in Q15.
     }
+  }
+  tmp32 = WEBRTC_SPL_MUL_16_16(alpha + 1, self->mean_value[channel]);
+  tmp32 += WEBRTC_SPL_MUL_16_16(WEBRTC_SPL_WORD16_MAX - alpha, current_median);
+  tmp32 += 16384;
+  self->mean_value[channel] = (int16_t) (tmp32 >> 15);
 
-    if (j > 2)
-    {
-        meanV = *(valptr + 2);
-    } else if (j > 0)
-    {
-        meanV = *valptr;
-    } else
-    {
-        meanV = 1600;
-    }
-
-    if (inst->frame_counter > 0)
-    {
-        if (meanV < inst->mean_value[n])
-        {
-            alpha = (WebRtc_Word16)ALPHA1; // 0.2 in Q15
-        } else
-        {
-            alpha = (WebRtc_Word16)ALPHA2; // 0.99 in Q15
-        }
-    } else
-    {
-        alpha = 0;
-    }
-
-    tmp32 = WEBRTC_SPL_MUL_16_16((alpha+1), inst->mean_value[n]);
-    tmp32_1 = WEBRTC_SPL_MUL_16_16(WEBRTC_SPL_WORD16_MAX - alpha, meanV);
-    tmp32 += tmp32_1;
-    tmp32 += 16384;
-    inst->mean_value[n] = (WebRtc_Word16)WEBRTC_SPL_RSHIFT_W32(tmp32, 15);
-
-    return inst->mean_value[n];
+  return self->mean_value[channel];
 }

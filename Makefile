@@ -166,7 +166,7 @@ endif
 
 ifeq ($(SILDET), 1)
 OBJS += libwebrtc/get_scaling_square.o libwebrtc/division_operations.o libwebrtc/energy.o libwebrtc/vad_core.o libwebrtc/vad_filterbank.o libwebrtc/vad_gmm.o libwebrtc/vad_sp.o libwebrtc/webrtc_vad.o
-INCS += libwebrtc/signal_processing_library.h libwebrtc/spl_inl.h libwebrtc/webrtc_vad.h libwebrtc/vad_core.h libwebrtc/vad_defines.h libwebrtc/vad_filterbank.h libwebrtc/vad_gmm.h libwebrtc/vad_sp.h
+INCS += libwebrtc/signal_processing_library.h libwebrtc/spl_inl.h libwebrtc/webrtc_vad.h libwebrtc/vad_core.h libwebrtc/vad_filterbank.h libwebrtc/vad_gmm.h libwebrtc/vad_sp.h
 CPPFLAGS += -Ilibwebrtc -DSILDET=1
 else ifeq ($(SILDET), 2)
 OBJS += libspeex/preprocess.o libspeex/misc.o libspeex/smallft.o
