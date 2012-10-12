@@ -58,9 +58,6 @@ CHANNEL_TABLE_SIZE ?= 997
 # conference table size
 CONFERENCE_TABLE_SIZE ?= 199
 
-# schedule conference threads fifo ( 0 == OFF, 1 == ON )
-REALTIME ?= 1
-
 # silence detection ( 0 = OFF 1 = libwebrtc 2 = libspeex )
 SILDET := 1
 
@@ -154,10 +151,6 @@ CPPFLAGS += -DCACHE_CONTROL_BLOCKS
 ifeq ($(SPEAKER_SCOREBOARD), 1)
 CPPFLAGS += -DSPEAKER_SCOREBOARD -DSPEAKER_SCOREBOARD_SIZE=$(SPEAKER_SCOREBOARD_SIZE)
 endif
-endif
-
-ifeq ($(REALTIME), 1)
-CPPFLAGS += -DREALTIME
 endif
 
 #

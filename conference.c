@@ -72,6 +72,11 @@ static void conference_exec()
 	// thread frequency variable
 	int tf_count = 0 ;
 
+#if	defined(TIMERFD) || defined(KQUEUE)
+	int tf_expirations = 0 ;
+	int tf_max_expirations = 0 ;
+#endif
+
 	// timer timestamps
 	struct timeval base, tf_base;
 
@@ -108,7 +113,9 @@ static void conference_exec()
 			ast_log(LOG_NOTICE, "timer read expirations = %ld!?\n", expirations) ;
 		}
 #endif
-
+		// update expirations
+		tf_expirations += expirations ;
+		if ( expirations > tf_max_expirations ) tf_max_expirations = expirations ;
 		// process expirations
 		for ( ; expirations; expirations-- )
 		{
@@ -125,7 +132,9 @@ static void conference_exec()
 			ast_log(LOG_NOTICE, "kqueue expirations = %ld!?\n", outqueue.data);
 		}
 #endif
-
+		// update expirations
+		tf_expirations += outqueue.data ;
+		if ( outqueue.data > tf_max_expirations ) tf_max_expirations = outqueue.data ;
 		// process expirations
 		for ( ; outqueue.data; outqueue.data-- )
 		{
@@ -164,14 +173,20 @@ static void conference_exec()
 			if ( ( tf_frequency <= ( float )( AST_CONF_FRAME_INTERVAL - 1 ) )
 				|| ( tf_frequency >= ( float )( AST_CONF_FRAME_INTERVAL + 1 ) ))
 			{
-				ast_log( LOG_WARNING,
-					"processed frame frequency variation, tf_count => %d, tf_diff => %ld, tf_frequency => %2.4f\n",
-					tf_count, tf_diff, tf_frequency) ;
+#if	defined(TIMERFD) || defined(KQUEUE)
+				ast_log( LOG_WARNING, "processed frame frequency variation, tf_count => %d, tf_diff => %ld, tf_frequency => %2.4f, tf_expirations = %d tf_max_expirations = %d\n", tf_count, tf_diff, tf_frequency, tf_expirations, tf_max_expirations) ;
+#else
+				ast_log( LOG_WARNING, "processed frame frequency variation, tf_count => %d, tf_diff => %ld, tf_frequency => %2.4f\n", tf_count, tf_diff, tf_frequency) ;
+#endif
 			}
 
 			// reset values
 			tf_base = tf_curr ;
 			tf_count = 0 ;
+#if	defined(TIMERFD) || defined(KQUEUE)
+			tf_expirations = 0 ;
+			tf_max_expirations = 0 ;
+#endif
 		}
 
 		//
@@ -291,9 +306,7 @@ static void conference_exec()
 			// get the next conference
 			conf = conf->next ;
 		}
-#ifdef	TIMERFD
-		}
-#elif	KQUEUE
+#if	defined(TIMERFD) || defined(KQUEUE)
 		}
 #endif
 	}
@@ -588,20 +601,19 @@ static ast_conference* create_conf( char* name, ast_conf_member* member )
 		{
 			// detach the thread so it doesn't leak
 			pthread_detach( conf->conference_thread ) ;
-#ifdef	REALTIME
-			// set scheduling if realtime
-			int policy;
-			struct sched_param param;
 
-			pthread_getschedparam(conf->conference_thread, &policy, &param);
-
-			if ( policy == SCHED_RR )
+			// if realtime set fifo scheduling and bump priority
+			if ( ast_opt_high_priority )
 			{
+				int policy;
+				struct sched_param param;
+
+				pthread_getschedparam(conf->conference_thread, &policy, &param);
+				
 				++param.sched_priority;
 				policy = SCHED_FIFO;
 				pthread_setschedparam(conf->conference_thread, policy, &param);
 			}
-#endif
 		}
 		else
 		{

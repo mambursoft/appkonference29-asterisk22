@@ -48,6 +48,7 @@
 #include <asterisk/channel.h>
 #include <asterisk/file.h>
 #include <asterisk/cli.h>
+#include <asterisk/options.h>
 
 #if	SILDET == 1
 #include "libwebrtc/webrtc_vad.h"
