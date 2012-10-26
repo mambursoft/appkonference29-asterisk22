@@ -61,8 +61,6 @@ struct ast_conference
 
 	int membercount ;
         int id_count;
-	// conference thread id
-	pthread_t conference_thread ;
 
 	// conference data lock
 	ast_rwlock_t lock ;

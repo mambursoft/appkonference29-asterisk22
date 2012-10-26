@@ -510,8 +510,6 @@ static ast_conference* create_conf( char* name, ast_conf_member* member )
 	// initialize conference
 	//
 
-	conf->conference_thread = -1 ;
-
 	// record start time
 	conf->time_entered = ast_tvnow();
 
@@ -597,10 +595,11 @@ static ast_conference* create_conf( char* name, ast_conf_member* member )
 		EV_SET(&inqueue, 1, EVFILT_TIMER, EV_ADD | EV_ENABLE, 0, AST_CONF_FRAME_INTERVAL, 0);
 #endif
 
-		if ( !(ast_pthread_create( &conf->conference_thread, NULL, (void*)conference_exec, NULL )) )
+		pthread_t conference_thread ; // conference thread id
+		if ( !(ast_pthread_create( &conference_thread, NULL, (void*)conference_exec, NULL )) )
 		{
 			// detach the thread so it doesn't leak
-			pthread_detach( conf->conference_thread ) ;
+			pthread_detach( conference_thread ) ;
 
 			// if realtime set fifo scheduling and bump priority
 			if ( ast_opt_high_priority )
@@ -608,11 +607,11 @@ static ast_conference* create_conf( char* name, ast_conf_member* member )
 				int policy;
 				struct sched_param param;
 
-				pthread_getschedparam(conf->conference_thread, &policy, &param);
+				pthread_getschedparam(conference_thread, &policy, &param);
 				
 				++param.sched_priority;
 				policy = SCHED_FIFO;
-				pthread_setschedparam(conf->conference_thread, policy, &param);
+				pthread_setschedparam(conference_thread, policy, &param);
 			}
 		}
 		else
