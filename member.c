@@ -1217,11 +1217,6 @@ void queue_silent_frame(
 
 	if ( !qf  )
 	{
-		//
-		// we need to do this to avoid echo on the speaker's line.
-		// translators seem to be single-purpose, i.e. they
-		// can't be used simultaneously for multiple audio streams
-		//
 #ifndef AC_USE_G722
 		struct ast_trans_pvt* trans = ast_translator_build_path( member->write_format, AST_FORMAT_SLINEAR ) ;
 #else
@@ -1229,19 +1224,8 @@ void queue_silent_frame(
 #endif
 		if ( trans )
 		{
-			int c;
-			// attempt ( five times ) to get a silent frame
-			// to make sure we provice the translator with enough data
-			for ( c = 0 ; c < 5 ; ++c )
-			{
-				// translate the frame
-				qf = ast_translate( trans, silent_conf_frame->fr, 0 ) ;
-
-				// break if we get a frame
-				if ( qf ) break ;
-			}
-
-			if ( qf )
+			// translate the frame
+			if ( (qf = ast_translate( trans, silent_conf_frame->fr, 0 )) )
 			{
 				// isolate the frame so we can keep it around after trans is free'd
 				qf = ast_frisolate( qf ) ;
@@ -1254,10 +1238,7 @@ void queue_silent_frame(
 		}
 	}
 
-	//
-	// queue the frame, if it's not null,
-	// otherwise there was an error
-	//
+	// if it's not null queue the frame
 	if ( qf )
 	{
 		queue_outgoing_frame( member, qf, conf->delivery_time ) ;
