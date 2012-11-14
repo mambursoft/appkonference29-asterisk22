@@ -54,22 +54,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 			//
 			// make sure we have a valid dsp and frame type
 			//
-			if (member->dsp
-#ifndef	AC_USE_G722
-#if	ASTERISK == 14 || ASTERISK == 16
-				&& f->subclass == AST_FORMAT_SLINEAR
-#else
-				&& f->subclass.integer == AST_FORMAT_SLINEAR
-#endif
-#else
-#if	ASTERISK == 14 || ASTERISK == 16
-				&& f->subclass == AST_FORMAT_SLINEAR16
-#else
-				&& f->subclass.integer == AST_FORMAT_SLINEAR16
-#endif
-#endif
-				&& f->datalen == AST_CONF_FRAME_DATA_SIZE
-				)
+			if (member->dsp)
 			{
 				// send the frame to the preprocessor
 #if	SILDET == 1
@@ -359,7 +344,7 @@ int member_exec( struct ast_channel* chan, const char* data )
 		return -1 ;
 	}
 
-	if ( ast_set_write_format( chan, member->write_format ) < 0 ) // AST_FORMAT_SLINEAR, chan->nativeformats
+	if ( ast_set_write_format( chan, member->write_format ) < 0 ) // AST_FORMAT_CONFERENCE, chan->nativeformats
 	{
 		ast_log( LOG_ERROR, "unable to set write format to signed linear\n" ) ;
 		delete_member( member ) ;
@@ -435,7 +420,7 @@ int member_exec( struct ast_channel* chan, const char* data )
 #ifndef	HOLD_OPTION
 	member->ready_for_outgoing = 1 ;
 #else
-	member->ready_for_outgoing = !member->chan->generatordata ? 1 : 0 ;
+	member->ready_for_outgoing = !ast_test_flag(chan, AST_FLAG_MOH) ? 1 : 0 ;
 #endif
 	//
 	// member thread loop
@@ -753,13 +738,9 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 	//
 
 	// set member's audio formats, taking dsp preprocessing into account
-	// ( chan->nativeformats, AST_FORMAT_SLINEAR, AST_FORMAT_ULAW, AST_FORMAT_GSM )
+	// ( chan->nativeformats, AST_FORMAT_CONFERENCE, AST_FORMAT_ULAW, AST_FORMAT_GSM )
 #if	SILDET == 1 || SILDET == 2
-#ifndef	AC_USE_G722
-	member->read_format = !member->dsp ? chan->nativeformats : AST_FORMAT_SLINEAR ;
-#else
-	member->read_format = !member->dsp ? chan->nativeformats : AST_FORMAT_SLINEAR16 ;
-#endif
+	member->read_format = !member->dsp ? chan->nativeformats : AST_FORMAT_CONFERENCE ;
 #else
 	member->read_format = chan->nativeformats ;
 #endif
@@ -772,23 +753,14 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 #endif
 
 	//translation paths ( ast_translator_build_path() returns null if formats match )
-#ifndef	AC_USE_G722
-	member->to_slinear = ast_translator_build_path( AST_FORMAT_SLINEAR, member->read_format ) ;
-	member->from_slinear = ast_translator_build_path( member->write_format, AST_FORMAT_SLINEAR ) ;
-#else
-	member->to_slinear = ast_translator_build_path( AST_FORMAT_SLINEAR16, member->read_format ) ;
-	member->from_slinear = ast_translator_build_path( member->write_format, AST_FORMAT_SLINEAR16 ) ;
-#endif
+	member->to_slinear = ast_translator_build_path( AST_FORMAT_CONFERENCE, member->read_format ) ;
+	member->from_slinear = ast_translator_build_path( member->write_format, AST_FORMAT_CONFERENCE ) ;
 
 	// index for converted_frames array
 	switch ( member->write_format )
 	{
-#ifndef	AC_USE_G722
-		case AST_FORMAT_SLINEAR:
-#else
-		case AST_FORMAT_SLINEAR16:
-#endif
-			member->write_format_index = AC_SLINEAR_INDEX ;
+		case AST_FORMAT_CONFERENCE:
+			member->write_format_index = AC_CONF_INDEX ;
 			break ;
 
 		case AST_FORMAT_ULAW:
@@ -813,6 +785,9 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 			break;
 #endif
 #ifdef AC_USE_G722
+		case AST_FORMAT_SLINEAR:
+			member->write_format_index = AC_SLINEAR_INDEX;
+			break;
 		case AST_FORMAT_G722:
 			member->write_format_index = AC_G722_INDEX;
 			break;
@@ -824,12 +799,8 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 	// index for converted_frames array
 	switch ( member->read_format )
 	{
-#ifndef	AC_USE_G722
-		case AST_FORMAT_SLINEAR:
-#else
-		case AST_FORMAT_SLINEAR16:
-#endif
-			member->read_format_index = AC_SLINEAR_INDEX ;
+		case AST_FORMAT_CONFERENCE:
+			member->read_format_index = AC_CONF_INDEX ;
 			break ;
 
 		case AST_FORMAT_ULAW:
@@ -854,6 +825,9 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 			break;
 #endif
 #ifdef AC_USE_G722
+		case AST_FORMAT_SLINEAR:
+			member->read_format_index = AC_SLINEAR_INDEX;
+			break;
 		case AST_FORMAT_G722:
 			member->read_format_index = AC_G722_INDEX;
 			break;
@@ -1217,11 +1191,8 @@ void queue_silent_frame(
 
 	if ( !qf  )
 	{
-#ifndef AC_USE_G722
-		struct ast_trans_pvt* trans = ast_translator_build_path( member->write_format, AST_FORMAT_SLINEAR ) ;
-#else
-		struct ast_trans_pvt* trans = ast_translator_build_path( member->write_format, AST_FORMAT_SLINEAR16 ) ;
-#endif
+		struct ast_trans_pvt* trans = ast_translator_build_path( member->write_format, AST_FORMAT_CONFERENCE ) ;
+
 		if ( trans )
 		{
 			// translate the frame

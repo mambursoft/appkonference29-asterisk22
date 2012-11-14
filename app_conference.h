@@ -115,6 +115,12 @@
 #define AST_CONF_FRAME_DATA_SIZE 640
 #endif
 
+#ifndef	AC_USE_G722
+#define AST_FORMAT_CONFERENCE AST_FORMAT_SLINEAR
+#else
+#define AST_FORMAT_CONFERENCE AST_FORMAT_SLINEAR16
+#endif
+
 // 1000 ms-per-second / 20 ms-per-frame = 50 frames-per-second
 #define AST_CONF_FRAMES_PER_SECOND ( 1000 / AST_CONF_FRAME_INTERVAL )
 
@@ -141,7 +147,7 @@
 // format translation values
 //
 	enum { 
-		AC_SLINEAR_INDEX = 0,
+		AC_CONF_INDEX = 0,
 		AC_ULAW_INDEX,
 		AC_ALAW_INDEX,
 		AC_GSM_INDEX,
@@ -152,6 +158,7 @@
 		AC_G729A_INDEX,
 #endif
 #ifdef	AC_USE_G722
+		AC_SLINEAR_INDEX,
 		AC_G722_INDEX,
 #endif
 		AC_SUPPORTED_FORMATS

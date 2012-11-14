@@ -23,20 +23,20 @@ static char data[AST_CONF_BUFFER_SIZE] ;
 
 static struct ast_frame fr = { .frametype = AST_FRAME_VOICE, 
 #if     ASTERISK == 14
-				.subclass = AST_FORMAT_SLINEAR,
+				.subclass = AST_FORMAT_CONFERENCE,
 				.data = &(data[AST_FRIENDLY_OFFSET]),
 #elif	ASTERISK == 16
-				.subclass = AST_FORMAT_SLINEAR,
+				.subclass = AST_FORMAT_CONFERENCE,
 				.data.ptr = &(data[AST_FRIENDLY_OFFSET]),
 #else
-				.subclass.integer = AST_FORMAT_SLINEAR,
+				.subclass.integer = AST_FORMAT_CONFERENCE,
 				.data.ptr = &(data[AST_FRIENDLY_OFFSET]),
 #endif
 				.samples = AST_CONF_BLOCK_SAMPLES,
 				.offset = AST_FRIENDLY_OFFSET,
 				.datalen = AST_CONF_FRAME_DATA_SIZE } ;
 
-static conf_frame cfr =  { .fr = &fr, .converted[AC_SLINEAR_INDEX] = &fr } ;
+static conf_frame cfr =  { .fr = &fr, .converted[AC_CONF_INDEX] = &fr } ;
 
 conf_frame *silent_conf_frame = &cfr ;
 
@@ -539,18 +539,10 @@ struct ast_frame* create_slinear_frame(struct ast_frame **f, char* data )
 			return NULL ;
 		}
 		(*f)->frametype = AST_FRAME_VOICE ;
-#ifndef	AC_USE_G722
 #if	ASTERISK == 14 || ASTERISK == 16
-		(*f)->subclass = AST_FORMAT_SLINEAR ;
+		(*f)->subclass = AST_FORMAT_CONFERENCE ;
 #else
-		(*f)->subclass.integer = AST_FORMAT_SLINEAR ;
-#endif
-#else
-#if	ASTERISK == 14 || ASTERISK == 16
-		(*f)->subclass = AST_FORMAT_SLINEAR16 ;
-#else
-		(*f)->subclass.integer = AST_FORMAT_SLINEAR16 ;
-#endif
+		(*f)->subclass.integer = AST_FORMAT_CONFERENCE ;
 #endif
 		(*f)->samples = AST_CONF_BLOCK_SAMPLES ;
 		(*f)->offset = AST_FRIENDLY_OFFSET ;

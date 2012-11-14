@@ -520,30 +520,19 @@ static ast_conference* create_conf( char* name, ast_conf_member* member )
 	ast_rwlock_init( &conf->lock ) ;
 
 	// build translation paths
-	conf->from_slinear_paths[ AC_SLINEAR_INDEX ] = NULL ;
-#ifndef AC_USE_G722
-	conf->from_slinear_paths[ AC_ULAW_INDEX ] = ast_translator_build_path( AST_FORMAT_ULAW, AST_FORMAT_SLINEAR ) ;
-	conf->from_slinear_paths[ AC_ALAW_INDEX ] = ast_translator_build_path( AST_FORMAT_ALAW, AST_FORMAT_SLINEAR ) ;
-	conf->from_slinear_paths[ AC_GSM_INDEX ] = ast_translator_build_path( AST_FORMAT_GSM, AST_FORMAT_SLINEAR ) ;
+	conf->from_slinear_paths[ AC_CONF_INDEX ] = NULL ;
+	conf->from_slinear_paths[ AC_ULAW_INDEX ] = ast_translator_build_path( AST_FORMAT_ULAW, AST_FORMAT_CONFERENCE ) ;
+	conf->from_slinear_paths[ AC_ALAW_INDEX ] = ast_translator_build_path( AST_FORMAT_ALAW, AST_FORMAT_CONFERENCE ) ;
+	conf->from_slinear_paths[ AC_GSM_INDEX ] = ast_translator_build_path( AST_FORMAT_GSM, AST_FORMAT_CONFERENCE ) ;
 #ifdef	AC_USE_SPEEX
-	conf->from_slinear_paths[ AC_SPEEX_INDEX ] = ast_translator_build_path( AST_FORMAT_SPEEX, AST_FORMAT_SLINEAR ) ;
+	conf->from_slinear_paths[ AC_SPEEX_INDEX ] = ast_translator_build_path( AST_FORMAT_SPEEX, AST_FORMAT_CONFERENCE ) ;
 #endif
 #ifdef AC_USE_G729A
-	conf->from_slinear_paths[ AC_G729A_INDEX ] = ast_translator_build_path( AST_FORMAT_G729A, AST_FORMAT_SLINEAR ) ;
-#endif
-#else
-	conf->from_slinear_paths[ AC_ULAW_INDEX ] = ast_translator_build_path( AST_FORMAT_ULAW, AST_FORMAT_SLINEAR16 ) ;
-	conf->from_slinear_paths[ AC_ALAW_INDEX ] = ast_translator_build_path( AST_FORMAT_ALAW, AST_FORMAT_SLINEAR16 ) ;
-	conf->from_slinear_paths[ AC_GSM_INDEX ] = ast_translator_build_path( AST_FORMAT_GSM, AST_FORMAT_SLINEAR16 ) ;
-#ifdef	AC_USE_SPEEX
-	conf->from_slinear_paths[ AC_SPEEX_INDEX ] = ast_translator_build_path( AST_FORMAT_SPEEX, AST_FORMAT_SLINEAR16 ) ;
-#endif
-#ifdef AC_USE_G729A
-	conf->from_slinear_paths[ AC_G729A_INDEX ] = ast_translator_build_path( AST_FORMAT_G729A, AST_FORMAT_SLINEAR16 ) ;
+	conf->from_slinear_paths[ AC_G729A_INDEX ] = ast_translator_build_path( AST_FORMAT_G729A, AST_FORMAT_CONFERENCE ) ;
 #endif
 #ifdef AC_USE_G722
-	conf->from_slinear_paths[ AC_G722_INDEX ] = ast_translator_build_path( AST_FORMAT_G722, AST_FORMAT_SLINEAR16 ) ;
-#endif
+	conf->from_slinear_paths[ AC_SLINEAR_INDEX ] = ast_translator_build_path( AST_FORMAT_SLINEAR, AST_FORMAT_CONFERENCE ) ;
+	conf->from_slinear_paths[ AC_G722_INDEX ] = ast_translator_build_path( AST_FORMAT_G722, AST_FORMAT_CONFERENCE ) ;
 #endif
 
 	//
@@ -1377,7 +1366,7 @@ void play_sound_channel(int fd, const char *channel, const char * const *file, i
 
 	if( (member = find_member(channel, 1)) )
 	{
-		if (!member->norecv_audio && !member->chan->generatordata
+		if (!member->norecv_audio && !ast_test_flag(member->chan, AST_FLAG_MOH)
 				&& (!tone || !member->soundq))
 		{
 			while ( n-- > 0 ) {
