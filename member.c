@@ -1169,9 +1169,6 @@ void queue_frame_for_speaker(
 				ast_log( LOG_WARNING, "unable to translate outgoing speaker frame, channel => %s\n", member->chan->name ) ;
 			}
 		}
-
-		// reset speaker frame
-		member->speaker_frame = NULL ;
 	}
 	else
 	{

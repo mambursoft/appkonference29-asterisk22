@@ -206,6 +206,7 @@ conf_frame* mix_single_speaker( ast_conference* conf, conf_frame* frames_in )
 
 		// set the conference listener frame
 		conf->listener_frame = frames_in ;
+		frames_in->member = NULL;
 	}
 	else
 	{
@@ -232,6 +233,7 @@ conf_frame* mix_single_speaker( ast_conference* conf, conf_frame* frames_in )
 
 			// set the conference listener frame
 			conf->listener_frame = frames_in ;
+			frames_in->member = NULL;
 		}
 		else
 		{

@@ -275,9 +275,6 @@ static void conference_exec()
 			// reset pointer lists
 			conf_frame *spoken_frames = NULL ;
 
-			// reset listener frame
-			conf->listener_frame = NULL ;
-
 			// loop over member list and retrieve incoming frames
 			for ( member = conf->memberlist ; member ; member = member->next )
 			{
@@ -297,6 +294,11 @@ static void conference_exec()
 			// delete send frames
 			while ( send_frames )
 			{
+				if (send_frames->member)
+					send_frames->member->speaker_frame = NULL; // reset speaker frame
+				else
+					conf->listener_frame = NULL; // reset listener frame
+
 				send_frames = delete_conf_frame( send_frames ) ;
 			}
 
