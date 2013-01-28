@@ -57,6 +57,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 			if (member->dsp)
 			{
 				// send the frame to the preprocessor
+				f = convert_frame(member->to_dsp, f, 1) ;
 #if	SILDET == 1
 #if	ASTERISK == 14
 				if (!WebRtcVad_Process( member->dsp, AST_CONF_SAMPLE_RATE, f->data, AST_CONF_BLOCK_SAMPLES ))
@@ -242,7 +243,7 @@ static struct ast_frame *get_next_soundframe(ast_conf_member *member)
 			// if we get here, we've gotten to the end of the queue; reset write format
 			if ( ast_set_write_format( member->chan, member->write_format ) < 0 )
 			{
-				ast_log( LOG_ERROR, "unable to set write format to %d\n",
+				ast_log( LOG_ERROR, "unable to reset write format to %d\n",
 				    member->write_format ) ;
 			}
 			return NULL;
@@ -330,24 +331,6 @@ int member_exec( struct ast_channel* chan, const char* data )
 	{
 		// unable to create member, return an error
 		ast_log( LOG_ERROR, "unable to create member\n" ) ;
-		return -1 ;
-	}
-
-	//
-	// setup asterisk read/write formats
-	//
-
-	if ( ast_set_read_format( chan, member->read_format ) < 0 )
-	{
-		ast_log( LOG_ERROR, "unable to set read format to signed linear\n" ) ;
-		delete_member( member ) ;
-		return -1 ;
-	}
-
-	if ( ast_set_write_format( chan, member->write_format ) < 0 ) // AST_FORMAT_CONFERENCE, chan->nativeformats
-	{
-		ast_log( LOG_ERROR, "unable to set write format to signed linear\n" ) ;
-		delete_member( member ) ;
 		return -1 ;
 	}
 
@@ -467,6 +450,12 @@ int member_exec( struct ast_channel* chan, const char* data )
 	//
 	// clean up
 	//
+
+	if ( member->soundq && ast_set_write_format( member->chan, member->write_format ) < 0 )
+	{
+		ast_log( LOG_ERROR, "unable to reset write format to %d\n",
+		    member->write_format ) ;
+	}
 
 	if ( member->chan->_softhangup == AST_SOFTHANGUP_ASYNCGOTO )
 		pbx_builtin_setvar_helper(member->chan, "KONFERENCE", "KICKED" );
@@ -733,26 +722,25 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 		}
 	}
 #endif
-	//
-	// read, write, and translation options
-	//
 
-	// set member's audio formats, taking dsp preprocessing into account
-	// ( chan->nativeformats, AST_FORMAT_CONFERENCE, AST_FORMAT_ULAW, AST_FORMAT_GSM )
+	// set member's audio formats
 #if	SILDET == 1 || SILDET == 2
-	member->read_format = !member->dsp ? chan->nativeformats : AST_FORMAT_CONFERENCE ;
+	if ( member->dsp )
+	{
+		member->read_format = AST_FORMAT_CONFERENCE ;
+		// translation path for dsp processing ( ast_translator_build_path() returns null if formats match )
+		member->to_dsp = ast_translator_build_path( AST_FORMAT_CONFERENCE, chan->readformat ) ;
+	}
+	else
+	{
+		member->read_format = chan->readformat ;
+	}
 #else
-	member->read_format = chan->nativeformats ;
+	member->read_format = chan->readformat ;
 #endif
-	member->write_format = chan->nativeformats;
-	// 1.2 or 1.3+
-#ifdef AST_FORMAT_AUDIO_MASK
+	member->write_format = chan->writeformat;
 
-	member->read_format &= AST_FORMAT_AUDIO_MASK;
-	member->write_format &= AST_FORMAT_AUDIO_MASK;
-#endif
-
-	//translation paths ( ast_translator_build_path() returns null if formats match )
+	// translation paths ( ast_translator_build_path() returns null if formats match )
 	member->to_slinear = ast_translator_build_path( AST_FORMAT_CONFERENCE, member->read_format ) ;
 	member->from_slinear = ast_translator_build_path( member->write_format, AST_FORMAT_CONFERENCE ) ;
 
@@ -888,11 +876,13 @@ ast_conf_member* delete_member( ast_conf_member* member )
 	if ( member->dsp )
 	{
 		WebRtcVad_Free( member->dsp ) ;
+		ast_translator_free_path( member->to_dsp ) ;
 	}
 #elif	SILDET == 2
 	if ( member->dsp )
 	{
 		speex_preprocess_state_destroy( member->dsp ) ;
+		ast_translator_free_path( member->to_dsp ) ;
 	}
 #endif
 

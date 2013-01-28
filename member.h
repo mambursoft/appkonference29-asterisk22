@@ -130,6 +130,8 @@ struct ast_conf_member
 	int via_telephone;
 	// pointer to webrtc preprocessor dsp
 	VadInst *dsp ;
+	// translator for dsp
+	struct ast_trans_pvt *to_dsp;
         // number of "silent" frames to ignore
 	int ignore_vad_result;
 
@@ -146,6 +148,8 @@ struct ast_conf_member
 
 	// pointer to speex preprocessor dsp
 	SpeexPreprocessState *dsp ;
+	// translator for dsp
+	struct ast_trans_pvt *to_dsp;
         // number of "silent" frames to ignore
 	int ignore_vad_result;
 #endif

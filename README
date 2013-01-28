@@ -9,7 +9,6 @@ Appkonference has several design goals which are different than Meetme:
     * It does not require a zap channel for timing.
     * It is very efficient when used with channels which support DTX (silence
 	detection/discontinuous transmission).
-
     * It can do VAD on channels which do not support DTX (although this 
 	is more expensive than just mixing them, but less expensive then
 	encoding; therefore it might still be a win). 
@@ -64,9 +63,6 @@ Konference(NAME,FLAGS[,MAXUSERS][,TYPE][,SPY][,VADSTART][,VADCONTINUE])
 * MAXUSERS: limit conference participants to max_users
 * TYPE: conference type identifier
 * SPY: channel name to spy
-
-* VADSTART:  "probability" to use to detect start of speech.
-* VADCONTINUE: "probability" to use to detect continuation of speech. 
 
 
 CLI Commands
