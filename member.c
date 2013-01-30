@@ -210,17 +210,13 @@ static struct ast_frame *get_next_soundframe(ast_conf_member *member)
 
 		if (!toboot->stopped && !toboot->stream)
 		{
-			toboot->stream = ast_openstream(member->chan, toboot->name, member->chan->language);
-			if (toboot->stream)
-			{
-				member->chan->stream = NULL;
+			if ( (toboot->stream = ast_openstream(member->chan, toboot->name, member->chan->language)) )
 				continue;
-			}
 		}
 
 		if (toboot->stream)
 		{
-			ast_closestream(toboot->stream);
+			ast_stopstream(member->chan);
 #ifdef	SOUND_COMPLETE_EVENTS
 			// notify applications via mgr interface that this sound has been played
 			manager_event(
@@ -240,12 +236,6 @@ static struct ast_frame *get_next_soundframe(ast_conf_member *member)
 			member->muted = 0;
 			ast_mutex_unlock( &member->lock ) ;
 			ast_free(toboot);
-			// if we get here, we've gotten to the end of the queue; reset write format
-			if ( ast_set_write_format( member->chan, member->write_format ) < 0 )
-			{
-				ast_log( LOG_ERROR, "unable to reset write format to %d\n",
-				    member->write_format ) ;
-			}
 			return NULL;
 		} else {
 			ast_mutex_unlock( &member->lock ) ;
@@ -450,12 +440,6 @@ int member_exec( struct ast_channel* chan, const char* data )
 	//
 	// clean up
 	//
-
-	if ( member->soundq && ast_set_write_format( member->chan, member->write_format ) < 0 )
-	{
-		ast_log( LOG_ERROR, "unable to reset write format to %d\n",
-		    member->write_format ) ;
-	}
 
 	if ( member->chan->_softhangup == AST_SOFTHANGUP_ASYNCGOTO )
 		pbx_builtin_setvar_helper(member->chan, "KONFERENCE", "KICKED" );
@@ -908,7 +892,7 @@ ast_conf_member* delete_member( ast_conf_member* member )
 	{
 		next = sound->next;
 		if ( sound->stream )
-			ast_closestream( sound->stream );
+			ast_stopstream( member->chan );
 		ast_free( sound );
 		sound = next;
 	}
