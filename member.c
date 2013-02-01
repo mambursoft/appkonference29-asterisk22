@@ -707,29 +707,23 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 	}
 #endif
 
-	// set member's audio formats
+	// set translation paths
 #if	SILDET == 1 || SILDET == 2
 	if ( member->dsp )
 	{
-		member->read_format = AST_FORMAT_CONFERENCE ;
-		// translation path for dsp processing ( ast_translator_build_path() returns null if formats match )
 		member->to_dsp = ast_translator_build_path( AST_FORMAT_CONFERENCE, chan->readformat ) ;
 	}
 	else
 	{
-		member->read_format = chan->readformat ;
+		member->to_slinear = ast_translator_build_path( AST_FORMAT_CONFERENCE, member->chan->readformat ) ;
 	}
 #else
-	member->read_format = chan->readformat ;
+	member->to_slinear = ast_translator_build_path( AST_FORMAT_CONFERENCE, member->chan->readformat ) ;
 #endif
-	member->write_format = chan->writeformat;
-
-	// translation paths ( ast_translator_build_path() returns null if formats match )
-	member->to_slinear = ast_translator_build_path( AST_FORMAT_CONFERENCE, member->read_format ) ;
-	member->from_slinear = ast_translator_build_path( member->write_format, AST_FORMAT_CONFERENCE ) ;
+	member->from_slinear = ast_translator_build_path( member->chan->writeformat, AST_FORMAT_CONFERENCE ) ;
 
 	// index for converted_frames array
-	switch ( member->write_format )
+	switch ( member->chan->writeformat )
 	{
 		case AST_FORMAT_CONFERENCE:
 			member->write_format_index = AC_CONF_INDEX ;
@@ -769,7 +763,11 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 	}
 
 	// index for converted_frames array
-	switch ( member->read_format )
+#if	SILDET == 1 || SILDET == 2
+	switch ( member->dsp ? AST_FORMAT_CONFERENCE : member->chan->readformat )
+#else
+	switch ( member->chan->readformat )
+#endif
 	{
 		case AST_FORMAT_CONFERENCE:
 			member->read_format_index = AC_CONF_INDEX ;
@@ -1162,7 +1160,7 @@ void queue_silent_frame(
 
 	if ( !qf  )
 	{
-		struct ast_trans_pvt* trans = ast_translator_build_path( member->write_format, AST_FORMAT_CONFERENCE ) ;
+		struct ast_trans_pvt* trans = ast_translator_build_path( member->chan->writeformat, AST_FORMAT_CONFERENCE ) ;
 
 		if ( trans )
 		{

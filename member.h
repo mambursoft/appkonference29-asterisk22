@@ -155,9 +155,6 @@ struct ast_conf_member
 #endif
 
 	// audio format this member is using
-	int write_format ;
-	int read_format ;
-
 	int write_format_index ;
 	int read_format_index ;
 
