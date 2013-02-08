@@ -15,20 +15,13 @@
 # asterisk source directory
 ASTERISK_SRC_DIR =
 
-# asterisk release or subversion working copy
-ASTERISK_SRC_VERSION = $(shell if [ -e $(ASTERISK_SRC_DIR)/.version ] ; then echo release; elif [ -e $(ASTERISK_SRC_DIR)/.svn ] ; then echo subversion; else echo unknown; fi)
-
-# asterisk release version or subversion branch
-ifeq ($(ASTERISK_SRC_VERSION),release)
- ASTERISK = $(shell cat $(ASTERISK_SRC_DIR)/.version | cut -d "." -f1,2 | sed -e 's/\.//')
-else
- ifeq ($(ASTERISK_SRC_VERSION),subversion)
-  ASTERISK = $(shell svn info $(ASTERISK_SRC_DIR) | grep URL | sed -e 's:^.*/::' | cut -d "." -f 1,2 | sed -e 's/\.//')
- else
-  $(warning Asterisk source version is $(ASTERISK_SRC_VERSION))
+ifndef	ASTERISK_SRC_DIR
+  $(warning Asterisk source directory is not set)
   $(error Modify the source directory variable in the Makefile or set it on the command line)
- endif
 endif
+
+# asterisk version
+ASTERISK_VERSION = $(shell cat $(ASTERISK_SRC_DIR)/.version | awk -F. '{printf "%01d%02d",$$1,$$2}')
 
 # asterisk include directory
 ASTERISK_INCLUDE_DIR = $(ASTERISK_SRC_DIR)/include
@@ -102,7 +95,7 @@ CFLAGS += -fPIC
 
 CPPFLAGS = $(INCLUDE) -D_REENTRANT -D_GNU_SOURCE
 CPPFLAGS += -DREVISION=\"$(REVISION)\"
-CPPFLAGS += -DASTERISK=$(ASTERISK)
+CPPFLAGS += -DASTERISK_VERSION=$(ASTERISK_VERSION)
 CPPFLAGS += -DCHANNEL_TABLE_SIZE=$(CHANNEL_TABLE_SIZE)
 CPPFLAGS += -DCONFERENCE_TABLE_SIZE=$(CONFERENCE_TABLE_SIZE)
 CPPFLAGS += -DCACHE_CONF_FRAMES

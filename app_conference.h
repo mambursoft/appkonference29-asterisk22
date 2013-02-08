@@ -205,4 +205,21 @@ ast_conference *confblocklist ;
 ast_conf_member *mbrblocklist ;
 #endif
 
+#if	ASTERISK_VERSION > 108
+struct ast_format ast_format_conference;
+struct ast_format ast_format_ulaw;
+struct ast_format ast_format_alaw;
+struct ast_format ast_format_gsm;
+#ifdef	AC_USE_SPEEX
+struct ast_format ast_format_speex;
+#endif
+#ifdef  AC_USE_G729A
+struct ast_format ast_format_g729a;
+#endif
+#ifdef  AC_USE_G722
+struct ast_format ast_format_slinear;
+struct ast_format ast_format_g722;
+#endif
+#endif
+
 #endif

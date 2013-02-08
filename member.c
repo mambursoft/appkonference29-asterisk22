@@ -59,13 +59,13 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 				// send the frame to the preprocessor
 				f = convert_frame(member->to_dsp, f, 1) ;
 #if	SILDET == 1
-#if	ASTERISK == 14
+#if	ASTERISK_VERSION == 104
 				if (!WebRtcVad_Process( member->dsp, AST_CONF_SAMPLE_RATE, f->data, AST_CONF_BLOCK_SAMPLES ))
 #else
 				if (!WebRtcVad_Process( member->dsp, AST_CONF_SAMPLE_RATE, f->data.ptr, AST_CONF_BLOCK_SAMPLES ))
 #endif
 #elif	SILDET == 2
-#if	ASTERISK == 14
+#if	ASTERISK_VERSION == 104
 				if (!speex_preprocess( member->dsp, f->data, NULL ))
 #else
 				if (!speex_preprocess( member->dsp, f->data.ptr, NULL ))
@@ -152,7 +152,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 					member->type,
 					member->chan->uniqueid,
 					member->chan->name,
-#if	ASTERISK == 14 || ASTERISK == 16
+#if	ASTERISK_VERSION == 104 || ASTERISK_VERSION == 106
 					member->chan->cid.cid_num ? member->chan->cid.cid_num : "unknown",
 					member->chan->cid.cid_name ? member->chan->cid.cid_name : "unknown",
 					f->subclass,
@@ -171,7 +171,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 		}
 		case AST_FRAME_CONTROL:
 		{
-#if	ASTERISK == 14 || ASTERISK == 16
+#if	ASTERISK_VERSION == 104 || ASTERISK_VERSION == 106
 			if (f->subclass == AST_CONTROL_HANGUP)
 #else
 			if (f->subclass.integer == AST_CONTROL_HANGUP)
@@ -291,7 +291,7 @@ static void process_outgoing(ast_conf_member *member)
 // main member thread function
 //
 
-#if	ASTERISK == 14
+#if	ASTERISK_VERSION == 104
 int member_exec( struct ast_channel* chan, void* data )
 #else
 int member_exec( struct ast_channel* chan, const char* data )
@@ -370,7 +370,7 @@ int member_exec( struct ast_channel* chan, const char* data )
 #endif
 		member->flags,
 		member->chan->name,
-#if	ASTERISK == 14 || ASTERISK == 16
+#if	ASTERISK_VERSION == 104 || ASTERISK_VERSION == 106
 		member->chan->cid.cid_num ? member->chan->cid.cid_num : "unknown",
 		member->chan->cid.cid_name ? member->chan->cid.cid_name : "unknown",
 #else
@@ -711,19 +711,39 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 #if	SILDET == 1 || SILDET == 2
 	if ( member->dsp )
 	{
+#if	ASTERISK_VERSION < 1000
 		member->to_dsp = ast_translator_build_path( AST_FORMAT_CONFERENCE, chan->readformat ) ;
+#else
+		member->to_dsp = ast_translator_build_path( &ast_format_conference, &chan->readformat ) ;
+#endif
 	}
 	else
 	{
+#if	ASTERISK_VERSION < 1000
 		member->to_slinear = ast_translator_build_path( AST_FORMAT_CONFERENCE, member->chan->readformat ) ;
+#else
+		member->to_slinear = ast_translator_build_path( &ast_format_conference, &member->chan->readformat ) ;
+#endif
 	}
 #else
+#if	ASTERISK_VERSION < 1000
 	member->to_slinear = ast_translator_build_path( AST_FORMAT_CONFERENCE, member->chan->readformat ) ;
+#else
+	member->to_slinear = ast_translator_build_path( &ast_format_conference, &member->chan->readformat ) ;
 #endif
+#endif
+#if	ASTERISK_VERSION < 1000
 	member->from_slinear = ast_translator_build_path( member->chan->writeformat, AST_FORMAT_CONFERENCE ) ;
+#else
+	member->from_slinear = ast_translator_build_path( &member->chan->writeformat, &ast_format_conference ) ;
+#endif
 
 	// index for converted_frames array
+#if	ASTERISK_VERSION < 1000
 	switch ( member->chan->writeformat )
+#else
+	switch ( member->chan->writeformat.id )
+#endif
 	{
 		case AST_FORMAT_CONFERENCE:
 			member->write_format_index = AC_CONF_INDEX ;
@@ -764,9 +784,17 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 
 	// index for converted_frames array
 #if	SILDET == 1 || SILDET == 2
+#if	ASTERISK_VERSION < 1000
 	switch ( member->dsp ? AST_FORMAT_CONFERENCE : member->chan->readformat )
 #else
+	switch ( member->dsp ? AST_FORMAT_CONFERENCE : member->chan->readformat.id )
+#endif
+#else
+#if	ASTERISK_VERSION < 1000
 	switch ( member->chan->readformat )
+#else
+	switch ( member->chan->readformat.id )
+#endif
 #endif
 	{
 		case AST_FORMAT_CONFERENCE:
@@ -1160,7 +1188,11 @@ void queue_silent_frame(
 
 	if ( !qf  )
 	{
+#if	ASTERISK_VERSION < 1000
 		struct ast_trans_pvt* trans = ast_translator_build_path( member->chan->writeformat, AST_FORMAT_CONFERENCE ) ;
+#else
+		struct ast_trans_pvt* trans = ast_translator_build_path( &member->chan->writeformat, &ast_format_conference ) ;
+#endif
 
 		if ( trans )
 		{

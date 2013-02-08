@@ -35,6 +35,23 @@
 #include <sys/time.h>
 #endif
 
+#if	ASTERISK_VERSION > 108
+struct ast_format ast_format_conference = { .id = AST_FORMAT_CONFERENCE };
+struct ast_format ast_format_ulaw = { .id = AST_FORMAT_ULAW };
+struct ast_format ast_format_alaw = { .id = AST_FORMAT_ALAW };
+struct ast_format ast_format_gsm = { .id = AST_FORMAT_GSM };
+#ifdef  AC_USE_SPEEX
+struct ast_format ast_format_speex = { .id = AST_FORMAT_SPEEX };
+#endif
+#ifdef  AC_USE_G729A
+struct ast_format ast_format_g729a = { .id = AST_FORMAT_G729A };
+#endif
+#ifdef  AC_USE_G722
+struct ast_format ast_format_slinear = { .id = AST_FORMAT_SLINEAR };
+struct ast_format ast_format_g722 = { .id = AST_FORMAT_G722 };
+#endif
+#endif
+
 //
 // static variables
 //
@@ -523,18 +540,37 @@ static ast_conference* create_conf( char* name, ast_conf_member* member )
 
 	// build translation paths
 	conf->from_slinear_paths[ AC_CONF_INDEX ] = NULL ;
+#if	ASTERISK_VERSION < 1000
 	conf->from_slinear_paths[ AC_ULAW_INDEX ] = ast_translator_build_path( AST_FORMAT_ULAW, AST_FORMAT_CONFERENCE ) ;
 	conf->from_slinear_paths[ AC_ALAW_INDEX ] = ast_translator_build_path( AST_FORMAT_ALAW, AST_FORMAT_CONFERENCE ) ;
 	conf->from_slinear_paths[ AC_GSM_INDEX ] = ast_translator_build_path( AST_FORMAT_GSM, AST_FORMAT_CONFERENCE ) ;
+#else
+	conf->from_slinear_paths[ AC_ULAW_INDEX ] = ast_translator_build_path( &ast_format_ulaw, &ast_format_conference ) ;
+	conf->from_slinear_paths[ AC_ALAW_INDEX ] = ast_translator_build_path( &ast_format_alaw, &ast_format_conference ) ;
+	conf->from_slinear_paths[ AC_GSM_INDEX ] = ast_translator_build_path( &ast_format_gsm, &ast_format_conference ) ;
+#endif
 #ifdef	AC_USE_SPEEX
+#if	ASTERISK_VERSION < 1000
 	conf->from_slinear_paths[ AC_SPEEX_INDEX ] = ast_translator_build_path( AST_FORMAT_SPEEX, AST_FORMAT_CONFERENCE ) ;
+#else
+	conf->from_slinear_paths[ AC_SPEEX_INDEX ] = ast_translator_build_path( &ast_format_speex, &ast_format_conference ) ;
+#endif
 #endif
 #ifdef AC_USE_G729A
+#if	ASTERISK_VERSION < 1000
 	conf->from_slinear_paths[ AC_G729A_INDEX ] = ast_translator_build_path( AST_FORMAT_G729A, AST_FORMAT_CONFERENCE ) ;
+#else
+	conf->from_slinear_paths[ AC_G729A_INDEX ] = ast_translator_build_path( &ast_format_g729a, &ast_format_conference ) ;
+#endif
 #endif
 #ifdef AC_USE_G722
+#if	ASTERISK_VERSION < 1000
 	conf->from_slinear_paths[ AC_SLINEAR_INDEX ] = ast_translator_build_path( AST_FORMAT_SLINEAR, AST_FORMAT_CONFERENCE ) ;
 	conf->from_slinear_paths[ AC_G722_INDEX ] = ast_translator_build_path( AST_FORMAT_G722, AST_FORMAT_CONFERENCE ) ;
+#else
+	conf->from_slinear_paths[ AC_SLINEAR_INDEX ] = ast_translator_build_path( &ast_format_slinear, &ast_format_conference ) ;
+	conf->from_slinear_paths[ AC_G722_INDEX ] = ast_translator_build_path( &ast_format_g722, &ast_format_conference ) ;
+#endif
 #endif
 
 	//
@@ -912,7 +948,7 @@ void remove_member( ast_conf_member* member, ast_conference* conf, char* conf_na
 		member->conf_id,
 		member->flags,
 		member->chan->name,
-#if	ASTERISK == 14 || ASTERISK == 16
+#if	ASTERISK_VERSION == 104 || ASTERISK_VERSION == 106
 		member->chan->cid.cid_num ? member->chan->cid.cid_num : "unknown",
 		member->chan->cid.cid_name ? member->chan->cid.cid_name : "unknown",
 #else
@@ -1356,7 +1392,7 @@ ast_conf_member *find_member( const char *chan, const char lock )
 	return member ;
 }
 
-#if	ASTERISK == 14 || ASTERISK == 16
+#if	ASTERISK_VERSION == 104 || ASTERISK_VERSION == 106
 void play_sound_channel(int fd, const char *channel, char **file, int mute, int tone, int n)
 #else
 void play_sound_channel(int fd, const char *channel, const char * const *file, int mute, int tone, int n)
@@ -1540,7 +1576,7 @@ int hash(const char *name)
 	return h;
 }
 
-#if	ASTERISK == 14
+#if	ASTERISK_VERSION == 104
 int count_exec( struct ast_channel* chan, void* data )
 #else
 int count_exec( struct ast_channel* chan, const char* data )

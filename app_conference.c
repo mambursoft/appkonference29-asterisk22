@@ -51,7 +51,7 @@ static char *app2 = "KonferenceCount";
 static char *synopsis2 = "Channel Independent Conference Count";
 static char *descrip2 = "Channel Independent Conference Count Application";
 
-#if	ASTERISK == 14 || ASTERISK == 16
+#if	ASTERISK_VERSION == 104 || ASTERISK_VERSION == 106
 static int app_konference_main(struct ast_channel* chan, void* data)
 #else
 static int app_konference_main(struct ast_channel* chan, const char* data)
@@ -70,7 +70,7 @@ static int app_konference_main(struct ast_channel* chan, const char* data)
 	return res ;
 }
 
-#if	ASTERISK == 14 || ASTERISK == 16
+#if	ASTERISK_VERSION == 104 || ASTERISK_VERSION == 106
 static int app_konferencecount_main(struct ast_channel* chan, void* data)
 #else
 static int app_konferencecount_main(struct ast_channel* chan, const char* data)
@@ -111,7 +111,7 @@ static int load_module( void )
 {
 	int res = 0;
 
-	ast_log( LOG_NOTICE, "Loading app_konference module revision=%s, asterisk version=%.1f\n", revision, (float)ASTERISK/10) ;
+	ast_log( LOG_NOTICE, "Loading app_konference module revision=%s\n", revision ) ;
 
 	res |= init_conference() ;
 

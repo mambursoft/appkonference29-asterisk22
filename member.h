@@ -177,7 +177,7 @@ struct ast_conf_member
 // function declarations
 //
 
-#if	ASTERISK == 14
+#if	ASTERISK_VERSION == 104
 int member_exec( struct ast_channel* chan, void* data ) ;
 #else
 int member_exec( struct ast_channel* chan, const char* data ) ;
