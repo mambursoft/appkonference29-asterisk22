@@ -21,7 +21,12 @@ ifndef	ASTERISK_SRC_DIR
 endif
 
 # asterisk version
-ASTERISK_VERSION = $(shell cat $(ASTERISK_SRC_DIR)/.version | awk -F. '{printf "%01d%02d",$$1,$$2}')
+ASTERISK_VERSION = $(shell if [ -e $(ASTERISK_SRC_DIR)/.version ] ; then cat $(ASTERISK_SRC_DIR)/.version | awk -F. '{printf "%01d%02d",$$1,$$2}' ; fi)
+
+ifeq	($(ASTERISK_VERSION),)
+  $(warning Asterisk version is not set)
+  $(error Modify the version variable in the Makefile or set it on the command line)
+endif
 
 # asterisk include directory
 ASTERISK_INCLUDE_DIR = $(ASTERISK_SRC_DIR)/include
