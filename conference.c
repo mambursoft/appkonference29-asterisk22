@@ -944,16 +944,29 @@ void remove_member( ast_conf_member* member, ast_conference* conf, char* conf_na
 		"Count: %d\r\n",
 		conf_name,
 		member->type,
+#if	ASTERISK_VERSION < 1100
 		member->chan->uniqueid,
+#else
+		ast_channel_uniqueid(member->chan),
+#endif
 		member->conf_id,
 		member->flags,
+#if	ASTERISK_VERSION < 1100
 		member->chan->name,
+#else
+		ast_channel_name(member->chan),
+#endif
 #if	ASTERISK_VERSION == 104 || ASTERISK_VERSION == 106
 		member->chan->cid.cid_num ? member->chan->cid.cid_num : "unknown",
 		member->chan->cid.cid_name ? member->chan->cid.cid_name : "unknown",
 #else
+#if	ASTERISK_VERSION < 1100
 		member->chan->caller.id.number.str ? member->chan->caller.id.number.str : "unknown",
 		member->chan->caller.id.name.str ? member->chan->caller.id.name.str: "unknown",
+#else
+		S_COR(ast_channel_caller(member->chan)->id.number.valid, ast_channel_caller(member->chan)->id.number.str, "<unknown>"),
+		S_COR(ast_channel_caller(member->chan)->id.name.valid, ast_channel_caller(member->chan)->id.name.str, "<unknown>"),
+#endif
 #endif
 		(long)ast_tvdiff_ms(ast_tvnow(),member->time_entered) / 1000,
 		moderators,
@@ -1034,7 +1047,11 @@ void list_members ( int fd, const char *name )
 					duration = (int)(ast_tvdiff_ms(ast_tvnow(),member->time_entered) / 1000);
 					snprintf(duration_str, 10, "%02d:%02d:%02d",  duration / 3600, (duration % 3600) / 60, duration % 60);
 					ast_cli( fd, "%-20d %-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-80s\n",
+#if	ASTERISK_VERSION < 1100
 					member->conf_id, member->flags, !member->mute_audio ? "Unmuted" : "Muted", volume_str, duration_str , spy_str, member->chan->name);
+#else
+					member->conf_id, member->flags, !member->mute_audio ? "Unmuted" : "Muted", volume_str, duration_str , spy_str, ast_channel_name(member->chan));
+#endif
 					member = member->next;
 				}
 
@@ -1088,7 +1105,11 @@ void list_all( int fd )
 				duration = (int)(ast_tvdiff_ms(ast_tvnow(),member->time_entered) / 1000);
 				snprintf(duration_str, 10, "%02d:%02d:%02d",  duration / 3600, (duration % 3600) / 60, duration % 60);
 				ast_cli( fd, "%-20d %-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-80s\n",
+#if	ASTERISK_VERSION < 1100
 				member->conf_id, member->flags, !member->mute_audio ? "Unmuted" : "Muted", volume_str, duration_str , spy_str, member->chan->name);
+#else
+				member->conf_id, member->flags, !member->mute_audio ? "Unmuted" : "Muted", volume_str, duration_str , spy_str, ast_channel_name(member->chan));
+#endif
 				member = member->next;
 			}
 
@@ -1378,7 +1399,11 @@ ast_conf_member *find_member( const char *chan, const char lock )
 	AST_LIST_LOCK ( bucket ) ;
 
 	AST_LIST_TRAVERSE ( bucket, member, hash_entry )
+#if	ASTERISK_VERSION < 1100
 		if (!strcmp (member->chan->name, chan) ) {
+#else
+		if (!strcmp (ast_channel_name(member->chan), chan) ) {
+#endif
 			if (lock)
 			{
 				ast_mutex_lock (&member->lock) ;
@@ -1404,7 +1429,11 @@ void play_sound_channel(int fd, const char *channel, const char * const *file, i
 
 	if( (member = find_member(channel, 1)) )
 	{
+#if	ASTERISK_VERSION < 1100
 		if (!member->norecv_audio && !ast_test_flag(member->chan, AST_FLAG_MOH)
+#else
+		if (!member->norecv_audio && !ast_test_flag(ast_channel_flags(member->chan), AST_FLAG_MOH)
+#endif
 				&& (!tone || !member->soundq))
 		{
 			while ( n-- > 0 ) {
@@ -1617,9 +1646,17 @@ int count_exec( struct ast_channel* chan, const char* data )
 		snprintf(val, sizeof(val), "%d",count);
 		pbx_builtin_setvar_helper(chan, args.varname, val);
 	} else {
+#if	ASTERISK_VERSION < 1100
 		if (chan->_state != AST_STATE_UP)
+#else
+		if (ast_channel_state(chan) != AST_STATE_UP)
+#endif
 			ast_answer(chan);
+#if	ASTERISK_VERSION < 1100
 		res = ast_say_number(chan, count, "", chan->language, (char *) NULL);
+#else
+		res = ast_say_number(chan, count, "", ast_channel_language(chan), (char *) NULL);
+#endif
 	}
 	return res;
 }
