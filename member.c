@@ -747,7 +747,11 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 		}
 		else
 		{
+#if	ASTERISK_VERSION < 1100
 			ast_log( LOG_WARNING, "unable to initialize member dsp, channel => %s\n", chan->name ) ;
+#else
+			ast_log( LOG_WARNING, "unable to initialize member dsp, channel => %s\n", ast_channel_name(chan) ) ;
+#endif
 		}
 	}
 #endif
