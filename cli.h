@@ -35,33 +35,33 @@ int conference_version( int fd, int argc, char *argv[] );
 
 int conference_restart( int fd, int argc, char *argv[] );
 
-int conference_list( int fd, int argc, char *argv[] ) ;
+int conference_list( int fd, int argc, char *argv[] );
 #ifdef	KICK_MEMBER
-int conference_kick( int fd, int argc, char *argv[] ) ;
+int conference_kick( int fd, int argc, char *argv[] );
 #endif
-int conference_kickchannel( int fd, int argc, char *argv[] ) ;
+int conference_kickchannel( int fd, int argc, char *argv[] );
 #ifdef MUTE_MEMBER
-int conference_mute( int fd, int argc, char *argv[] ) ;
+int conference_mute( int fd, int argc, char *argv[] );
 #endif
 #ifdef UNMUTE_MEMBER
-int conference_unmute( int fd, int argc, char *argv[] ) ;
+int conference_unmute( int fd, int argc, char *argv[] );
 #endif
-int conference_muteconference( int fd, int argc, char *argv[] ) ;
-int conference_unmuteconference( int fd, int argc, char *argv[] ) ;
-int conference_mutechannel( int fd, int argc, char *argv[] ) ;
-int conference_unmutechannel( int fd, int argc, char *argv[] ) ;
+int conference_muteconference( int fd, int argc, char *argv[] );
+int conference_unmuteconference( int fd, int argc, char *argv[] );
+int conference_mutechannel( int fd, int argc, char *argv[] );
+int conference_unmutechannel( int fd, int argc, char *argv[] );
 
-int conference_play_sound( int fd, int argc, char *argv[] ) ;
-int conference_stop_sounds( int fd, int argc, char *argv[] ) ;
+int conference_play_sound( int fd, int argc, char *argv[] );
+int conference_stop_sounds( int fd, int argc, char *argv[] );
 
-int conference_stop_moh( int fd, int argc, char *argv[] ) ;
-int conference_start_moh( int fd, int argc, char *argv[] ) ;
+int conference_stop_moh( int fd, int argc, char *argv[] );
+int conference_start_moh( int fd, int argc, char *argv[] );
 
-int conference_talkvolume( int fd, int argc, char *argv[] ) ;
-int conference_listenvolume( int fd, int argc, char *argv[] ) ;
-int conference_volume( int fd, int argc, char *argv[] ) ;
+int conference_talkvolume( int fd, int argc, char *argv[] );
+int conference_listenvolume( int fd, int argc, char *argv[] );
+int conference_volume( int fd, int argc, char *argv[] );
 
-int conference_end( int fd, int argc, char *argv[] ) ;
+int conference_end( int fd, int argc, char *argv[] );
 
 #else
 
@@ -69,38 +69,38 @@ char *conference_version(struct ast_cli_entry *, int, struct ast_cli_args *);
 
 char *conference_restart(struct ast_cli_entry *, int, struct ast_cli_args *);
 
-char *conference_list(struct ast_cli_entry *, int, struct ast_cli_args *) ;
+char *conference_list(struct ast_cli_entry *, int, struct ast_cli_args *);
 #ifdef	KICK_MEMBER
-char *conference_kick(struct ast_cli_entry *, int, struct ast_cli_args *) ;
+char *conference_kick(struct ast_cli_entry *, int, struct ast_cli_args *);
 #endif
-char *conference_kickchannel(struct ast_cli_entry *, int, struct ast_cli_args *) ;
+char *conference_kickchannel(struct ast_cli_entry *, int, struct ast_cli_args *);
 #ifdef MUTE_MEMBER
-char *conference_mute(struct ast_cli_entry *, int, struct ast_cli_args *) ;
+char *conference_mute(struct ast_cli_entry *, int, struct ast_cli_args *);
 #endif
 #ifdef UNMUTE_MEMBER
-char *conference_unmute(struct ast_cli_entry *, int, struct ast_cli_args *) ;
+char *conference_unmute(struct ast_cli_entry *, int, struct ast_cli_args *);
 #endif
-char *conference_muteconference(struct ast_cli_entry *, int, struct ast_cli_args *) ;
-char *conference_unmuteconference(struct ast_cli_entry *, int, struct ast_cli_args *) ;
-char *conference_mutechannel(struct ast_cli_entry *, int, struct ast_cli_args *) ;
-char *conference_unmutechannel(struct ast_cli_entry *, int, struct ast_cli_args *) ;
+char *conference_muteconference(struct ast_cli_entry *, int, struct ast_cli_args *);
+char *conference_unmuteconference(struct ast_cli_entry *, int, struct ast_cli_args *);
+char *conference_mutechannel(struct ast_cli_entry *, int, struct ast_cli_args *);
+char *conference_unmutechannel(struct ast_cli_entry *, int, struct ast_cli_args *);
 
-char *conference_play_sound(struct ast_cli_entry *, int, struct ast_cli_args *) ;
-char *conference_stop_sounds(struct ast_cli_entry *, int, struct ast_cli_args *) ;
+char *conference_play_sound(struct ast_cli_entry *, int, struct ast_cli_args *);
+char *conference_stop_sounds(struct ast_cli_entry *, int, struct ast_cli_args *);
 
-char *conference_stop_moh(struct ast_cli_entry *, int, struct ast_cli_args *) ;
-char *conference_start_moh(struct ast_cli_entry *, int, struct ast_cli_args *) ;
+char *conference_stop_moh(struct ast_cli_entry *, int, struct ast_cli_args *);
+char *conference_start_moh(struct ast_cli_entry *, int, struct ast_cli_args *);
 
-char *conference_talkvolume(struct ast_cli_entry *, int, struct ast_cli_args *) ;
-char *conference_listenvolume(struct ast_cli_entry *, int, struct ast_cli_args *) ;
-char *conference_volume(struct ast_cli_entry *, int, struct ast_cli_args *) ;
+char *conference_talkvolume(struct ast_cli_entry *, int, struct ast_cli_args *);
+char *conference_listenvolume(struct ast_cli_entry *, int, struct ast_cli_args *);
+char *conference_volume(struct ast_cli_entry *, int, struct ast_cli_args *);
 
-char *conference_end(struct ast_cli_entry *, int, struct ast_cli_args *) ;
+char *conference_end(struct ast_cli_entry *, int, struct ast_cli_args *);
 
 #endif
 
-void register_conference_cli( void ) ;
-void unregister_conference_cli( void ) ;
+void register_conference_cli( void );
+void unregister_conference_cli( void );
 
 
 #endif

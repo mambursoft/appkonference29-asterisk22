@@ -162,7 +162,7 @@
 		AC_G722_INDEX,
 #endif
 		AC_SUPPORTED_FORMATS
-		} ;
+		};
 
 //
 // Default conference max users is zero, that is, unbounded
@@ -176,33 +176,33 @@
 
 #define EVENT_FLAG_CONF EVENT_FLAG_USER
 
-typedef struct ast_conference ast_conference ;
-typedef struct ast_conf_member ast_conf_member ;
-typedef struct ast_conf_soundq ast_conf_soundq ;
-typedef struct conf_frame conf_frame ;
+typedef struct ast_conference ast_conference;
+typedef struct ast_conf_member ast_conf_member;
+typedef struct ast_conf_soundq ast_conf_soundq;
+typedef struct conf_frame conf_frame;
 
-const char *argument_delimiter ;
+const char *argument_delimiter;
 
 #if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
 #define	SPEAKER_SCOREBOARD_FILE "/tmp/speaker-scoreboard"
 char *speaker_scoreboard;
 #endif
 
-AST_LIST_HEAD (conference_bucket, ast_conference) ;
-struct conference_bucket conference_table[CONFERENCE_TABLE_SIZE] ;
+AST_LIST_HEAD (conference_bucket, ast_conference);
+struct conference_bucket conference_table[CONFERENCE_TABLE_SIZE];
 
-AST_LIST_HEAD (channel_bucket, ast_conf_member) ;
-struct channel_bucket channel_table[CHANNEL_TABLE_SIZE] ;
+AST_LIST_HEAD (channel_bucket, ast_conf_member);
+struct channel_bucket channel_table[CHANNEL_TABLE_SIZE];
 
 #ifdef	CACHE_CONF_FRAMES
-AST_LIST_HEAD_NOLOCK(confFrameList, conf_frame) confFrameList ;
+AST_LIST_HEAD_NOLOCK(confFrameList, conf_frame) confFrameList;
 #endif
 
-conf_frame *silent_conf_frame ;
+conf_frame *silent_conf_frame;
 
 #ifdef	CACHE_CONTROL_BLOCKS
-ast_conference *confblocklist ;
-ast_conf_member *mbrblocklist ;
+ast_conference *confblocklist;
+ast_conf_member *mbrblocklist;
 #endif
 
 #if	ASTERISK_SRC_VERSION > 108

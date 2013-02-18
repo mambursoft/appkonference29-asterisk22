@@ -32,29 +32,29 @@
 struct conf_frame
 {
 	// frame audio data
-	struct ast_frame* fr ;
+	struct ast_frame* fr;
 
 	// array of converted versions for listeners
-	struct ast_frame* converted[ AC_SUPPORTED_FORMATS ] ;
+	struct ast_frame* converted[ AC_SUPPORTED_FORMATS ];
 
 #ifdef	CACHE_CONF_FRAMES
 	// pointer to next frame in cache
-	AST_LIST_ENTRY(conf_frame) frame_list ;
+	AST_LIST_ENTRY(conf_frame) frame_list;
 #endif
 
 	// pointer to the frame's owner
-	ast_conf_member* member ; // who sent this frame
+	ast_conf_member* member; // who sent this frame
 
 	// linked-list pointers
-	conf_frame* next ;
-	conf_frame* prev ;
+	conf_frame* next;
+	conf_frame* prev;
 
 	// pointer to mixing buffer
-	char* mixed_buffer ;
+	char* mixed_buffer;
 
 	// conference + speaker volume
-	int talk_volume ;
-} ;
+	int talk_volume;
+};
 
 
 #endif
