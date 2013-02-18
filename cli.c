@@ -70,7 +70,7 @@ static struct ast_cli_entry cli_version = {
 	conference_version_summary,
 	conference_version_usage
 };
-int conference_version( int fd, int argc, char *argv[] ) {
+int conference_version(int fd, int argc, char *argv[]) {
 #else
 static char conference_version_command[] = "konference version";
 char *conference_version(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
@@ -81,10 +81,10 @@ char *conference_version(struct ast_cli_entry *e, int cmd, struct ast_cli_args *
 #endif
 	NEWCLI_SWITCH(conference_version_command,conference_version_usage)
 #endif
-	if ( argc < 2 )
+	if (argc < 2)
 		return SHOWUSAGE;
 
-	ast_cli( fd, "app_konference revision %s\n", REVISION);
+	ast_cli(fd, "app_konference revision %s\n", REVISION);
 
 	return SUCCESS;
 }
@@ -107,7 +107,7 @@ static struct ast_cli_entry cli_restart = {
 	conference_restart_summary,
 	conference_restart_usage
 };
-int conference_restart( int fd, int argc, char *argv[] ) {
+int conference_restart(int fd, int argc, char *argv[]) {
 #else
 static char conference_restart_command[] = "konference restart";
 char *conference_restart(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
@@ -118,7 +118,7 @@ char *conference_restart(struct ast_cli_entry *e, int cmd, struct ast_cli_args *
 #endif
 	NEWCLI_SWITCH(conference_restart_command,conference_restart_usage)
 #endif
-	if ( argc < 2 )
+	if (argc < 2)
 		return SHOWUSAGE;
 
 	kick_all();
@@ -143,7 +143,7 @@ static struct ast_cli_entry cli_list = {
 	conference_list_summary,
 	conference_list_usage
 };
-int conference_list( int fd, int argc, char *argv[] ) {
+int conference_list(int fd, int argc, char *argv[]) {
 #else
 static char conference_list_command[] = "konference list";
 char *conference_list(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
@@ -154,10 +154,10 @@ char *conference_list(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) 
 #endif
 	NEWCLI_SWITCH(conference_list_command,conference_list_usage)
 #endif
-	if ( argc < 2 )
+	if (argc < 2)
 		return SHOWUSAGE;
 
-	if ( argc == 3 && !strcmp( "*", argv[2]) )
+	if (argc == 3 && !strcmp("*", argv[2]))
 	{
 		list_all(fd);
 	}
@@ -168,7 +168,7 @@ char *conference_list(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) 
 		{
 			// get the conference name
 			const char* name = argv[index];
-			list_members( fd, name );
+			list_members(fd, name);
 		}
 	}
 	else
@@ -196,7 +196,7 @@ static struct ast_cli_entry cli_kick = {
 	conference_kick_summary,
 	conference_kick_usage
 };
-int conference_kick( int fd, int argc, char *argv[] ) {
+int conference_kick(int fd, int argc, char *argv[]) {
 #else
 static char conference_kick_command[] = "konference kick";
 char *conference_kick(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
@@ -207,7 +207,7 @@ char *conference_kick(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) 
 #endif
 	NEWCLI_SWITCH(conference_kick_command,conference_kick_usage)
 #endif
-	if ( argc < 4 )
+	if (argc < 4)
 		return SHOWUSAGE;
 
 	// get the conference name
@@ -216,7 +216,7 @@ char *conference_kick(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) 
 	int member_id;
 	sscanf(argv[3], "%d", &member_id);
 
-	kick_member( name, member_id );
+	kick_member(name, member_id);
 
 	return SUCCESS;
 }
@@ -239,7 +239,7 @@ static struct ast_cli_entry cli_kickchannel = {
 	conference_kickchannel_summary,
 	conference_kickchannel_usage
 };
-int conference_kickchannel( int fd, int argc, char *argv[] ) {
+int conference_kickchannel(int fd, int argc, char *argv[]) {
 #else
 static char conference_kickchannel_command[] = "konference kickchannel";
 char *conference_kickchannel(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
@@ -250,21 +250,21 @@ char *conference_kickchannel(struct ast_cli_entry *e, int cmd, struct ast_cli_ar
 #endif
 	NEWCLI_SWITCH(conference_kickchannel_command,conference_kickchannel_usage)
 #endif
-	if ( argc < 3 )
+	if (argc < 3)
 		return SHOWUSAGE;
 
 	const char *channel = argv[2];
 
 	ast_conf_member *member = find_member(channel, 1);
 
-	if ( member )
+	if (member)
 	{
 		member->kick_flag = 1;
 		ast_queue_frame(member->chan, &ast_null_frame);
 
-		if ( !--member->use_count && member->delete_flag )
-			ast_cond_signal ( &member->delete_var );
-		ast_mutex_unlock( &member->lock );
+		if (!--member->use_count && member->delete_flag)
+			ast_cond_signal (&member->delete_var);
+		ast_mutex_unlock(&member->lock);
 	}
 
 	return SUCCESS;
@@ -288,7 +288,7 @@ static struct ast_cli_entry cli_mute = {
 	conference_mute_summary,
 	conference_mute_usage
 };
-int conference_mute( int fd, int argc, char *argv[] ) {
+int conference_mute(int fd, int argc, char *argv[]) {
 #else
 static char conference_mute_command[] = "konference mute";
 char *conference_mute(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
@@ -299,7 +299,7 @@ char *conference_mute(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) 
 #endif
 	NEWCLI_SWITCH(conference_mute_command,conference_mute_usage)
 #endif
-	if ( argc < 4 )
+	if (argc < 4)
 		return SHOWUSAGE;
 
 	// get the conference name
@@ -308,7 +308,7 @@ char *conference_mute(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) 
 	int member_id;
 	sscanf(argv[3], "%d", &member_id);
 
-	mute_member( name, member_id );
+	mute_member(name, member_id);
 
 	return SUCCESS;
 }
@@ -331,7 +331,7 @@ static struct ast_cli_entry cli_muteconference = {
 	conference_muteconference_summary,
 	conference_muteconference_usage
 };
-int conference_muteconference( int fd, int argc, char *argv[] ) {
+int conference_muteconference(int fd, int argc, char *argv[]) {
 #else
 static char conference_muteconference_command[] = "konference muteconference";
 char *conference_muteconference(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
@@ -342,13 +342,13 @@ char *conference_muteconference(struct ast_cli_entry *e, int cmd, struct ast_cli
 #endif
 	NEWCLI_SWITCH(conference_muteconference_command,conference_muteconference_usage)
 #endif
-	if ( argc < 3 )
+	if (argc < 3)
 		return SHOWUSAGE;
 
 	// get the conference name
 	const char* name = argv[2];
 
-	mute_conference ( name );
+	mute_conference (name);
 
 	return SUCCESS;
 }
@@ -371,7 +371,7 @@ static struct ast_cli_entry cli_mutechannel = {
 	conference_mutechannel_summary,
 	conference_mutechannel_usage
 };
-int conference_mutechannel( int fd, int argc, char *argv[] ) {
+int conference_mutechannel(int fd, int argc, char *argv[]) {
 #else
 static char conference_mutechannel_command[] = "konference mutechannel";
 char *conference_mutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
@@ -382,22 +382,22 @@ char *conference_mutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_ar
 #endif
 	NEWCLI_SWITCH(conference_mutechannel_command,conference_mutechannel_usage)
 #endif
-	if ( argc < 3 )
+	if (argc < 3)
 		return SHOWUSAGE;
 
 	const char *channel = argv[2];
 
 	ast_conf_member *member = find_member(channel, 1);
-	if( member )
+	if(member)
 	{
 #if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
 		*(speaker_scoreboard + member->score_id) = '\x00';
 #endif
 		member->mute_audio = 1;
 
-		if ( !--member->use_count && member->delete_flag )
-			ast_cond_signal ( &member->delete_var );
-		ast_mutex_unlock( &member->lock );
+		if (!--member->use_count && member->delete_flag)
+			ast_cond_signal (&member->delete_var);
+		ast_mutex_unlock(&member->lock);
 
 		manager_event(
 			EVENT_FLAG_CONF,
@@ -428,7 +428,7 @@ static struct ast_cli_entry cli_unmute = {
 	conference_unmute_summary,
 	conference_unmute_usage
 };
-int conference_unmute( int fd, int argc, char *argv[] ) {
+int conference_unmute(int fd, int argc, char *argv[]) {
 #else
 static char conference_unmute_command[] = "konference unmute";
 char *conference_unmute(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
@@ -439,7 +439,7 @@ char *conference_unmute(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a
 #endif
 	NEWCLI_SWITCH(conference_unmute_command,conference_unmute_usage)
 #endif
-	if ( argc < 4 )
+	if (argc < 4)
 		return SHOWUSAGE;
 
 	// get the conference name
@@ -448,7 +448,7 @@ char *conference_unmute(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a
 	int member_id;
 	sscanf(argv[3], "%d", &member_id);
 
-	unmute_member( name, member_id );
+	unmute_member(name, member_id);
 
 	return SUCCESS;
 }
@@ -471,7 +471,7 @@ static struct ast_cli_entry cli_unmuteconference = {
 	conference_unmuteconference_summary,
 	conference_unmuteconference_usage
 };
-int conference_unmuteconference( int fd, int argc, char *argv[] ) {
+int conference_unmuteconference(int fd, int argc, char *argv[]) {
 #else
 static char conference_unmuteconference_command[] = "konference unmuteconference";
 char *conference_unmuteconference(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
@@ -482,13 +482,13 @@ char *conference_unmuteconference(struct ast_cli_entry *e, int cmd, struct ast_c
 #endif
 	NEWCLI_SWITCH(conference_unmuteconference_command,conference_unmuteconference_usage)
 #endif
-	if ( argc < 3 )
+	if (argc < 3)
 		return SHOWUSAGE;
 
 	// get the conference name
 	const char* name = argv[2];
 
-	unmute_conference ( name );
+	unmute_conference (name);
 
 	return SUCCESS;
 }
@@ -511,7 +511,7 @@ static struct ast_cli_entry cli_unmutechannel = {
 	conference_unmutechannel_summary,
 	conference_unmutechannel_usage
 };
-int conference_unmutechannel( int fd, int argc, char *argv[] ) {
+int conference_unmutechannel(int fd, int argc, char *argv[]) {
 #else
 static char conference_unmutechannel_command[] = "konference unmutechannel";
 char *conference_unmutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
@@ -522,19 +522,19 @@ char *conference_unmutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_
 #endif
 	NEWCLI_SWITCH(conference_unmutechannel_command,conference_unmutechannel_usage)
 #endif
-	if ( argc < 3 )
+	if (argc < 3)
 		return SHOWUSAGE;
 
 	const char *channel = argv[2];
 
 	ast_conf_member *member = find_member(channel, 1);
-	if( member )
+	if(member)
 	{
 		member->mute_audio = 0;
 
-		if ( !--member->use_count && member->delete_flag )
-			ast_cond_signal ( &member->delete_var );
-		ast_mutex_unlock( &member->lock );
+		if (!--member->use_count && member->delete_flag)
+			ast_cond_signal (&member->delete_var);
+		ast_mutex_unlock(&member->lock);
 
 		manager_event(
 			EVENT_FLAG_CONF,
@@ -567,7 +567,7 @@ static struct ast_cli_entry cli_play_sound = {
 	conference_play_sound_summary,
 	conference_play_sound_usage
 };
-int conference_play_sound( int fd, int argc, char *argv[] ) {
+int conference_play_sound(int fd, int argc, char *argv[]) {
 #else
 static char conference_play_sound_command[] = "konference play sound";
 char *conference_play_sound(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
@@ -578,7 +578,7 @@ char *conference_play_sound(struct ast_cli_entry *e, int cmd, struct ast_cli_arg
 #endif
 	NEWCLI_SWITCH(conference_play_sound_command,conference_play_sound_usage)
 #endif
-	if ( argc < 5 )
+	if (argc < 5)
 		return SHOWUSAGE;
 
 	const char *channel = argv[3];
@@ -614,7 +614,7 @@ static struct ast_cli_entry cli_stop_sounds = {
 	conference_stop_sounds_summary,
 	conference_stop_sounds_usage
 };
-int conference_stop_sounds( int fd, int argc, char *argv[] ) {
+int conference_stop_sounds(int fd, int argc, char *argv[]) {
 #else
 static char conference_stop_sounds_command[] = "konference stop sounds";
 char *conference_stop_sounds(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
@@ -625,7 +625,7 @@ char *conference_stop_sounds(struct ast_cli_entry *e, int cmd, struct ast_cli_ar
 #endif
 	NEWCLI_SWITCH(conference_stop_sounds_command,conference_stop_sounds_usage)
 #endif
-	if ( argc < 4 )
+	if (argc < 4)
 		return SHOWUSAGE;
 
 	const char *channel = argv[3];
@@ -653,7 +653,7 @@ static struct ast_cli_entry cli_start_moh = {
 	conference_start_moh_summary,
 	conference_start_moh_usage
 };
-int conference_start_moh( int fd, int argc, char *argv[] ) {
+int conference_start_moh(int fd, int argc, char *argv[]) {
 #else
 static char conference_start_moh_command[] = "konference start moh";
 char *conference_start_moh(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
@@ -664,7 +664,7 @@ char *conference_start_moh(struct ast_cli_entry *e, int cmd, struct ast_cli_args
 #endif
 	NEWCLI_SWITCH(conference_start_moh_command,conference_start_moh_usage)
 #endif
-	if ( argc < 4 )
+	if (argc < 4)
 		return SHOWUSAGE;
 
 	const char *channel = argv[3];
@@ -692,7 +692,7 @@ static struct ast_cli_entry cli_stop_moh = {
 	conference_stop_moh_summary,
 	conference_stop_moh_usage
 };
-int conference_stop_moh( int fd, int argc, char *argv[] ) {
+int conference_stop_moh(int fd, int argc, char *argv[]) {
 #else
 static char conference_stop_moh_command[] = "konference stop moh";
 char *conference_stop_moh(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
@@ -703,7 +703,7 @@ char *conference_stop_moh(struct ast_cli_entry *e, int cmd, struct ast_cli_args 
 #endif
 	NEWCLI_SWITCH(conference_stop_moh_command,conference_stop_moh_usage)
 #endif
-	if ( argc < 4 )
+	if (argc < 4)
 		return SHOWUSAGE;
 
 	const char *channel = argv[3];
@@ -718,7 +718,7 @@ char *conference_stop_moh(struct ast_cli_entry *e, int cmd, struct ast_cli_args 
 // adjust talk volume
 //
 static char conference_talkvolume_usage[] =
-	"Usage: konference talkvolume <channel> ( up | down )\n"
+	"Usage: konference talkvolume <channel> (up | down)\n"
 	"       Adjust talk volume for conference member <channel>\n"
 ;
 
@@ -732,7 +732,7 @@ static struct ast_cli_entry cli_talkvolume = {
 	conference_talkvolume_summary,
 	conference_talkvolume_usage
 };
-int conference_talkvolume( int fd, int argc, char *argv[] ) {
+int conference_talkvolume(int fd, int argc, char *argv[]) {
 #else
 static char conference_talkvolume_command[] = "konference talkvolume";
 char *conference_talkvolume(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
@@ -743,15 +743,15 @@ char *conference_talkvolume(struct ast_cli_entry *e, int cmd, struct ast_cli_arg
 #endif
 	NEWCLI_SWITCH(conference_talkvolume_command,conference_talkvolume_usage)
 #endif
-	if ( argc < 4 )
+	if (argc < 4)
 		return SHOWUSAGE;
 
 	const char *channel = argv[2];
 
 	int up;
-	if ( !strncasecmp( argv[3], "up", 2 ) )
+	if (!strncasecmp(argv[3], "up", 2))
 		up = 1;
-	else if ( !strncasecmp( argv[3], "down", 4 ) )
+	else if (!strncasecmp(argv[3], "down", 4))
 		up = 0;
 	else
 		return SHOWUSAGE;
@@ -765,7 +765,7 @@ char *conference_talkvolume(struct ast_cli_entry *e, int cmd, struct ast_cli_arg
 // adjust listen volume
 //
 static char conference_listenvolume_usage[] =
-	"Usage: konference listenvolume <channel> ( up | down )\n"
+	"Usage: konference listenvolume <channel> (up | down)\n"
 	"       Adjust listen volume for conference member <channel>\n"
 ;
 
@@ -779,7 +779,7 @@ static struct ast_cli_entry cli_listenvolume = {
 	conference_listenvolume_summary,
 	conference_listenvolume_usage
 };
-int conference_listenvolume( int fd, int argc, char *argv[] ) {
+int conference_listenvolume(int fd, int argc, char *argv[]) {
 #else
 static char conference_listenvolume_command[] = "konference listenvolume";
 char *conference_listenvolume(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
@@ -790,15 +790,15 @@ char *conference_listenvolume(struct ast_cli_entry *e, int cmd, struct ast_cli_a
 #endif
 	NEWCLI_SWITCH(conference_listenvolume_command,conference_listenvolume_usage)
 #endif
-	if ( argc < 4 )
+	if (argc < 4)
 		return SHOWUSAGE;
 
 	const char *channel = argv[2];
 
 	int up;
-	if ( !strncasecmp( argv[3], "up", 2 ) )
+	if (!strncasecmp(argv[3], "up", 2))
 		up = 1;
-	else if ( !strncasecmp( argv[3], "down", 4 ) )
+	else if (!strncasecmp(argv[3], "down", 4))
 		up = 0;
 	else
 		return SHOWUSAGE;
@@ -826,7 +826,7 @@ static struct ast_cli_entry cli_volume = {
 	conference_volume_summary,
 	conference_volume_usage
 };
-int conference_volume( int fd, int argc, char *argv[] ) {
+int conference_volume(int fd, int argc, char *argv[]) {
 #else
 static char conference_volume_command[] = "konference volume";
 char *conference_volume(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
@@ -837,21 +837,21 @@ char *conference_volume(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a
 #endif
 	NEWCLI_SWITCH(conference_volume_command,conference_volume_usage)
 #endif
-	if ( argc < 4 )
+	if (argc < 4)
 		return SHOWUSAGE;
 
 	// conference name
 	const char* conference = argv[2];
 
 	int up;
-	if ( !strncasecmp( argv[3], "up", 2 ) )
+	if (!strncasecmp(argv[3], "up", 2))
 		up = 1;
-	else if ( !strncasecmp( argv[3], "down", 4 ) )
+	else if (!strncasecmp(argv[3], "down", 4))
 		up = 0;
 	else
 		return SHOWUSAGE;
 
-	volume(fd, conference, up );
+	volume(fd, conference, up);
 
 	return SUCCESS;
 }
@@ -874,7 +874,7 @@ static struct ast_cli_entry cli_end = {
 	conference_end_summary,
 	conference_end_usage
 };
-int conference_end( int fd, int argc, char *argv[] ) {
+int conference_end(int fd, int argc, char *argv[]) {
 #else
 static char conference_end_command[] = "konference end";
 char *conference_end(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
@@ -885,14 +885,14 @@ char *conference_end(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
 #endif
 	NEWCLI_SWITCH(conference_end_command,conference_end_usage)
 #endif
-	if ( argc < 3 )
+	if (argc < 3)
 		return SHOWUSAGE;
 
 	// conference name
 	const char* name = argv[2];
 
 	// get the conference
-	end_conference( name );
+	end_conference(name);
 
 	return SUCCESS;
 }
@@ -931,68 +931,68 @@ static struct ast_cli_entry app_konference_commands[] = {
 };
 #endif
 
-void register_conference_cli( void )
+void register_conference_cli(void)
 {
 #ifdef AST_CLI_DEFINE
 	ast_cli_register_multiple(app_konference_commands, sizeof(app_konference_commands)/sizeof(struct ast_cli_entry));
 #else
-	ast_cli_register( &cli_version );
-	ast_cli_register( &cli_restart );
-	ast_cli_register( &cli_list );
+	ast_cli_register(&cli_version);
+	ast_cli_register(&cli_restart);
+	ast_cli_register(&cli_list);
 #ifdef	KICK_MEMBER
-	ast_cli_register( &cli_kick );
+	ast_cli_register(&cli_kick);
 #endif
-	ast_cli_register( &cli_kickchannel );
+	ast_cli_register(&cli_kickchannel);
 #ifdef	MUTE_MEMBER
-	ast_cli_register( &cli_mute );
+	ast_cli_register(&cli_mute);
 #endif
-	ast_cli_register( &cli_muteconference );
-	ast_cli_register( &cli_mutechannel );
+	ast_cli_register(&cli_muteconference);
+	ast_cli_register(&cli_mutechannel);
 #ifdef	UNMUTE_MEMBER
-	ast_cli_register( &cli_unmute );
+	ast_cli_register(&cli_unmute);
 #endif
-	ast_cli_register( &cli_unmuteconference );
-	ast_cli_register( &cli_unmutechannel );
-	ast_cli_register( &cli_play_sound );
-	ast_cli_register( &cli_stop_sounds );
-	ast_cli_register( &cli_stop_moh );
-	ast_cli_register( &cli_start_moh );
-	ast_cli_register( &cli_talkvolume );
-	ast_cli_register( &cli_listenvolume );
-	ast_cli_register( &cli_volume );
-	ast_cli_register( &cli_end );
+	ast_cli_register(&cli_unmuteconference);
+	ast_cli_register(&cli_unmutechannel);
+	ast_cli_register(&cli_play_sound);
+	ast_cli_register(&cli_stop_sounds);
+	ast_cli_register(&cli_stop_moh);
+	ast_cli_register(&cli_start_moh);
+	ast_cli_register(&cli_talkvolume);
+	ast_cli_register(&cli_listenvolume);
+	ast_cli_register(&cli_volume);
+	ast_cli_register(&cli_end);
 #endif
 }
 
-void unregister_conference_cli( void )
+void unregister_conference_cli(void)
 {
 #ifdef AST_CLI_DEFINE
 	ast_cli_unregister_multiple(app_konference_commands, sizeof(app_konference_commands)/sizeof(struct ast_cli_entry));
 #else
-	ast_cli_unregister( &cli_version );
-	ast_cli_unregister( &cli_restart );
-	ast_cli_unregister( &cli_list );
+	ast_cli_unregister(&cli_version);
+	ast_cli_unregister(&cli_restart);
+	ast_cli_unregister(&cli_list);
 #ifdef	KICK_MEMBER
-	ast_cli_unregister( &cli_kick );
+	ast_cli_unregister(&cli_kick);
 #endif
-	ast_cli_unregister( &cli_kickchannel );
+	ast_cli_unregister(&cli_kickchannel);
 #ifdef	MUTE_MEMBER
-	ast_cli_unregister( &cli_mute );
+	ast_cli_unregister(&cli_mute);
 #endif
-	ast_cli_unregister( &cli_muteconference );
-	ast_cli_unregister( &cli_mutechannel );
+	ast_cli_unregister(&cli_muteconference);
+	ast_cli_unregister(&cli_mutechannel);
 #ifdef	UNMUTE_MEMBER
-	ast_cli_unregister( &cli_unmute );
+	ast_cli_unregister(&cli_unmute);
 #endif
-	ast_cli_unregister( &cli_unmuteconference );
-	ast_cli_unregister( &cli_unmutechannel );
-	ast_cli_unregister( &cli_play_sound );
-	ast_cli_unregister( &cli_stop_sounds );
-	ast_cli_unregister( &cli_stop_moh );
-	ast_cli_unregister( &cli_start_moh );
-	ast_cli_unregister( &cli_talkvolume );
-	ast_cli_unregister( &cli_listenvolume );
-	ast_cli_unregister( &cli_volume );
-	ast_cli_unregister( &cli_end );
+	ast_cli_unregister(&cli_unmuteconference);
+	ast_cli_unregister(&cli_unmutechannel);
+	ast_cli_unregister(&cli_play_sound);
+	ast_cli_unregister(&cli_stop_sounds);
+	ast_cli_unregister(&cli_stop_moh);
+	ast_cli_unregister(&cli_start_moh);
+	ast_cli_unregister(&cli_talkvolume);
+	ast_cli_unregister(&cli_listenvolume);
+	ast_cli_unregister(&cli_volume);
+	ast_cli_unregister(&cli_end);
 #endif
 }

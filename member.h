@@ -179,21 +179,21 @@ struct ast_conf_member
 //
 
 #if	ASTERISK_SRC_VERSION == 104
-int member_exec( struct ast_channel* chan, void* data );
+int member_exec(struct ast_channel* chan, void* data);
 #else
-int member_exec( struct ast_channel* chan, const char* data );
+int member_exec(struct ast_channel* chan, const char* data);
 #endif
 
-ast_conf_member* create_member( struct ast_channel* chan, const char* data, char* conf_name );
-ast_conf_member* delete_member( ast_conf_member* member );
+ast_conf_member* create_member(struct ast_channel* chan, const char* data, char* conf_name);
+ast_conf_member* delete_member(ast_conf_member* member);
 
 // incoming queue
-void queue_incoming_frame( ast_conf_member* member, struct ast_frame* fr );
-conf_frame* get_incoming_frame( ast_conf_member* member );
+void queue_incoming_frame(ast_conf_member* member, struct ast_frame* fr);
+conf_frame* get_incoming_frame(ast_conf_member* member);
 
 // outgoing queue
-void queue_outgoing_frame( ast_conf_member* member, struct ast_frame* fr, struct timeval delivery );
-struct ast_frame* get_outgoing_frame( ast_conf_member* member );
+void queue_outgoing_frame(ast_conf_member* member, struct ast_frame* fr, struct timeval delivery);
+struct ast_frame* get_outgoing_frame(ast_conf_member* member);
 
 void member_process_spoken_frames(ast_conference* conf,
 				  ast_conf_member *member,

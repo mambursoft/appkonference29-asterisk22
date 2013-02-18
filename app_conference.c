@@ -63,7 +63,7 @@ static int app_konference_main(struct ast_channel* chan, const char* data)
 	u = ast_module_user_add(chan);
 
 	// call member thread function
-	res = member_exec( chan, data );
+	res = member_exec(chan, data);
 
 	ast_module_user_remove(u);
 
@@ -82,43 +82,43 @@ static int app_konferencecount_main(struct ast_channel* chan, const char* data)
 	u = ast_module_user_add(chan);
 
 	// call count thread function
-	res = count_exec( chan, data );
+	res = count_exec(chan, data);
 
 	ast_module_user_remove(u);
 
 	return res;
 }
 
-static int unload_module( void )
+static int unload_module(void)
 {
 	int res = 0;
 
-	ast_log( LOG_NOTICE, "Unloading app_konference module\n" );
+	ast_log(LOG_NOTICE, "Unloading app_konference module\n");
 
 	ast_module_user_hangup_all();
 
 	unregister_conference_cli();
 
-	res |= ast_unregister_application( app );
-	res |= ast_unregister_application( app2 );
+	res |= ast_unregister_application(app);
+	res |= ast_unregister_application(app2);
 
 	dealloc_conference();
 
 	return res;
 }
 
-static int load_module( void )
+static int load_module(void)
 {
 	int res = 0;
 
-	ast_log( LOG_NOTICE, "Loading app_konference module revision=%s\n", revision );
+	ast_log(LOG_NOTICE, "Loading app_konference module revision=%s\n", revision);
 
 	res |= init_conference();
 
 	register_conference_cli();
 
-	res |= ast_register_application( app, app_konference_main, synopsis, descrip );
-	res |= ast_register_application( app2, app_konferencecount_main, synopsis2, descrip2 );
+	res |= ast_register_application(app, app_konference_main, synopsis, descrip);
+	res |= ast_register_application(app2, app_konferencecount_main, synopsis2, descrip2);
 
 	return res;
 }

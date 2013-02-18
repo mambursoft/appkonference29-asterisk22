@@ -92,10 +92,10 @@
 // we can compute the following values:
 //
 // 160 samples per 20 ms frame -or-
-// ( 8000 samples-per-second * ( 20 ms / 1000 ms-per-second ) ) = 160 samples
+// (8000 samples-per-second * (20 ms / 1000 ms-per-second)) = 160 samples
 //
-// 320 bytes ( 2560 bits ) of data  20 ms frame -or-
-// ( 160 samples * 16 bits-per-sample / 8 bits-per-byte ) = 320 bytes
+// 320 bytes (2560 bits) of data  20 ms frame -or-
+// (160 samples * 16 bits-per-sample / 8 bits-per-byte) = 320 bytes
 //
 
 #ifndef	AC_USE_G722
@@ -105,7 +105,7 @@
 #define AST_CONF_BLOCK_SAMPLES 320
 #endif
 
-// 2 bytes per sample ( i.e. 16-bit )
+// 2 bytes per sample (i.e. 16-bit)
 #define AST_CONF_BYTES_PER_SAMPLE 2
 
 #ifndef	AC_USE_G722
@@ -122,7 +122,7 @@
 #endif
 
 // 1000 ms-per-second / 20 ms-per-frame = 50 frames-per-second
-#define AST_CONF_FRAMES_PER_SECOND ( 1000 / AST_CONF_FRAME_INTERVAL )
+#define AST_CONF_FRAMES_PER_SECOND (1000 / AST_CONF_FRAME_INTERVAL)
 
 
 //
@@ -130,7 +130,7 @@
 //
 
 // account for friendly offset when allocating buffer for frame
-#define AST_CONF_BUFFER_SIZE ( AST_CONF_FRAME_DATA_SIZE + AST_FRIENDLY_OFFSET )
+#define AST_CONF_BUFFER_SIZE (AST_CONF_FRAME_DATA_SIZE + AST_FRIENDLY_OFFSET)
 
 // maximum number of frames queued per member
 #define AST_CONF_MAX_QUEUE 100

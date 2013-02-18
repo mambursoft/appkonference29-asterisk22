@@ -95,51 +95,51 @@ struct ast_conference
 // function declarations
 //
 
-int hash( const char *channel_name );
+int hash(const char *channel_name);
 
 #if	ASTERISK_SRC_VERSION == 104
-int count_exec( struct ast_channel* chan, void* data );
+int count_exec(struct ast_channel* chan, void* data);
 #else
-int count_exec( struct ast_channel* chan, const char* data );
+int count_exec(struct ast_channel* chan, const char* data);
 #endif
 
-ast_conference* join_conference( ast_conf_member* member, char* conf_name, char* max_users_flag );
+ast_conference* join_conference(ast_conf_member* member, char* conf_name, char* max_users_flag);
 
 // Find a particular member, locked if lock flag set.
-ast_conf_member *find_member( const char *chan, const char lock );
+ast_conf_member *find_member(const char *chan, const char lock);
 
-void queue_frame_for_listener( ast_conference* conf, ast_conf_member* member );
-void queue_frame_for_speaker( ast_conference* conf, ast_conf_member* member );
-void queue_silent_frame( ast_conference* conf, ast_conf_member* member );
+void queue_frame_for_listener(ast_conference* conf, ast_conf_member* member);
+void queue_frame_for_speaker(ast_conference* conf, ast_conf_member* member);
+void queue_silent_frame(ast_conference* conf, ast_conf_member* member);
 
-void remove_member( ast_conf_member* member, ast_conference* conf, char* conf_name );
+void remove_member(ast_conf_member* member, ast_conference* conf, char* conf_name);
 
 // called by app_conference.c:load_module()
-int init_conference( void );
+int init_conference(void);
 // called by app_conference.c:unload_module()
-void dealloc_conference( void );
+void dealloc_conference(void);
 
 // cli functions
-void end_conference( const char *name );
+void end_conference(const char *name);
 
-void list_members ( int fd, const char* name );
-void list_conferences ( int fd );
-void list_all ( int fd );
+void list_members (int fd, const char* name);
+void list_conferences (int fd);
+void list_all (int fd);
 
 #ifdef	KICK_MEMBER
-void kick_member ( const char* confname, int user_id);
+void kick_member (const char* confname, int user_id);
 #endif
-void kick_all ( void );
+void kick_all (void);
 
 #ifdef MUTE_MEMBER
-void mute_member ( const char* confname, int user_id);
+void mute_member (const char* confname, int user_id);
 #endif
 #ifdef UNMUTE_MEMBER
-void unmute_member ( const char* confname, int user_id);
+void unmute_member (const char* confname, int user_id);
 #endif
 
-void mute_conference ( const char* confname);
-void unmute_conference ( const char* confname);
+void mute_conference (const char* confname);
+void unmute_conference (const char* confname);
 
 #if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
 void play_sound_channel(int fd, const char *channel, char **file, int mute, int tone, int n);

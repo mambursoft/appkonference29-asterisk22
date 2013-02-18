@@ -31,37 +31,37 @@
 
 #ifndef AST_CLI_DEFINE
 
-int conference_version( int fd, int argc, char *argv[] );
+int conference_version(int fd, int argc, char *argv[]);
 
-int conference_restart( int fd, int argc, char *argv[] );
+int conference_restart(int fd, int argc, char *argv[]);
 
-int conference_list( int fd, int argc, char *argv[] );
+int conference_list(int fd, int argc, char *argv[]);
 #ifdef	KICK_MEMBER
-int conference_kick( int fd, int argc, char *argv[] );
+int conference_kick(int fd, int argc, char *argv[]);
 #endif
-int conference_kickchannel( int fd, int argc, char *argv[] );
+int conference_kickchannel(int fd, int argc, char *argv[]);
 #ifdef MUTE_MEMBER
-int conference_mute( int fd, int argc, char *argv[] );
+int conference_mute(int fd, int argc, char *argv[]);
 #endif
 #ifdef UNMUTE_MEMBER
-int conference_unmute( int fd, int argc, char *argv[] );
+int conference_unmute(int fd, int argc, char *argv[]);
 #endif
-int conference_muteconference( int fd, int argc, char *argv[] );
-int conference_unmuteconference( int fd, int argc, char *argv[] );
-int conference_mutechannel( int fd, int argc, char *argv[] );
-int conference_unmutechannel( int fd, int argc, char *argv[] );
+int conference_muteconference(int fd, int argc, char *argv[]);
+int conference_unmuteconference(int fd, int argc, char *argv[]);
+int conference_mutechannel(int fd, int argc, char *argv[]);
+int conference_unmutechannel(int fd, int argc, char *argv[]);
 
-int conference_play_sound( int fd, int argc, char *argv[] );
-int conference_stop_sounds( int fd, int argc, char *argv[] );
+int conference_play_sound(int fd, int argc, char *argv[]);
+int conference_stop_sounds(int fd, int argc, char *argv[]);
 
-int conference_stop_moh( int fd, int argc, char *argv[] );
-int conference_start_moh( int fd, int argc, char *argv[] );
+int conference_stop_moh(int fd, int argc, char *argv[]);
+int conference_start_moh(int fd, int argc, char *argv[]);
 
-int conference_talkvolume( int fd, int argc, char *argv[] );
-int conference_listenvolume( int fd, int argc, char *argv[] );
-int conference_volume( int fd, int argc, char *argv[] );
+int conference_talkvolume(int fd, int argc, char *argv[]);
+int conference_listenvolume(int fd, int argc, char *argv[]);
+int conference_volume(int fd, int argc, char *argv[]);
 
-int conference_end( int fd, int argc, char *argv[] );
+int conference_end(int fd, int argc, char *argv[]);
 
 #else
 
@@ -99,8 +99,8 @@ char *conference_end(struct ast_cli_entry *, int, struct ast_cli_args *);
 
 #endif
 
-void register_conference_cli( void );
-void unregister_conference_cli( void );
+void register_conference_cli(void);
+void unregister_conference_cli(void);
 
 
 #endif
