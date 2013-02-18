@@ -259,7 +259,8 @@ char *conference_kickchannel(struct ast_cli_entry *e, int cmd, struct ast_cli_ar
 
 	if ( member )
 	{
-		ast_softhangup(member->chan, AST_SOFTHANGUP_ASYNCGOTO);
+		member->kick_flag = 1;
+		ast_queue_frame(member->chan, &ast_null_frame);
 
 		if ( !--member->use_count && member->delete_flag )
 			ast_cond_signal ( &member->delete_var ) ;

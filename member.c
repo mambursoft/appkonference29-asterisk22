@@ -197,6 +197,18 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 			}
 			break;
 		}
+		case AST_FRAME_NULL:
+		{
+			if (member->kick_flag)
+			{
+				// free the input frame
+				ast_frfree( f ) ;
+
+				// break out of the while ( 42 )
+				return 1;
+			}
+			break;
+		}
 		default:
 		{
 			break;
@@ -475,11 +487,7 @@ int member_exec( struct ast_channel* chan, const char* data )
 	//
 	// clean up
 	//
-#if	ASTERISK_SRC_VERSION < 1100
-	if ( member->chan->_softhangup == AST_SOFTHANGUP_ASYNCGOTO )
-#else
-	if ( ast_channel_softhangup_internal_flag(member->chan) == AST_SOFTHANGUP_ASYNCGOTO )
-#endif
+	if (member->kick_flag)
 		pbx_builtin_setvar_helper(member->chan, "KONFERENCE", "KICKED" );
 	remove_member( member, conf, conf_name ) ;
 	return 0 ;

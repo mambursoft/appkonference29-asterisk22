@@ -87,6 +87,7 @@ struct ast_conf_member
 	// is this person a moderator?
 	int ismoderator;
 	int kick_conferees;
+	int kick_flag;
 
 	// ready flag
 	short ready_for_outgoing ;

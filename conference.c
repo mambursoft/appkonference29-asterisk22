@@ -755,7 +755,8 @@ void end_conference(const char *name)
 		{
 			// acquire member mutex and request hangup
 			ast_mutex_lock( &member->lock ) ;
-			ast_softhangup(member->chan, AST_SOFTHANGUP_ASYNCGOTO);
+			member->kick_flag = 1;
+			ast_queue_frame(member->chan, &ast_null_frame);
 			ast_mutex_unlock( &member->lock ) ;
 
 			// go on to the next member
@@ -897,7 +898,8 @@ void remove_member( ast_conf_member* member, ast_conference* conf, char* conf_na
 		ast_conf_member *member_temp = conf->memberlist ;
 		while ( member_temp )
 		{
-			ast_softhangup(member_temp->chan, AST_SOFTHANGUP_ASYNCGOTO);
+			member_temp->kick_flag = 1;
+			ast_queue_frame(member_temp->chan, &ast_null_frame);
 			member_temp = member_temp->next ;
 		}
 	}
@@ -913,7 +915,8 @@ void remove_member( ast_conf_member* member, ast_conference* conf, char* conf_na
 		}
 		else
 		{
-			ast_softhangup(member->spy_partner->chan, AST_SOFTHANGUP_ASYNCGOTO);
+			member->spy_partner->kick_flag = 1;
+			ast_queue_frame(member->spy_partner->chan, &ast_null_frame);
 		}
 	}
 
@@ -1149,7 +1152,8 @@ void kick_member (  const char* confname, int user_id)
 				    if (member->conf_id == user_id)
 				      {
 					ast_mutex_lock( &member->lock ) ;
-					ast_softhangup(member->chan, AST_SOFTHANGUP_ASYNCGOTO);
+					member->kick_flag = 1;
+					ast_queue_frame(member->chan, &ast_null_frame);
 					ast_mutex_unlock( &member->lock ) ;
 				      }
 				    member = member->next;
@@ -1187,7 +1191,8 @@ void kick_all ( void )
 			while (member )
 			{
 				ast_mutex_lock( &member->lock ) ;
-				ast_softhangup(member->chan, AST_SOFTHANGUP_ASYNCGOTO);
+				member->kick_flag = 1;
+				ast_queue_frame(member->chan, &ast_null_frame);
 				ast_mutex_unlock( &member->lock ) ;
 				member = member->next;
 			}
