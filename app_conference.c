@@ -51,7 +51,7 @@ static char *app2 = "KonferenceCount";
 static char *synopsis2 = "Channel Independent Conference Count";
 static char *descrip2 = "Channel Independent Conference Count Application";
 
-#if	ASTERISK_VERSION == 104 || ASTERISK_VERSION == 106
+#if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
 static int app_konference_main(struct ast_channel* chan, void* data)
 #else
 static int app_konference_main(struct ast_channel* chan, const char* data)
@@ -70,7 +70,7 @@ static int app_konference_main(struct ast_channel* chan, const char* data)
 	return res ;
 }
 
-#if	ASTERISK_VERSION == 104 || ASTERISK_VERSION == 106
+#if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
 static int app_konferencecount_main(struct ast_channel* chan, void* data)
 #else
 static int app_konferencecount_main(struct ast_channel* chan, const char* data)

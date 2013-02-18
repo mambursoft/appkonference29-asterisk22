@@ -205,7 +205,7 @@ ast_conference *confblocklist ;
 ast_conf_member *mbrblocklist ;
 #endif
 
-#if	ASTERISK_VERSION > 108
+#if	ASTERISK_SRC_VERSION > 108
 struct ast_format ast_format_conference;
 struct ast_format ast_format_ulaw;
 struct ast_format ast_format_alaw;

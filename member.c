@@ -59,13 +59,13 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 				// send the frame to the preprocessor
 				f = convert_frame(member->to_dsp, f, 1) ;
 #if	SILDET == 1
-#if	ASTERISK_VERSION == 104
+#if	ASTERISK_SRC_VERSION == 104
 				if (!WebRtcVad_Process( member->dsp, AST_CONF_SAMPLE_RATE, f->data, AST_CONF_BLOCK_SAMPLES ))
 #else
 				if (!WebRtcVad_Process( member->dsp, AST_CONF_SAMPLE_RATE, f->data.ptr, AST_CONF_BLOCK_SAMPLES ))
 #endif
 #elif	SILDET == 2
-#if	ASTERISK_VERSION == 104
+#if	ASTERISK_SRC_VERSION == 104
 				if (!speex_preprocess( member->dsp, f->data, NULL ))
 #else
 				if (!speex_preprocess( member->dsp, f->data.ptr, NULL ))
@@ -150,19 +150,19 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 					"Mute: %d\r\n",
 					conf->name,
 					member->type,
-#if	ASTERISK_VERSION < 1100
+#if	ASTERISK_SRC_VERSION < 1100
 					member->chan->uniqueid,
 					member->chan->name,
 #else
 					ast_channel_uniqueid(member->chan),
 					ast_channel_name(member->chan),
 #endif
-#if	ASTERISK_VERSION == 104 || ASTERISK_VERSION == 106
+#if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
 					member->chan->cid.cid_num ? member->chan->cid.cid_num : "unknown",
 					member->chan->cid.cid_name ? member->chan->cid.cid_name : "unknown",
 					f->subclass,
 #else
-#if	ASTERISK_VERSION < 1100
+#if	ASTERISK_SRC_VERSION < 1100
 					member->chan->caller.id.number.str ? member->chan->caller.id.number.str : "unknown",
 					member->chan->caller.id.name.str ? member->chan->caller.id.name.str: "unknown",
 #else
@@ -181,7 +181,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 		}
 		case AST_FRAME_CONTROL:
 		{
-#if	ASTERISK_VERSION == 104 || ASTERISK_VERSION == 106
+#if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
 			if (f->subclass == AST_CONTROL_HANGUP)
 #else
 			if (f->subclass.integer == AST_CONTROL_HANGUP)
@@ -220,7 +220,7 @@ static struct ast_frame *get_next_soundframe(ast_conf_member *member)
 
 		if (!toboot->stopped && !toboot->stream)
 		{
-#if	ASTERISK_VERSION < 1100
+#if	ASTERISK_SRC_VERSION < 1100
 			if ( (toboot->stream = ast_openstream(member->chan, toboot->name, member->chan->language)) )
 #else
 			if ( (toboot->stream = ast_openstream(member->chan, toboot->name, ast_channel_language(member->chan))) )
@@ -305,7 +305,7 @@ static void process_outgoing(ast_conf_member *member)
 // main member thread function
 //
 
-#if	ASTERISK_VERSION == 104
+#if	ASTERISK_SRC_VERSION == 104
 int member_exec( struct ast_channel* chan, void* data )
 #else
 int member_exec( struct ast_channel* chan, const char* data )
@@ -353,7 +353,7 @@ int member_exec( struct ast_channel* chan, const char* data )
 	}
 
 	// add member to channel table
-#if	ASTERISK_VERSION < 1100
+#if	ASTERISK_SRC_VERSION < 1100
 	member->bucket = &(channel_table[hash(member->chan->name) % CHANNEL_TABLE_SIZE]);
 #else
 	member->bucket = &(channel_table[hash(ast_channel_name(member->chan)) % CHANNEL_TABLE_SIZE]);
@@ -381,7 +381,7 @@ int member_exec( struct ast_channel* chan, const char* data )
 		"Count: %d\r\n",
 		conf->name,
 		member->type,
-#if	ASTERISK_VERSION < 1100
+#if	ASTERISK_SRC_VERSION < 1100
 		member->chan->uniqueid,
 #else
 		ast_channel_uniqueid(member->chan),
@@ -391,16 +391,16 @@ int member_exec( struct ast_channel* chan, const char* data )
 		member->score_id,
 #endif
 		member->flags,
-#if	ASTERISK_VERSION < 1100
+#if	ASTERISK_SRC_VERSION < 1100
 		member->chan->name,
 #else
 		ast_channel_name(member->chan),
 #endif
-#if	ASTERISK_VERSION == 104 || ASTERISK_VERSION == 106
+#if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
 		member->chan->cid.cid_num ? member->chan->cid.cid_num : "unknown",
 		member->chan->cid.cid_name ? member->chan->cid.cid_name : "unknown",
 #else
-#if	ASTERISK_VERSION < 1100
+#if	ASTERISK_SRC_VERSION < 1100
 		member->chan->caller.id.number.str ? member->chan->caller.id.number.str : "unknown",
 		member->chan->caller.id.name.str ? member->chan->caller.id.name.str: "unknown",
 #else
@@ -459,7 +459,7 @@ int member_exec( struct ast_channel* chan, const char* data )
 			ast_log(
 				LOG_NOTICE,
 				"an error occured waiting for a frame, channel => %s, error => %d\n",
-#if	ASTERISK_VERSION < 1100
+#if	ASTERISK_SRC_VERSION < 1100
 				chan->name, left
 #else
 				ast_channel_name(chan), left
@@ -475,7 +475,7 @@ int member_exec( struct ast_channel* chan, const char* data )
 	//
 	// clean up
 	//
-#if	ASTERISK_VERSION < 1100
+#if	ASTERISK_SRC_VERSION < 1100
 	if ( member->chan->_softhangup == AST_SOFTHANGUP_ASYNCGOTO )
 #else
 	if ( ast_channel_softhangup_internal_flag(member->chan) == AST_SOFTHANGUP_ASYNCGOTO )
@@ -564,7 +564,7 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 	}
 	else
 	{
-#if	ASTERISK_VERSION < 1100
+#if	ASTERISK_SRC_VERSION < 1100
 		ast_log( LOG_ERROR, "create_member unable to parse member data: channel name = %s, data = %s\n", chan->name, data ) ;
 #else
 		ast_log( LOG_ERROR, "create_member unable to parse member data: channel name = %s, data = %s\n", ast_channel_name(chan), data ) ;
@@ -723,7 +723,7 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 		}
 		else
 		{
-#if	ASTERISK_VERSION < 1100
+#if	ASTERISK_SRC_VERSION < 1100
 			ast_log( LOG_WARNING, "unable to initialize member dsp, channel => %s\n", chan->name ) ;
 #else
 			ast_log( LOG_WARNING, "unable to initialize member dsp, channel => %s\n", ast_channel_name(chan) ) ;
@@ -747,7 +747,7 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 		}
 		else
 		{
-#if	ASTERISK_VERSION < 1100
+#if	ASTERISK_SRC_VERSION < 1100
 			ast_log( LOG_WARNING, "unable to initialize member dsp, channel => %s\n", chan->name ) ;
 #else
 			ast_log( LOG_WARNING, "unable to initialize member dsp, channel => %s\n", ast_channel_name(chan) ) ;
@@ -760,10 +760,10 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 #if	SILDET == 1 || SILDET == 2
 	if ( member->dsp )
 	{
-#if	ASTERISK_VERSION < 1000
+#if	ASTERISK_SRC_VERSION < 1000
 		member->to_dsp = ast_translator_build_path( AST_FORMAT_CONFERENCE, chan->readformat ) ;
 #else
-#if	ASTERISK_VERSION >= 1100
+#if	ASTERISK_SRC_VERSION >= 1100
 		member->to_dsp = ast_translator_build_path( &ast_format_conference, ast_channel_readformat(chan) ) ;
 #else
 		member->to_dsp = ast_translator_build_path( &ast_format_conference, &chan->readformat ) ;
@@ -772,10 +772,10 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 	}
 	else
 	{
-#if	ASTERISK_VERSION < 1000
+#if	ASTERISK_SRC_VERSION < 1000
 		member->to_slinear = ast_translator_build_path( AST_FORMAT_CONFERENCE, member->chan->readformat ) ;
 #else
-#if	ASTERISK_VERSION >= 1100
+#if	ASTERISK_SRC_VERSION >= 1100
 		member->to_slinear = ast_translator_build_path( &ast_format_conference, ast_channel_readformat(chan) ) ;
 #else
 		member->to_slinear = ast_translator_build_path( &ast_format_conference, &member->chan->readformat ) ;
@@ -783,20 +783,20 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 #endif
 	}
 #else
-#if	ASTERISK_VERSION < 1000
+#if	ASTERISK_SRC_VERSION < 1000
 	member->to_slinear = ast_translator_build_path( AST_FORMAT_CONFERENCE, member->chan->readformat ) ;
 #else
-#if	ASTERISK_VERSION >= 1100
+#if	ASTERISK_SRC_VERSION >= 1100
 	member->to_slinear = ast_translator_build_path( &ast_format_conference, ast_channel_readformat(member->chan) ) ;
 #else
 	member->to_slinear = ast_translator_build_path( &ast_format_conference, &member->chan->readformat ) ;
 #endif
 #endif
 #endif
-#if	ASTERISK_VERSION < 1000
+#if	ASTERISK_SRC_VERSION < 1000
 	member->from_slinear = ast_translator_build_path( member->chan->writeformat, AST_FORMAT_CONFERENCE ) ;
 #else
-#if	ASTERISK_VERSION >= 1100
+#if	ASTERISK_SRC_VERSION >= 1100
 	member->from_slinear = ast_translator_build_path( ast_channel_writeformat(member->chan), &ast_format_conference ) ;
 #else
 	member->from_slinear = ast_translator_build_path( &member->chan->writeformat, &ast_format_conference ) ;
@@ -804,10 +804,10 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 #endif
 
 	// index for converted_frames array
-#if	ASTERISK_VERSION < 1000
+#if	ASTERISK_SRC_VERSION < 1000
 	switch ( member->chan->writeformat )
 #else
-#if	ASTERISK_VERSION < 1100
+#if	ASTERISK_SRC_VERSION < 1100
 	switch ( member->chan->writeformat.id )
 #else
 	switch (ast_channel_writeformat( member->chan)->id )
@@ -853,20 +853,20 @@ ast_conf_member* create_member( struct ast_channel *chan, const char* data, char
 
 	// index for converted_frames array
 #if	SILDET == 1 || SILDET == 2
-#if	ASTERISK_VERSION < 1000
+#if	ASTERISK_SRC_VERSION < 1000
 	switch ( member->dsp ? AST_FORMAT_CONFERENCE : member->chan->readformat )
 #else
-#if	ASTERISK_VERSION < 1100
+#if	ASTERISK_SRC_VERSION < 1100
 	switch ( member->dsp ? AST_FORMAT_CONFERENCE : member->chan->readformat.id )
 #else
 	switch ( member->dsp ? AST_FORMAT_CONFERENCE : ast_channel_readformat(member->chan)->id )
 #endif
 #endif
 #else
-#if	ASTERISK_VERSION < 1000
+#if	ASTERISK_SRC_VERSION < 1000
 	switch ( member->chan->readformat )
 #else
-#if	ASTERISK_VERSION < 1100
+#if	ASTERISK_SRC_VERSION < 1100
 	switch ( member->chan->readformat.id )
 #else
 	switch ( ast_channel_readformat(member->chan)->id )
@@ -1190,7 +1190,7 @@ void queue_frame_for_listener(
 		}
 		else
 		{
-#if	ASTERISK_VERSION < 1100
+#if	ASTERISK_SRC_VERSION < 1100
 			ast_log( LOG_WARNING, "unable to translate outgoing listener frame, channel => %s\n", member->chan->name ) ;
 #else
 			ast_log( LOG_WARNING, "unable to translate outgoing listener frame, channel => %s\n", ast_channel_name(member->chan) ) ;
@@ -1247,7 +1247,7 @@ void queue_frame_for_speaker(
 			}
 			else
 			{
-#if	ASTERISK_VERSION < 1100
+#if	ASTERISK_SRC_VERSION < 1100
 				ast_log( LOG_WARNING, "unable to translate outgoing speaker frame, channel => %s\n", member->chan->name ) ;
 #else
 				ast_log( LOG_WARNING, "unable to translate outgoing speaker frame, channel => %s\n", ast_channel_name(member->chan) ) ;
@@ -1273,10 +1273,10 @@ void queue_silent_frame(
 
 	if ( !qf  )
 	{
-#if	ASTERISK_VERSION < 1000
+#if	ASTERISK_SRC_VERSION < 1000
 		struct ast_trans_pvt* trans = ast_translator_build_path( member->chan->writeformat, AST_FORMAT_CONFERENCE ) ;
 #else
-#if	ASTERISK_VERSION < 1100
+#if	ASTERISK_SRC_VERSION < 1100
 		struct ast_trans_pvt* trans = ast_translator_build_path( &member->chan->writeformat, &ast_format_conference ) ;
 #else
 		struct ast_trans_pvt* trans = ast_translator_build_path( ast_channel_writeformat(member->chan), &ast_format_conference ) ;
@@ -1306,7 +1306,7 @@ void queue_silent_frame(
 	}
 	else
 	{
-#if	ASTERISK_VERSION < 1100
+#if	ASTERISK_SRC_VERSION < 1100
 		ast_log( LOG_ERROR, "unable to translate outgoing silent frame, channel => %s\n", member->chan->name ) ;
 #else
 		ast_log( LOG_ERROR, "unable to translate outgoing silent frame, channel => %s\n", ast_channel_name(member->chan) ) ;

@@ -21,9 +21,9 @@ ifndef	ASTERISK_SRC_DIR
 endif
 
 # asterisk version
-ASTERISK_VERSION = $(shell if [ -e $(ASTERISK_SRC_DIR)/.version ] ; then cat $(ASTERISK_SRC_DIR)/.version | awk -F. '{printf "%01d%02d",$$1,$$2}' ; fi)
+ASTERISK_SRC_VERSION = $(shell if [ -e $(ASTERISK_SRC_DIR)/.version ] ; then cat $(ASTERISK_SRC_DIR)/.version | awk -F. '{printf "%01d%02d",$$1,$$2}' ; fi)
 
-ifeq	($(ASTERISK_VERSION),)
+ifeq	($(ASTERISK_SRC_VERSION),)
   $(warning Asterisk version is not set)
   $(error Modify the version variable in the Makefile or set it on the command line)
 endif
@@ -100,7 +100,7 @@ CFLAGS += -fPIC
 
 CPPFLAGS = $(INCLUDE) -D_REENTRANT -D_GNU_SOURCE
 CPPFLAGS += -DREVISION=\"$(REVISION)\"
-CPPFLAGS += -DASTERISK_VERSION=$(ASTERISK_VERSION)
+CPPFLAGS += -DASTERISK_SRC_VERSION=$(ASTERISK_SRC_VERSION)
 CPPFLAGS += -DCHANNEL_TABLE_SIZE=$(CHANNEL_TABLE_SIZE)
 CPPFLAGS += -DCONFERENCE_TABLE_SIZE=$(CONFERENCE_TABLE_SIZE)
 CPPFLAGS += -DCACHE_CONF_FRAMES

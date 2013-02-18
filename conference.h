@@ -97,7 +97,7 @@ struct ast_conference
 
 int hash( const char *channel_name ) ;
 
-#if	ASTERISK_VERSION == 104
+#if	ASTERISK_SRC_VERSION == 104
 int count_exec( struct ast_channel* chan, void* data ) ;
 #else
 int count_exec( struct ast_channel* chan, const char* data ) ;
@@ -141,7 +141,7 @@ void unmute_member ( const char* confname, int user_id);
 void mute_conference ( const char* confname);
 void unmute_conference ( const char* confname);
 
-#if	ASTERISK_VERSION == 104 || ASTERISK_VERSION == 106
+#if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
 void play_sound_channel(int fd, const char *channel, char **file, int mute, int tone, int n);
 #else
 void play_sound_channel(int fd, const char *channel, const char * const *file, int mute, int tone, int n);
