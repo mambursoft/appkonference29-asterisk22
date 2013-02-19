@@ -1172,15 +1172,15 @@ void queue_frame_for_listener(
 			}
 
 			// convert using the conference's translation path
-			qf = convert_frame(conf->from_slinear_paths[ member->write_format_index ], qf, member->listen_volume);
+			qf = convert_frame(conf->from_slinear_paths[member->write_format_index], qf, member->listen_volume);
 
 			// store the converted frame
 			// (the frame will be free'd next time through the loop)
 			if (!member->listen_volume)
 			{
-				if (frame->converted[ member->write_format_index ] && conf->from_slinear_paths[ member->write_format_index ])
-					ast_frfree (frame->converted[ member->write_format_index ]);
-				frame->converted[ member->write_format_index ] = qf;
+				if (frame->converted[member->write_format_index] && conf->from_slinear_paths[member->write_format_index])
+					ast_frfree (frame->converted[member->write_format_index]);
+				frame->converted[member->write_format_index] = qf;
 				frame->talk_volume = 0;
 			}
 		}
@@ -1192,7 +1192,7 @@ void queue_frame_for_listener(
 			if (member->listen_volume)
 			{
 				// free frame (the translator's copy)
-				if (conf->from_slinear_paths[ member->write_format_index ])
+				if (conf->from_slinear_paths[member->write_format_index])
 					ast_frfree(qf);
 			}
 		}
@@ -1277,7 +1277,7 @@ void queue_silent_frame(
 )
 {
 	// get the appropriate silent frame
-	struct ast_frame* qf = silent_conf_frame->converted[ member->write_format_index ];
+	struct ast_frame* qf = silent_conf_frame->converted[member->write_format_index];
 
 	if (!qf)
 	{
@@ -1300,7 +1300,7 @@ void queue_silent_frame(
 				qf = ast_frisolate(qf);
 
 				// cache the new, isolated frame
-				silent_conf_frame->converted[ member->write_format_index ] = qf;
+				silent_conf_frame->converted[member->write_format_index] = qf;
 			}
 
 			ast_translator_free_path(trans);

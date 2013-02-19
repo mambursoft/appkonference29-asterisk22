@@ -75,16 +75,16 @@ struct ast_conference
 	AST_LIST_ENTRY(ast_conference) hash_entry;
 
 	// pointer to translation paths
-	struct ast_trans_pvt* from_slinear_paths[ AC_SUPPORTED_FORMATS ];
+	struct ast_trans_pvt* from_slinear_paths[AC_SUPPORTED_FORMATS];
 
 	// keep track of current delivery time
 	struct timeval delivery_time;
 
 	// listener mix buffer
 #ifdef	VECTORS
-	char listenerBuffer[ AST_CONF_BUFFER_SIZE ] __attribute((aligned(16)));
+	char listenerBuffer[AST_CONF_BUFFER_SIZE] __attribute((aligned(16)));
 #else
-	char listenerBuffer[ AST_CONF_BUFFER_SIZE ];
+	char listenerBuffer[AST_CONF_BUFFER_SIZE];
 #endif
 	// listener mix frames
 	struct ast_frame *mixAstFrame;

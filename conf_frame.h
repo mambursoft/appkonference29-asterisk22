@@ -35,7 +35,7 @@ struct conf_frame
 	struct ast_frame* fr;
 
 	// array of converted versions for listeners
-	struct ast_frame* converted[ AC_SUPPORTED_FORMATS ];
+	struct ast_frame* converted[AC_SUPPORTED_FORMATS];
 
 #ifdef	CACHE_CONF_FRAMES
 	// pointer to next frame in cache

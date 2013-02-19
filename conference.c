@@ -414,7 +414,7 @@ void dealloc_conference(void)
 #endif
 	//free silent frames
 	for (i = 1; i < AC_SUPPORTED_FORMATS; ++i)
-		if (silent_conf_frame->converted[ i ]) ast_frfree(silent_conf_frame->converted[ i ]);
+		if (silent_conf_frame->converted[i]) ast_frfree(silent_conf_frame->converted[i]);
 
 #ifdef	CACHE_CONF_FRAMES
 	//free conf frames
@@ -539,37 +539,37 @@ static ast_conference* create_conf(char* name, ast_conf_member* member)
 	ast_rwlock_init(&conf->lock);
 
 	// build translation paths
-	conf->from_slinear_paths[ AC_CONF_INDEX ] = NULL;
+	conf->from_slinear_paths[AC_CONF_INDEX] = NULL;
 #if	ASTERISK_SRC_VERSION < 1000
-	conf->from_slinear_paths[ AC_ULAW_INDEX ] = ast_translator_build_path(AST_FORMAT_ULAW, AST_FORMAT_CONFERENCE);
-	conf->from_slinear_paths[ AC_ALAW_INDEX ] = ast_translator_build_path(AST_FORMAT_ALAW, AST_FORMAT_CONFERENCE);
-	conf->from_slinear_paths[ AC_GSM_INDEX ] = ast_translator_build_path(AST_FORMAT_GSM, AST_FORMAT_CONFERENCE);
+	conf->from_slinear_paths[AC_ULAW_INDEX] = ast_translator_build_path(AST_FORMAT_ULAW, AST_FORMAT_CONFERENCE);
+	conf->from_slinear_paths[AC_ALAW_INDEX] = ast_translator_build_path(AST_FORMAT_ALAW, AST_FORMAT_CONFERENCE);
+	conf->from_slinear_paths[AC_GSM_INDEX] = ast_translator_build_path(AST_FORMAT_GSM, AST_FORMAT_CONFERENCE);
 #else
-	conf->from_slinear_paths[ AC_ULAW_INDEX ] = ast_translator_build_path(&ast_format_ulaw, &ast_format_conference);
-	conf->from_slinear_paths[ AC_ALAW_INDEX ] = ast_translator_build_path(&ast_format_alaw, &ast_format_conference);
-	conf->from_slinear_paths[ AC_GSM_INDEX ] = ast_translator_build_path(&ast_format_gsm, &ast_format_conference);
+	conf->from_slinear_paths[AC_ULAW_INDEX] = ast_translator_build_path(&ast_format_ulaw, &ast_format_conference);
+	conf->from_slinear_paths[AC_ALAW_INDEX] = ast_translator_build_path(&ast_format_alaw, &ast_format_conference);
+	conf->from_slinear_paths[AC_GSM_INDEX] = ast_translator_build_path(&ast_format_gsm, &ast_format_conference);
 #endif
 #ifdef	AC_USE_SPEEX
 #if	ASTERISK_SRC_VERSION < 1000
-	conf->from_slinear_paths[ AC_SPEEX_INDEX ] = ast_translator_build_path(AST_FORMAT_SPEEX, AST_FORMAT_CONFERENCE);
+	conf->from_slinear_paths[AC_SPEEX_INDEX] = ast_translator_build_path(AST_FORMAT_SPEEX, AST_FORMAT_CONFERENCE);
 #else
-	conf->from_slinear_paths[ AC_SPEEX_INDEX ] = ast_translator_build_path(&ast_format_speex, &ast_format_conference);
+	conf->from_slinear_paths[AC_SPEEX_INDEX] = ast_translator_build_path(&ast_format_speex, &ast_format_conference);
 #endif
 #endif
 #ifdef AC_USE_G729A
 #if	ASTERISK_SRC_VERSION < 1000
-	conf->from_slinear_paths[ AC_G729A_INDEX ] = ast_translator_build_path(AST_FORMAT_G729A, AST_FORMAT_CONFERENCE);
+	conf->from_slinear_paths[AC_G729A_INDEX] = ast_translator_build_path(AST_FORMAT_G729A, AST_FORMAT_CONFERENCE);
 #else
-	conf->from_slinear_paths[ AC_G729A_INDEX ] = ast_translator_build_path(&ast_format_g729a, &ast_format_conference);
+	conf->from_slinear_paths[AC_G729A_INDEX] = ast_translator_build_path(&ast_format_g729a, &ast_format_conference);
 #endif
 #endif
 #ifdef AC_USE_G722
 #if	ASTERISK_SRC_VERSION < 1000
-	conf->from_slinear_paths[ AC_SLINEAR_INDEX ] = ast_translator_build_path(AST_FORMAT_SLINEAR, AST_FORMAT_CONFERENCE);
-	conf->from_slinear_paths[ AC_G722_INDEX ] = ast_translator_build_path(AST_FORMAT_G722, AST_FORMAT_CONFERENCE);
+	conf->from_slinear_paths[AC_SLINEAR_INDEX] = ast_translator_build_path(AST_FORMAT_SLINEAR, AST_FORMAT_CONFERENCE);
+	conf->from_slinear_paths[AC_G722_INDEX] = ast_translator_build_path(AST_FORMAT_G722, AST_FORMAT_CONFERENCE);
 #else
-	conf->from_slinear_paths[ AC_SLINEAR_INDEX ] = ast_translator_build_path(&ast_format_slinear, &ast_format_conference);
-	conf->from_slinear_paths[ AC_G722_INDEX ] = ast_translator_build_path(&ast_format_g722, &ast_format_conference);
+	conf->from_slinear_paths[AC_SLINEAR_INDEX] = ast_translator_build_path(&ast_format_slinear, &ast_format_conference);
+	conf->from_slinear_paths[AC_G722_INDEX] = ast_translator_build_path(&ast_format_g722, &ast_format_conference);
 #endif
 #endif
 
@@ -687,9 +687,9 @@ ast_conference *remove_conf(ast_conference *conf)
 	for (c = 0; c < AC_SUPPORTED_FORMATS; ++c)
 	{
 		// free the translation paths
-		if (conf->from_slinear_paths[ c ])
+		if (conf->from_slinear_paths[c])
 		{
-			ast_translator_free_path(conf->from_slinear_paths[ c ]);
+			ast_translator_free_path(conf->from_slinear_paths[c]);
 		}
 	}
 

@@ -135,7 +135,7 @@ conf_frame* mix_frames(ast_conference* conf, conf_frame* frames_in, int speaker_
 		ast_conf_member* mbr = NULL;
 
 		// copy orignal frame to converted array so speaker doesn't need to re-encode it
-		frames_in->converted[ frames_in->member->read_format_index ] = frames_in->fr;
+		frames_in->converted[frames_in->member->read_format_index] = frames_in->fr;
 
 		// convert frame to slinear and adjust volume; otherwise, drop both frames
 		if (!(frames_in->fr = convert_frame(frames_in->member->to_slinear, frames_in->fr, 0)))
@@ -149,7 +149,7 @@ conf_frame* mix_frames(ast_conference* conf, conf_frame* frames_in, int speaker_
 		}
 
 		// copy orignal frame to converted array so speakers doesn't need to re-encode it
-		frames_in->next->converted[ frames_in->next->member->read_format_index ] = frames_in->next->fr;
+		frames_in->next->converted[frames_in->next->member->read_format_index] = frames_in->next->fr;
 
 		// convert frame to slinear and adjust volume; otherwise, drop both frames
 		if (!(frames_in->next->fr = convert_frame(frames_in->next->member->to_slinear, frames_in->next->fr, 0)))
@@ -186,7 +186,7 @@ conf_frame* mix_single_speaker(ast_conference* conf, conf_frame* frames_in)
 	//
 
 	// copy orignal frame to converted array so listeners don't need to re-encode it
-	frames_in->converted[ frames_in->member->read_format_index ] = frames_in->fr;
+	frames_in->converted[frames_in->member->read_format_index] = frames_in->fr;
 
 	// convert frame to slinear; otherwise, drop the frame
 	if (!(frames_in->fr = convert_frame(frames_in->member->to_slinear, frames_in->fr, 0)))
@@ -224,9 +224,9 @@ conf_frame* mix_single_speaker(ast_conference* conf, conf_frame* frames_in)
 				spy_frame->member = frames_in->member->spy_partner;
 				spy_frame->talk_volume = frames_in->talk_volume;
 
-				spy_frame->converted[ frames_in->member->read_format_index ]
+				spy_frame->converted[frames_in->member->read_format_index]
 					= !frames_in->member->to_slinear ? spy_frame->fr :
-						ast_frdup(frames_in->converted[ frames_in->member->read_format_index ]); 
+						ast_frdup(frames_in->converted[frames_in->member->read_format_index]); 
 
 				spy_frame->member->speaker_frame = spy_frame;
 			}
@@ -266,7 +266,7 @@ conf_frame* mix_multiple_speakers(
 	while (cf_spoken)
 	{
 		// copy orignal frame to converted array so spyers don't need to re-encode it
-		cf_spoken->converted[ cf_spoken->member->read_format_index ] = cf_spoken->fr;
+		cf_spoken->converted[cf_spoken->member->read_format_index] = cf_spoken->fr;
 
 		if (!(cf_spoken->fr = convert_frame(cf_spoken->member->to_slinear, cf_spoken->fr, 0)))
 		{
@@ -450,9 +450,9 @@ conf_frame* delete_conf_frame(conf_frame* cf)
 
 	for (c = 1; c < AC_SUPPORTED_FORMATS; ++c)
 	{
-		if (cf->converted[ c ])
+		if (cf->converted[c])
 		{
-			ast_frfree(cf->converted[ c ]);
+			ast_frfree(cf->converted[c]);
 		}
 	}
 
