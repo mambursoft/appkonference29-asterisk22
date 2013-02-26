@@ -371,9 +371,9 @@ int member_exec(struct ast_channel* chan, const char* data)
 	member->bucket = &(channel_table[hash(ast_channel_name(member->chan)) % CHANNEL_TABLE_SIZE]);
 #endif
 
-	AST_LIST_LOCK (member->bucket);
-	AST_LIST_INSERT_HEAD (member->bucket, member, hash_entry);
-	AST_LIST_UNLOCK (member->bucket);
+	AST_LIST_LOCK(member->bucket);
+	AST_LIST_INSERT_HEAD(member->bucket, member, hash_entry);
+	AST_LIST_UNLOCK(member->bucket);
 
 	manager_event(
 		EVENT_FLAG_CONF,
@@ -507,10 +507,10 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 	if (mbrblocklist)
 	{
 		// get member control block from the free list
-		ast_mutex_lock (&mbrblocklist_lock);
+		ast_mutex_lock(&mbrblocklist_lock);
 		member = mbrblocklist;
 		mbrblocklist = mbrblocklist->next;
-		ast_mutex_unlock (&mbrblocklist_lock);
+		ast_mutex_unlock(&mbrblocklist_lock);
 #ifdef	SPEAKER_SCOREBOARD
 		score_id = member->score_id;
 #endif
@@ -527,9 +527,9 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 		}
 #ifdef	CACHE_CONTROL_BLOCKS
 #ifdef	SPEAKER_SCOREBOARD
-		ast_mutex_lock (&speaker_scoreboard_lock);
+		ast_mutex_lock(&speaker_scoreboard_lock);
 		score_id = last_score_id < SPEAKER_SCOREBOARD_SIZE ? ++last_score_id : 0;
-		ast_mutex_unlock (&speaker_scoreboard_lock);
+		ast_mutex_unlock(&speaker_scoreboard_lock);
 	}
 	// initialize score board identifier
 	member->score_id = score_id;
@@ -927,13 +927,13 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 
 ast_conf_member* delete_member(ast_conf_member* member)
 {
-	ast_mutex_lock (&member->lock);
+	ast_mutex_lock(&member->lock);
 
 	member->delete_flag = 1;
 	if (member->use_count)
-		ast_cond_wait (&member->delete_var, &member->lock);
+		ast_cond_wait(&member->delete_var, &member->lock);
 
-	ast_mutex_unlock (&member->lock);
+	ast_mutex_unlock(&member->lock);
 
 	// destroy member mutex and condition variable
 	ast_mutex_destroy(&member->lock);
@@ -1010,10 +1010,10 @@ ast_conf_member* delete_member(ast_conf_member* member)
 
 #ifdef	CACHE_CONTROL_BLOCKS
 	// put the member control block on the free list
-	ast_mutex_lock (&mbrblocklist_lock);
+	ast_mutex_lock(&mbrblocklist_lock);
 	member->next = mbrblocklist;
 	mbrblocklist = member;
-	ast_mutex_unlock (&mbrblocklist_lock);
+	ast_mutex_unlock(&mbrblocklist_lock);
 #else
 	ast_free(member);
 #endif
@@ -1179,7 +1179,7 @@ void queue_frame_for_listener(
 			if (!member->listen_volume)
 			{
 				if (frame->converted[member->write_format_index] && conf->from_slinear_paths[member->write_format_index])
-					ast_frfree (frame->converted[member->write_format_index]);
+					ast_frfree(frame->converted[member->write_format_index]);
 				frame->converted[member->write_format_index] = qf;
 				frame->talk_volume = 0;
 			}

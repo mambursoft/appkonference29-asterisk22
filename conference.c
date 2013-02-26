@@ -387,11 +387,11 @@ void dealloc_conference(void)
 	int i;
 	//destroy channel entires
 	for (i = 0; i < CHANNEL_TABLE_SIZE; i++)
-		AST_LIST_HEAD_DESTROY (&channel_table[i]);
+		AST_LIST_HEAD_DESTROY(&channel_table[i]);
 
 	//destroy conference entries
 	for (i = 0; i < CONFERENCE_TABLE_SIZE; i++)
-		AST_LIST_HEAD_DESTROY (&conference_table[i]);
+		AST_LIST_HEAD_DESTROY(&conference_table[i]);
 
 #ifdef	CACHE_CONTROL_BLOCKS
 	//free conference blocks
@@ -483,14 +483,14 @@ static ast_conference* find_conf(const char* name)
 	ast_conference *conf;
 	struct conference_bucket *bucket = &(conference_table[hash(name) % CONFERENCE_TABLE_SIZE]);
 
-	AST_LIST_LOCK (bucket);
+	AST_LIST_LOCK(bucket);
 
-	AST_LIST_TRAVERSE (bucket, conf, hash_entry)
-		if (!strcmp (conf->name, name)) {
+	AST_LIST_TRAVERSE(bucket, conf, hash_entry)
+		if (!strcmp(conf->name, name)) {
 			break;
 		}
 
-	AST_LIST_UNLOCK (bucket);
+	AST_LIST_UNLOCK(bucket);
 
 	return conf;
 }
@@ -663,9 +663,9 @@ static ast_conference* create_conf(char* name, ast_conf_member* member)
 	// add member to channel table
 	conf->bucket = &(conference_table[hash(conf->name) % CONFERENCE_TABLE_SIZE]);
 
-	AST_LIST_LOCK (conf->bucket);
-	AST_LIST_INSERT_HEAD (conf->bucket, conf, hash_entry);
-	AST_LIST_UNLOCK (conf->bucket);
+	AST_LIST_LOCK(conf->bucket);
+	AST_LIST_INSERT_HEAD(conf->bucket, conf, hash_entry);
+	AST_LIST_UNLOCK(conf->bucket);
 
 	// count new conference
 	++conference_count;
@@ -703,9 +703,9 @@ ast_conference *remove_conf(ast_conference *conf)
 		ast_free(conf->mixConfFrame);
 	}
 
-	AST_LIST_LOCK (conf->bucket);
-	AST_LIST_REMOVE (conf->bucket, conf, hash_entry);
-	AST_LIST_UNLOCK (conf->bucket);
+	AST_LIST_LOCK(conf->bucket);
+	AST_LIST_REMOVE(conf->bucket, conf, hash_entry);
+	AST_LIST_UNLOCK(conf->bucket);
 
 	// unlock and destroy read/write lock
 	ast_rwlock_unlock(&conf->lock);
@@ -925,9 +925,9 @@ void remove_member(ast_conf_member* member, ast_conference* conf, char* conf_nam
 	// remove member from channel table
 	if (member->bucket)
 	{
-		AST_LIST_LOCK (member->bucket);
-		AST_LIST_REMOVE (member->bucket, member, hash_entry);
-		AST_LIST_UNLOCK (member->bucket);
+		AST_LIST_LOCK(member->bucket);
+		AST_LIST_REMOVE(member->bucket, member, hash_entry);
+		AST_LIST_UNLOCK(member->bucket);
 	}
 
 	// output to manager...
@@ -981,7 +981,7 @@ void remove_member(ast_conf_member* member, ast_conference* conf, char* conf_nam
 
 }
 
-void list_conferences (int fd)
+void list_conferences(int fd)
 {
 	int duration;
 	char duration_str[10];
@@ -1011,7 +1011,7 @@ void list_conferences (int fd)
 	}
 }
 
-void list_members (int fd, const char *name)
+void list_members(int fd, const char *name)
 {
 	ast_conf_member *member;
 	char volume_str[10];
@@ -1127,7 +1127,7 @@ void list_all(int fd)
 	}
 }
 #ifdef	KICK_MEMBER
-void kick_member (const char* confname, int user_id)
+void kick_member(const char* confname, int user_id)
 {
 	ast_conf_member *member;
 
@@ -1170,7 +1170,7 @@ void kick_member (const char* confname, int user_id)
 	}
 }
 #endif
-void kick_all (void)
+void kick_all(void)
 {
   ast_conf_member *member;
 
@@ -1207,7 +1207,7 @@ void kick_all (void)
 
 }
 #ifdef	MUTE_MEMBER
-void mute_member (const char* confname, int user_id)
+void mute_member(const char* confname, int user_id)
 {
   ast_conf_member *member;
 
@@ -1258,7 +1258,7 @@ void mute_member (const char* confname, int user_id)
 	}
 }
 #endif
-void mute_conference (const char* confname)
+void mute_conference(const char* confname)
 {
 	ast_conf_member *member;
 
@@ -1305,7 +1305,7 @@ void mute_conference (const char* confname)
 
 }
 #ifdef	UNMUTE_MEMBER
-void unmute_member (const char* confname, int user_id)
+void unmute_member(const char* confname, int user_id)
 {
   ast_conf_member *member;
 
@@ -1353,7 +1353,7 @@ void unmute_member (const char* confname, int user_id)
 	}
 }
 #endif
-void unmute_conference (const char* confname)
+void unmute_conference(const char* confname)
 {
 	ast_conf_member *member;
 
@@ -1401,23 +1401,23 @@ ast_conf_member *find_member(const char *chan, const char lock)
 	ast_conf_member *member;
 	struct channel_bucket *bucket = &(channel_table[hash(chan) % CHANNEL_TABLE_SIZE]);
 
-	AST_LIST_LOCK (bucket);
+	AST_LIST_LOCK(bucket);
 
-	AST_LIST_TRAVERSE (bucket, member, hash_entry)
+	AST_LIST_TRAVERSE(bucket, member, hash_entry)
 #if	ASTERISK_SRC_VERSION < 1100
-		if (!strcmp (member->chan->name, chan)) {
+		if (!strcmp(member->chan->name, chan)) {
 #else
-		if (!strcmp (ast_channel_name(member->chan), chan)) {
+		if (!strcmp(ast_channel_name(member->chan), chan)) {
 #endif
 			if (lock)
 			{
-				ast_mutex_lock (&member->lock);
+				ast_mutex_lock(&member->lock);
 				member->use_count++;
 			}
 			break;
 		}
 
-	AST_LIST_UNLOCK (bucket);
+	AST_LIST_UNLOCK(bucket);
 
 	return member;
 }
@@ -1458,7 +1458,7 @@ void play_sound_channel(int fd, const char *channel, const char * const *file, i
 
 		}
 		if (!--member->use_count && member->delete_flag)
-			ast_cond_signal (&member->delete_var);
+			ast_cond_signal(&member->delete_var);
 		ast_mutex_unlock(&member->lock);
 	}
 }
@@ -1484,7 +1484,7 @@ void stop_sound_channel(int fd, const char *channel)
 			member->muted = 0;
 
 		if (!--member->use_count && member->delete_flag)
-			ast_cond_signal (&member->delete_var);
+			ast_cond_signal(&member->delete_var);
 		ast_mutex_unlock(&member->lock);
 	}
 }
@@ -1521,7 +1521,7 @@ void start_moh_channel(int fd, const char *channel)
 		}
 
 		if (!--member->use_count && member->delete_flag)
-			ast_cond_signal (&member->delete_var);
+			ast_cond_signal(&member->delete_var);
 		ast_mutex_unlock(&member->lock);
 	}
 }
@@ -1541,7 +1541,7 @@ void stop_moh_channel(int fd, const char *channel)
 		}
 
 		if (!--member->use_count && member->delete_flag)
-			ast_cond_signal (&member->delete_var);
+			ast_cond_signal(&member->delete_var);
 		ast_mutex_unlock(&member->lock);
 	}
 }
@@ -1555,7 +1555,7 @@ void talk_volume_channel(int fd, const char *channel, int up)
 		up ? member->talk_volume++ : member->talk_volume--;
 
 		if (!--member->use_count && member->delete_flag)
-			ast_cond_signal (&member->delete_var);
+			ast_cond_signal(&member->delete_var);
 		ast_mutex_unlock(&member->lock);
 	}
 }
@@ -1569,7 +1569,7 @@ void listen_volume_channel(int fd, const char *channel, int up)
 		up ? member->listen_volume++ : member->listen_volume--;
 
 		if (!--member->use_count && member->delete_flag)
-			ast_cond_signal (&member->delete_var);
+			ast_cond_signal(&member->delete_var);
 		ast_mutex_unlock(&member->lock);
 	}
 }

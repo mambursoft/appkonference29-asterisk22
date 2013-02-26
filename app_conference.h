@@ -188,10 +188,10 @@ const char *argument_delimiter;
 char *speaker_scoreboard;
 #endif
 
-AST_LIST_HEAD (conference_bucket, ast_conference);
+AST_LIST_HEAD(conference_bucket, ast_conference);
 struct conference_bucket conference_table[CONFERENCE_TABLE_SIZE];
 
-AST_LIST_HEAD (channel_bucket, ast_conf_member);
+AST_LIST_HEAD(channel_bucket, ast_conf_member);
 struct channel_bucket channel_table[CHANNEL_TABLE_SIZE];
 
 #ifdef	CACHE_CONF_FRAMES

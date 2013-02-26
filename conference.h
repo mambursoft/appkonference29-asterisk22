@@ -122,24 +122,24 @@ void dealloc_conference(void);
 // cli functions
 void end_conference(const char *name);
 
-void list_members (int fd, const char* name);
-void list_conferences (int fd);
-void list_all (int fd);
+void list_members(int fd, const char* name);
+void list_conferences(int fd);
+void list_all(int fd);
 
 #ifdef	KICK_MEMBER
-void kick_member (const char* confname, int user_id);
+void kick_member(const char* confname, int user_id);
 #endif
-void kick_all (void);
+void kick_all(void);
 
 #ifdef MUTE_MEMBER
-void mute_member (const char* confname, int user_id);
+void mute_member(const char* confname, int user_id);
 #endif
 #ifdef UNMUTE_MEMBER
-void unmute_member (const char* confname, int user_id);
+void unmute_member(const char* confname, int user_id);
 #endif
 
-void mute_conference (const char* confname);
-void unmute_conference (const char* confname);
+void mute_conference(const char* confname);
+void unmute_conference(const char* confname);
 
 #if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
 void play_sound_channel(int fd, const char *channel, char **file, int mute, int tone, int n);

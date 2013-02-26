@@ -263,7 +263,7 @@ char *conference_kickchannel(struct ast_cli_entry *e, int cmd, struct ast_cli_ar
 		ast_queue_frame(member->chan, &ast_null_frame);
 
 		if (!--member->use_count && member->delete_flag)
-			ast_cond_signal (&member->delete_var);
+			ast_cond_signal(&member->delete_var);
 		ast_mutex_unlock(&member->lock);
 	}
 
@@ -348,7 +348,7 @@ char *conference_muteconference(struct ast_cli_entry *e, int cmd, struct ast_cli
 	// get the conference name
 	const char* name = argv[2];
 
-	mute_conference (name);
+	mute_conference(name);
 
 	return SUCCESS;
 }
@@ -488,7 +488,7 @@ char *conference_unmuteconference(struct ast_cli_entry *e, int cmd, struct ast_c
 	// get the conference name
 	const char* name = argv[2];
 
-	unmute_conference (name);
+	unmute_conference(name);
 
 	return SUCCESS;
 }
@@ -533,7 +533,7 @@ char *conference_unmutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_
 		member->mute_audio = 0;
 
 		if (!--member->use_count && member->delete_flag)
-			ast_cond_signal (&member->delete_var);
+			ast_cond_signal(&member->delete_var);
 		ast_mutex_unlock(&member->lock);
 
 		manager_event(

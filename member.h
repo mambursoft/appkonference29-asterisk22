@@ -59,7 +59,7 @@ struct ast_conf_member
 
 	conf_frame *speaker_frame; // member speaker frame
 
-	// values passed to create_member () via *data
+	// values passed to create_member() via *data
 	char flags[MEMBER_FLAGS_LEN + 1];	// raw member-type flags
 	char type[MEMBER_TYPE_LEN + 1];		// conference type
 	char *spyee_channel_name; // spyee  channel name
