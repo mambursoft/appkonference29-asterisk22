@@ -1241,7 +1241,11 @@ void mute_member(const char* confname, int user_id)
 							EVENT_FLAG_CONF,
 							"ConferenceMemberMute",
 							"Channel: %s\r\n",
+#if	ASTERISK_SRC_VERSION < 1100
 							member->chan->name
+#else
+							ast_channel_name(member->chan)
+#endif
 						);
 				      }
 				    member = member->next;
@@ -1336,7 +1340,11 @@ void unmute_member(const char* confname, int user_id)
 							EVENT_FLAG_CONF,
 							"ConferenceMemberUnmute",
 							"Channel: %s\r\n",
+#if	ASTERISK_SRC_VERSION < 1100
 							member->chan->name
+#else
+							ast_channel_name(member->chan)
+#endif
 						);
 				      }
 				    member = member->next;

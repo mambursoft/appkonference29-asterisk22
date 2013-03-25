@@ -258,7 +258,11 @@ static struct ast_frame *get_next_soundframe(ast_conf_member *member)
 				"ConferenceSoundComplete",
 				"Channel: %s\r\n"
 				"Sound: %s\r\n",
+#if	ASTERISK_SRC_VERSION < 1100
 				member->chan->name,
+#else
+				ast_channel_name(member->chan),
+#endif
 				toboot->name
 			);
 #endif
@@ -471,7 +475,11 @@ int member_exec(struct ast_channel* chan, const char* data)
 		else if (left == 0)
 		{
 			// no frame has arrived yet
+#if	ASTERISK_SRC_VERSION < 1100
 			// ast_log(LOG_NOTICE, "no frame available from channel, channel => %s\n", chan->name);
+#else
+			// ast_log(LOG_NOTICE, "no frame available from channel, channel => %s\n", ast_channel_name(chan));
+#endif
 		}
 		else if (left < 0)
 		{
