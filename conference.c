@@ -797,32 +797,7 @@ static void add_member(ast_conf_member *member, ast_conference *conf)
 
 	// update conference count
 	conf->membercount++;
-#ifdef	HOLD_OPTION
-	if (member->hold_flag)
-	{
-		if  (conf->membercount == 1)
-		{
-			ast_mutex_lock(&member->lock);
-			member->ready_for_outgoing = 0;
 
-			struct ast_frame *f; 
-			while ((f = get_outgoing_frame(conf->memberlist)))
-			{
-				ast_frfree(f);
-			}
-
-			ast_moh_start(member->chan, NULL, NULL);
-			ast_mutex_unlock(&member->lock);
-		}
-		else if (conf->membercount == 2 && conf->memberlist->hold_flag)
-		{
-			ast_mutex_lock(&conf->memberlist->lock);
-			ast_moh_stop(conf->memberlist->chan);
-			conf->memberlist->ready_for_outgoing = 1;
-			ast_mutex_unlock(&conf->memberlist->lock);
-		}
-	}
-#endif
 	// update moderator count
 	if (member->ismoderator)
 		conf->moderators++;
@@ -873,22 +848,7 @@ void remove_member(ast_conf_member* member, ast_conference* conf, char* conf_nam
 
 	// update member count
 	membercount = --conf->membercount;
-#ifdef	HOLD_OPTION
-	if (member->hold_flag && conf->membercount == 1 && conf->memberlist->hold_flag)
-	{
-		ast_mutex_lock(&conf->memberlist->lock);
-		conf->memberlist->ready_for_outgoing = 0;
 
-		struct ast_frame *f; 
-		while ((f = get_outgoing_frame(conf->memberlist)))
-		{
-			ast_frfree(f);
-		}
-
-		ast_moh_start(conf->memberlist->chan, NULL, NULL);
-		ast_mutex_unlock(&conf->memberlist->lock);
-	}
-#endif
 	// update moderator count
 	moderators = !member->ismoderator ? conf->moderators : --conf->moderators;
 

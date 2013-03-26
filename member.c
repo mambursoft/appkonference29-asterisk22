@@ -445,11 +445,8 @@ int member_exec(struct ast_channel* chan, const char* data)
 	}
 
 	// tell conference thread we're ready for frames
-#ifndef	HOLD_OPTION
 	member->ready_for_outgoing = 1;
-#else
-	member->ready_for_outgoing = !ast_test_flag(chan, AST_FLAG_MOH) ? 1 : 0;
-#endif
+
 	//
 	// member thread loop
 	//
@@ -673,7 +670,7 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 	for (i = 0; i < strlen(flags); ++i)
 	{
 		{
-			// flags are L, l, a, T, V, D, A, R, M, x, H
+			// flags are L, l, a, T, V, D, A, R, M, x
 			switch (flags[i])
 			{
 				// mute/no_recv options
@@ -717,11 +714,6 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 			case 'x':
 				member->kick_conferees = 1;
 				break;
-#ifdef	HOLD_OPTION
-			case 'H':
-				member->hold_flag = 1;
-				break;
-#endif
 			default:
 				break;
 			}
