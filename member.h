@@ -78,10 +78,7 @@ struct ast_conf_member
 	// volume level adjustment for this member
 	int talk_volume;
 	int listen_volume;
-#ifdef	HOLD_OPTION
-	// hold option flag
-	char hold_flag;
-#endif
+
 	// this member will not hear/see
 	int norecv_audio;
 	// is this person a moderator?
@@ -103,9 +100,8 @@ struct ast_conf_member
 	// relay dtmf to manager?
 	short dtmf_relay;
 
-	// used for determining need to mix frames
-	// and for management interface notification
-	short local_speaking_state; // This flag will be true only if this member is speaking
+	// speaking flag
+	short is_speaking;
 
 	// pointer to next member in linked list
 	ast_conf_member* next;

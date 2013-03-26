@@ -329,7 +329,7 @@ conf_frame* mix_multiple_speakers(
 			unmix_slinear_frame(cf_sendFrames->mixed_buffer, conf->listenerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
 #endif
 
-			if (cf_spoken->member->spy_partner && cf_spoken->member->spy_partner->local_speaking_state)
+			if (cf_spoken->member->spy_partner && cf_spoken->member->spy_partner->is_speaking)
 			{
 				// add whisper voice
 #if	ASTERISK_SRC_VERSION == 104
@@ -344,7 +344,7 @@ conf_frame* mix_multiple_speakers(
 
 			cf_sendFrames->member->speaker_frame = cf_sendFrames;
 		}
-		else if (!cf_spoken->member->spy_partner->local_speaking_state)
+		else if (!cf_spoken->member->spy_partner->is_speaking)
 		{
 			// allocate/reuse a mix buffer for whisper
 			if (!cf_spoken->member->speakerBuffer)

@@ -1345,7 +1345,7 @@ void member_process_outgoing_frames(ast_conference* conf,
 	if (!member->spy_partner)
 	{
 		// neither a spyer nor a spyee
-		if (!member->local_speaking_state) 
+		if (!member->is_speaking) 
 		{
 			// queue listener frame
 			queue_frame_for_listener(conf, member);
@@ -1367,7 +1367,7 @@ void member_process_outgoing_frames(ast_conference* conf,
 		else
 		{
 			// spyee -- use member translator if spyee speaking or spyer whispering to spyee
-			if (member->local_speaking_state || member->spy_partner->local_speaking_state)
+			if (member->is_speaking || member->spy_partner->is_speaking)
 			{
 				queue_frame_for_speaker(conf, member);
 			}
@@ -1394,7 +1394,7 @@ void member_process_spoken_frames(ast_conference* conf,
 	if (!(cfr  = get_incoming_frame(member)))
 	{
 		// clear speaking state
-		member->local_speaking_state = 0;
+		member->is_speaking = 0;
 
 		// increment listener count
 		(*listener_count)++;
@@ -1402,7 +1402,7 @@ void member_process_spoken_frames(ast_conference* conf,
 	else
 	{
 		// set speaking state
-		member->local_speaking_state = 1;
+		member->is_speaking = 1;
 
 		// add the frame to the list of spoken frames
 		if (*spoken_frames)
