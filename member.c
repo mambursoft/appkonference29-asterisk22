@@ -290,35 +290,32 @@ static struct ast_frame *get_next_soundframe(ast_conf_member *member)
 // or requested sounds
 static void process_outgoing(ast_conf_member *member)
 {
-	struct ast_frame *cf,*f;
+	struct ast_frame *cf,*sf;
 
-	for(;;)
+	while ((cf = get_outgoing_frame(member)))
 	{
-                // if there's no frame exit the loop.
-		if (!(f = cf = get_outgoing_frame(member)))
-			break;
-
 		// if we're playing sounds, we can just replace the frame with the
 		// next sound frame, and send it instead
 		if (member->soundq)
 		{
-			if ((f = get_next_soundframe(member)))
+			if ((sf = get_next_soundframe(member)))
 			{
 				// use dequeued frame delivery time
-				f->delivery = cf->delivery;
-    			} else {
-				// didn't get anything, revert to "normal"
-				f = cf;
+				sf->delivery = cf->delivery;
+
+				// send the frame
+				ast_write(member->chan, sf);
+
+				// free sound frame
+				ast_frfree(sf);
+
+				continue;
     			}
 		}
 
 		// send the frame
-		ast_write(member->chan, f);
+		ast_write(member->chan, cf);
 		
-		// free sound frame
-		if (f != cf)
-			ast_frfree(f);
-
 		// free voice frame
 		ast_frfree(cf);
 
