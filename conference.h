@@ -105,8 +105,8 @@ int count_exec(struct ast_channel* chan, const char* data);
 
 ast_conference* join_conference(ast_conf_member* member, char* conf_name, char* max_users_flag);
 
-// Find a particular member, locked if lock flag set.
-ast_conf_member *find_member(const char *chan, const char lock);
+// Find member, locked if found.
+ast_conf_member *find_member(const char *chan);
 
 void queue_frame_for_listener(ast_conference* conf, ast_conf_member* member);
 void queue_frame_for_speaker(ast_conference* conf, ast_conf_member* member);

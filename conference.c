@@ -787,11 +787,19 @@ static void add_member(ast_conf_member *member, ast_conference *conf)
 	//
 	if (member->spyee_channel_name)
 	{
-		ast_conf_member *spyee = find_member(member->spyee_channel_name, 0);
-		if (spyee && !spyee->spy_partner && spyee->conf == conf)
+		ast_conf_member *spyee = find_member(member->spyee_channel_name);
+
+		if (spyee)
 		{
-			spyee->spy_partner = member;
-			member->spy_partner = spyee;
+			if (!spyee->spy_partner && spyee->conf == conf)
+			{
+				spyee->spy_partner = member;
+				member->spy_partner = spyee;
+			}
+
+			if (!--spyee->use_count && spyee->delete_flag)
+				ast_cond_signal(&spyee->delete_var);
+			ast_mutex_unlock(&spyee->lock);
 		}
 	}
 
@@ -1364,7 +1372,7 @@ void unmute_conference(const char* confname)
 	}
 }
 
-ast_conf_member *find_member(const char *chan, const char lock)
+ast_conf_member *find_member(const char *chan)
 {
 	ast_conf_member *member;
 	struct channel_bucket *bucket = &(channel_table[hash(chan) % CHANNEL_TABLE_SIZE]);
@@ -1377,11 +1385,9 @@ ast_conf_member *find_member(const char *chan, const char lock)
 #else
 		if (!strcmp(ast_channel_name(member->chan), chan)) {
 #endif
-			if (lock)
-			{
-				ast_mutex_lock(&member->lock);
-				member->use_count++;
-			}
+			ast_mutex_lock(&member->lock);
+			member->use_count++;
+
 			break;
 		}
 
@@ -1400,7 +1406,7 @@ void play_sound_channel(int fd, const char *channel, const char * const *file, i
 	ast_conf_soundq *newsound;
 	ast_conf_soundq **q;
 
-	if((member = find_member(channel, 1)))
+	if ((member = find_member(channel)))
 	{
 #if	ASTERISK_SRC_VERSION < 1100
 		if (!member->norecv_audio && !ast_test_flag(member->chan, AST_FLAG_MOH)
@@ -1410,7 +1416,7 @@ void play_sound_channel(int fd, const char *channel, const char * const *file, i
 				&& (!tone || !member->soundq))
 		{
 			while (n-- > 0) {
-				if(!(newsound = ast_calloc(1, sizeof(ast_conf_soundq))))
+				if (!(newsound = ast_calloc(1, sizeof(ast_conf_soundq))))
 					break;
 
 				ast_copy_string(newsound->name, *file, sizeof(newsound->name));
@@ -1437,7 +1443,7 @@ void stop_sound_channel(int fd, const char *channel)
 	ast_conf_soundq *sound;
 	ast_conf_soundq *next;
 
-	if ((member = find_member(channel, 1)))
+	if ((member = find_member(channel)))
 	{
 		// clear all sounds
 		sound = member->soundq;
@@ -1461,7 +1467,7 @@ void start_moh_channel(int fd, const char *channel)
 {
 	ast_conf_member *member;
 
-	if ((member = find_member(channel, 1)))
+	if ((member = find_member(channel)))
 	{
 		if (!member->norecv_audio)
 			{
@@ -1498,7 +1504,7 @@ void stop_moh_channel(int fd, const char *channel)
 {
 	ast_conf_member *member;
 
-	if ((member = find_member(channel, 1)))
+	if ((member = find_member(channel)))
 	{
 		if (!member->norecv_audio)
 		{
@@ -1518,7 +1524,7 @@ void talk_volume_channel(int fd, const char *channel, int up)
 {
 	ast_conf_member *member;
 
-	if ((member = find_member(channel, 1)))
+	if ((member = find_member(channel)))
 	{
 		up ? member->talk_volume++ : member->talk_volume--;
 
@@ -1532,7 +1538,7 @@ void listen_volume_channel(int fd, const char *channel, int up)
 {
 	ast_conf_member *member;
 
-	if ((member = find_member(channel, 1)))
+	if ((member = find_member(channel)))
 	{
 		up ? member->listen_volume++ : member->listen_volume--;
 
