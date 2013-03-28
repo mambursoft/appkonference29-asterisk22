@@ -753,11 +753,8 @@ void end_conference(const char *name)
 		// loop over member list and request hangup
 		while (member)
 		{
-			// acquire member mutex and request hangup
-			ast_mutex_lock(&member->lock);
 			member->kick_flag = 1;
 			ast_queue_frame(member->chan, &ast_null_frame);
-			ast_mutex_unlock(&member->lock);
 
 			// go on to the next member
 			// (we have the conf lock, so we know this is okay)
@@ -1119,10 +1116,8 @@ void kick_member(const char* confname, int user_id)
 				  {
 				    if (member->conf_id == user_id)
 				      {
-					ast_mutex_lock(&member->lock);
 					member->kick_flag = 1;
 					ast_queue_frame(member->chan, &ast_null_frame);
-					ast_mutex_unlock(&member->lock);
 				      }
 				    member = member->next;
 				  }
@@ -1158,10 +1153,8 @@ void kick_all(void)
 			member = conf->memberlist;
 			while (member)
 			{
-				ast_mutex_lock(&member->lock);
 				member->kick_flag = 1;
 				ast_queue_frame(member->chan, &ast_null_frame);
-				ast_mutex_unlock(&member->lock);
 				member = member->next;
 			}
 			ast_rwlock_unlock(&conf->lock);
@@ -1202,9 +1195,7 @@ void mute_member(const char* confname, int user_id)
 #if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
 						*(speaker_scoreboard + member->score_id) = '\x00';
 #endif
-					      ast_mutex_lock(&member->lock);
 					      member->mute_audio = 1;
-					      ast_mutex_unlock(&member->lock);
 						manager_event(
 							EVENT_FLAG_CONF,
 							"ConferenceMemberMute",
@@ -1255,9 +1246,7 @@ void mute_conference(const char* confname)
 #if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
 					*(speaker_scoreboard + member->score_id) = '\x00';
 #endif
-				      ast_mutex_lock(&member->lock);
 				      member->mute_audio = 1;
-				      ast_mutex_unlock(&member->lock);
 			      }
 			    member = member->next;
 			  }
@@ -1301,9 +1290,7 @@ void unmute_member(const char* confname, int user_id)
 				  {
 				    if (member->conf_id == user_id)
 				      {
-					      ast_mutex_lock(&member->lock);
 					      member->mute_audio = 0;
-					      ast_mutex_unlock(&member->lock);
 						manager_event(
 							EVENT_FLAG_CONF,
 							"ConferenceMemberUnmute",
@@ -1351,9 +1338,7 @@ void unmute_conference(const char* confname)
 			  {
 			    if (!member->ismoderator)
 			      {
-				      ast_mutex_lock(&member->lock);
 				      member->mute_audio = 0;
-				      ast_mutex_unlock(&member->lock);
 			      }
 			    member = member->next;
 			  }
