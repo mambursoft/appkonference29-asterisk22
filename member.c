@@ -1332,13 +1332,10 @@ void queue_silent_frame(
 void member_process_outgoing_frames(ast_conference* conf,
 				  ast_conf_member *member)
 {
-	ast_mutex_lock(&member->lock);
-
 	// skip members that are not ready
 	// skip no receive audio clients
 	if (!member->ready_for_outgoing || member->norecv_audio)
 	{
-		ast_mutex_unlock(&member->lock);
 		return;
 	}
 
@@ -1377,8 +1374,6 @@ void member_process_outgoing_frames(ast_conference* conf,
 			}
 		}
 	}
-
-	ast_mutex_unlock(&member->lock);
 }
 
 void member_process_spoken_frames(ast_conference* conf,
