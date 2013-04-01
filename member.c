@@ -1119,12 +1119,15 @@ struct ast_frame* get_outgoing_frame(ast_conf_member *member)
 
 void queue_outgoing_frame(ast_conf_member* member, struct ast_frame* fr, struct timeval delivery)
 {
+	ast_mutex_lock(&member->lock);
+
 	//
 	// create new frame from passed data frame
 	//
 	if (!(fr  = ast_frdup(fr)))
 	{
 		ast_log(LOG_ERROR, "unable to malloc outgoing ast_frame\n");
+		ast_mutex_unlock(&member->lock);
 		return;
 	}
 
@@ -1144,6 +1147,8 @@ void queue_outgoing_frame(ast_conf_member* member, struct ast_frame* fr, struct 
 		ast_frfree(AST_LIST_REMOVE_HEAD(&member->outFrames, frame_list));
 		member->outFramesCount--;
 	}
+
+	ast_mutex_unlock(&member->lock);
 }
 
 void queue_frame_for_listener(
