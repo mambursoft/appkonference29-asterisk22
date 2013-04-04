@@ -179,6 +179,7 @@
 typedef struct ast_conference ast_conference;
 typedef struct ast_conf_member ast_conf_member;
 typedef struct ast_conf_soundq ast_conf_soundq;
+typedef struct ast_conf_frameq ast_conf_frameq;
 typedef struct conf_frame conf_frame;
 
 const char *argument_delimiter;

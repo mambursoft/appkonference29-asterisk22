@@ -45,6 +45,13 @@ struct ast_conf_soundq
 	struct ast_conf_soundq *next;
 };
 
+struct ast_conf_frameq
+{
+	ast_mutex_t lock;
+	AST_LIST_HEAD_NOLOCK(, ast_frame) frames;
+	unsigned int count;
+};
+
 struct ast_conf_member
 {
 	ast_mutex_t lock; // member data mutex
@@ -90,12 +97,10 @@ struct ast_conf_member
 	short ready_for_outgoing;
 
 	// input frame queue
-	AST_LIST_HEAD_NOLOCK(, ast_frame) inFrames;
-	unsigned int inFramesCount;
+	ast_conf_frameq incomingq;
 
 	// output frame queue
-	AST_LIST_HEAD_NOLOCK(, ast_frame) outFrames;
-	unsigned int outFramesCount;
+	ast_conf_frameq outgoingq;
 
 	// relay dtmf to manager?
 	short dtmf_relay;
