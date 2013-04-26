@@ -211,29 +211,11 @@ conf_frame* mix_single_speaker(ast_conference* conf, conf_frame* frames_in)
 	else
 	{
 		// speaker is either a spyee or a spyer
-		if (!frames_in->member->spyee_channel_name
-			&& conf->membercount > 2)
+		if (!frames_in->member->spyee_channel_name)
 		{
-			conf_frame *spy_frame = create_conf_frame(frames_in->member, frames_in->fr);
+			frames_in->member = frames_in->member->spy_partner;
 
-			if (spy_frame)
-			{
-				frames_in->next = spy_frame;
-				spy_frame->prev = frames_in;
-
-				spy_frame->member = frames_in->member->spy_partner;
-				spy_frame->talk_volume = frames_in->talk_volume;
-
-				spy_frame->converted[frames_in->member->read_format_index]
-					= !frames_in->member->to_slinear ? spy_frame->fr :
-						ast_frdup(frames_in->converted[frames_in->member->read_format_index]); 
-
-				spy_frame->member->speaker_frame = spy_frame;
-			}
-
-			// set the conference listener frame
-			conf->listener_frame = frames_in;
-			frames_in->member = NULL;
+			frames_in->member->speaker_frame = conf->listener_frame = frames_in;
 		}
 		else
 		{

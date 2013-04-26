@@ -289,6 +289,9 @@ static void conference_exec()
 			int speaker_count = 0;
 			int listener_count = 0;
 
+			// reset listener frame
+			conf->listener_frame = NULL;
+
 			// reset pointer lists
 			conf_frame *spoken_frames = NULL;
 
@@ -313,8 +316,6 @@ static void conference_exec()
 			{
 				if (send_frames->member)
 					send_frames->member->speaker_frame = NULL; // reset speaker frame
-				else
-					conf->listener_frame = NULL; // reset listener frame
 
 				send_frames = delete_conf_frame(send_frames);
 			}
