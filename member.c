@@ -1168,57 +1168,35 @@ void queue_frame_for_listener(
 	if (frame)
 	{
 		// try for a pre-converted frame; otherwise, convert (and store) the frame
-		if (!(qf = !member->listen_volume && !frame->talk_volume ? frame->converted[member->write_format_index] : 0))
-		{
-			if (!member->listen_volume)
-			{
-				qf = frame->fr;
-			}
-			else
-			{
-				// make a copy of the slinear version of the frame
-				if (!(qf = ast_frdup(frame->fr)))
-				{
-					ast_log(LOG_WARNING, "unable to duplicate frame\n");
-					queue_silent_frame(conf, member);
-					return;
-				}
-
-				ast_frame_adjust_volume(qf, member->listen_volume);
-			}
-
-			// convert using the conference's translation path
-			qf = convert_frame(conf->from_slinear_paths[member->write_format_index], qf, member->listen_volume);
-
-			// store the converted frame
-			// (the frame will be free'd next time through the loop)
-			if (!member->listen_volume)
-			{
-				if (frame->converted[member->write_format_index] && conf->from_slinear_paths[member->write_format_index])
-					ast_frfree(frame->converted[member->write_format_index]);
-				frame->converted[member->write_format_index] = qf;
-				frame->talk_volume = 0;
-			}
-		}
-
-		if (qf)
+		if ((qf = frame->converted[member->write_format_index]) && !member->listen_volume)
 		{
 			queue_outgoing_frame(member, qf, conf->delivery_time);
-
-			if (member->listen_volume)
-			{
-				// free frame (the translator's copy)
-				if (conf->from_slinear_paths[member->write_format_index])
-					ast_frfree(qf);
-			}
 		}
 		else
 		{
-#if	ASTERISK_SRC_VERSION < 1100
-			ast_log(LOG_WARNING, "unable to translate outgoing listener frame, channel => %s\n", member->chan->name);
-#else
-			ast_log(LOG_WARNING, "unable to translate outgoing listener frame, channel => %s\n", ast_channel_name(member->chan));
-#endif
+			if (!member->listen_volume)
+			{
+				// convert using the conference's translation path
+				qf = convert_frame(conf->from_slinear_paths[member->write_format_index], frame->fr, 0);
+
+				frame->converted[member->write_format_index] = qf;
+
+				queue_outgoing_frame(member, qf, conf->delivery_time);
+			}
+			else
+			{
+				ast_frame_adjust_volume(frame->fr, member->listen_volume);
+
+				// convert using the conference's translation path
+				qf = convert_frame(conf->from_slinear_paths[member->write_format_index], frame->fr, 0);
+
+				ast_frame_adjust_volume(frame->fr, -member->listen_volume);
+
+				queue_outgoing_frame(member, qf, conf->delivery_time);
+
+				// free frame (the translator's copy)
+				ast_frfree(qf);
+			}
 		}
 
 	}
@@ -1238,14 +1216,9 @@ void queue_frame_for_speaker(
 
 	if (frame)
 	{
-		//
-		// convert and queue frame
-		//
-
-		if ((qf = frame->converted[member->write_format_index]) && !member->listen_volume && !frame->talk_volume)
+		// try for a pre-converted frame; otherwise, convert the frame
+		if ((qf = frame->converted[member->write_format_index]) && !member->listen_volume)
 		{
-			// frame is already in correct format, so just queue it
-
 			queue_outgoing_frame(member, qf, conf->delivery_time);
 		}
 		else
@@ -1255,29 +1228,15 @@ void queue_frame_for_speaker(
 				ast_frame_adjust_volume(frame->fr, member->listen_volume);
 			}
 
-			//
-			// convert frame to member's write format
-			//
+			// convert using the member's translation path
 			qf = convert_frame(member->from_slinear, frame->fr, 0);
 
-			if (qf)
-			{
-				// queue frame
-				queue_outgoing_frame(member, qf, conf->delivery_time);
+			queue_outgoing_frame(member, qf, conf->delivery_time);
 
-				// free frame (the translator's copy)
-				if (member->from_slinear)
-					ast_frfree(qf);
-			}
-			else
-			{
-#if	ASTERISK_SRC_VERSION < 1100
-				ast_log(LOG_WARNING, "unable to translate outgoing speaker frame, channel => %s\n", member->chan->name);
-#else
-				ast_log(LOG_WARNING, "unable to translate outgoing speaker frame, channel => %s\n", ast_channel_name(member->chan));
-#endif
-			}
+			// free frame (the translator's copy)
+			ast_frfree(qf);
 		}
+
 	}
 	else
 	{
@@ -1369,8 +1328,15 @@ void member_process_outgoing_frames(ast_conference* conf,
 		// either a spyer or a spyee
 		if (member->spyee_channel_name)
 		{
-			// spyer -- always use member translator
-			queue_frame_for_speaker(conf, member);
+			// spyer -- use member translator unless sharing frame with listeners
+			if (member->speaker_frame != conf->listener_frame)
+			{
+				queue_frame_for_speaker(conf, member);
+			}
+			else
+			{
+				queue_frame_for_listener(conf, member);
+			}
 		}
 		else
 		{

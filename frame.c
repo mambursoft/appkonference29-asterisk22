@@ -146,6 +146,15 @@ conf_frame* mix_frames(ast_conference* conf, conf_frame* frames_in, int speaker_
 		if ((frames_in->talk_volume = conf->volume + frames_in->member->talk_volume))
 		{
 			ast_frame_adjust_volume(frames_in->fr, frames_in->talk_volume);
+#if	SILDET == 1 || SILDET == 2
+			if (frames_in->member->read_format_index != AC_CONF_INDEX && !frames_in->member->dsp)
+#else
+			if (frames_in->member->read_format_index != AC_CONF_INDEX)
+#endif
+				{
+					ast_frfree(frames_in->converted[frames_in->member->read_format_index]);
+					frames_in->converted[frames_in->member->read_format_index] = NULL;
+				}
 		}
 
 		// copy orignal frame to converted array so speakers doesn't need to re-encode it
@@ -160,6 +169,15 @@ conf_frame* mix_frames(ast_conference* conf, conf_frame* frames_in, int speaker_
 		if ((frames_in->next->talk_volume = conf->volume + frames_in->next->member->talk_volume))
 		{
 			ast_frame_adjust_volume(frames_in->next->fr, frames_in->next->talk_volume);
+#if	SILDET == 1 || SILDET == 2
+			if (frames_in->next->member->read_format_index != AC_CONF_INDEX && !frames_in->next->member->dsp)
+#else
+			if (frames_in->next->member->read_format_index != AC_CONF_INDEX)
+#endif
+				{
+					ast_frfree(frames_in->next->converted[frames_in->next->member->read_format_index]);
+					frames_in->next->converted[frames_in->next->member->read_format_index] = NULL;
+				}
 		}
 
 		// swap frame member pointers
@@ -198,6 +216,15 @@ conf_frame* mix_single_speaker(ast_conference* conf, conf_frame* frames_in)
 	if ((frames_in->talk_volume = frames_in->member->talk_volume + conf->volume))
 	{
 		ast_frame_adjust_volume(frames_in->fr, frames_in->talk_volume);
+#if	SILDET == 1 || SILDET == 2
+		if (frames_in->member->read_format_index != AC_CONF_INDEX && !frames_in->member->dsp)
+#else
+		if (frames_in->member->read_format_index != AC_CONF_INDEX)
+#endif
+		{
+			ast_frfree(frames_in->converted[frames_in->member->read_format_index]);
+			frames_in->converted[frames_in->member->read_format_index] = NULL;
+		}
 	}
 
 	if (!frames_in->member->spy_partner)
@@ -259,6 +286,15 @@ conf_frame* mix_multiple_speakers(
 		if (cf_spoken->member->talk_volume || conf->volume)
 		{
 			ast_frame_adjust_volume(cf_spoken->fr, cf_spoken->member->talk_volume + conf->volume);
+#if	SILDET == 1 || SILDET == 2
+			if (cf_spoken->member->read_format_index != AC_CONF_INDEX && !cf_spoken->member->dsp)
+#else
+			if (cf_spoken->member->read_format_index != AC_CONF_INDEX)
+#endif
+			{
+				ast_frfree(cf_spoken->converted[cf_spoken->member->read_format_index]);
+				cf_spoken->converted[cf_spoken->member->read_format_index] = NULL;
+			}
 		}
 
 		if (!cf_spoken->member->spyee_channel_name)
