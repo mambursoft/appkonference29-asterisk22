@@ -1055,19 +1055,7 @@ conf_frame* get_incoming_frame(ast_conf_member *member)
 
 	ast_mutex_unlock(&member->incomingq.lock);
 
-	conf_frame *cfr  = create_conf_frame(member, NULL);
-
-	if (cfr)
-	{
-		cfr->fr = fr;
-	}
-	else
-	{
-		ast_log(LOG_ERROR, "unable to malloc conf_frame\n");
-		ast_frfree(fr);
-	}
-
-	return cfr;
+	return create_conf_frame(member, fr);
 }
 
 void queue_incoming_frame(ast_conf_member* member, struct ast_frame* fr)

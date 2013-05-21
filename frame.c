@@ -489,7 +489,7 @@ conf_frame* delete_conf_frame(conf_frame* cf)
 	return nf;
 }
 
-conf_frame* create_conf_frame(ast_conf_member* member, const struct ast_frame* fr)
+conf_frame* create_conf_frame(ast_conf_member* member, struct ast_frame* fr)
 {
 	conf_frame* cf;
 
@@ -506,15 +506,7 @@ conf_frame* create_conf_frame(ast_conf_member* member, const struct ast_frame* f
 
 	cf->member = member;
 
-	if (fr)
-	{
-		if (!(cf->fr = ast_frdup((struct ast_frame*)(fr))))
-		{
-			ast_free(cf);
-			ast_log(LOG_ERROR, "unable to allocate memory for conf frame\n");
-			return NULL;
-		}
-	}
+	cf->fr = fr;
 
 	return cf;
 }

@@ -37,7 +37,7 @@ conf_frame* mix_multiple_speakers(ast_conference* conf, conf_frame* frames_in, i
 conf_frame* mix_single_speaker(ast_conference* conf, conf_frame* frames_in);
 
 // frame creation and deletion
-conf_frame* create_conf_frame(ast_conf_member* member, const struct ast_frame* fr);
+conf_frame* create_conf_frame(ast_conf_member* member, struct ast_frame* fr);
 conf_frame* create_mix_frame(ast_conf_member* member, conf_frame* next, conf_frame** cf);
 conf_frame* delete_conf_frame(conf_frame* cf);
 
