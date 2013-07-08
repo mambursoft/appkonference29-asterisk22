@@ -1222,7 +1222,8 @@ void queue_frame_for_speaker(
 			queue_outgoing_frame(member, qf, conf->delivery_time);
 
 			// free frame (the translator's copy)
-			ast_frfree(qf);
+			if (member->from_slinear)
+				ast_frfree(qf);
 		}
 
 	}
