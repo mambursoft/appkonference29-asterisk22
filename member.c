@@ -1183,7 +1183,8 @@ void queue_frame_for_listener(
 				queue_outgoing_frame(member, qf, conf->delivery_time);
 
 				// free frame (the translator's copy)
-				ast_frfree(qf);
+				if (conf->from_slinear_paths[member->write_format_index])
+					ast_frfree(qf);
 			}
 		}
 
