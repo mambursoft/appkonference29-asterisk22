@@ -42,8 +42,12 @@ struct conf_frame
 	AST_LIST_ENTRY(conf_frame) frame_list;
 #endif
 
-	// pointer to the frame's owner
-	ast_conf_member* member; // who sent this frame
+#ifdef  CACHE_AST_FRAMES
+	// who spoke this frame
+	ast_conf_member* owner;
+#endif
+	// who sent or gets this frame
+	ast_conf_member* member;
 
 	// linked-list pointers
 	conf_frame* next;

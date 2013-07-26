@@ -543,12 +543,20 @@ static ast_conference* create_conf(char* name, ast_conf_member* member)
 	conf->from_slinear_paths[AC_CONF_INDEX] = NULL;
 #if	ASTERISK_SRC_VERSION < 1000
 	conf->from_slinear_paths[AC_ULAW_INDEX] = ast_translator_build_path(AST_FORMAT_ULAW, AST_FORMAT_CONFERENCE);
+#ifdef	AC_USE_ALAW
 	conf->from_slinear_paths[AC_ALAW_INDEX] = ast_translator_build_path(AST_FORMAT_ALAW, AST_FORMAT_CONFERENCE);
+#endif
+#ifdef	AC_USE_GSM
 	conf->from_slinear_paths[AC_GSM_INDEX] = ast_translator_build_path(AST_FORMAT_GSM, AST_FORMAT_CONFERENCE);
+#endif
 #else
 	conf->from_slinear_paths[AC_ULAW_INDEX] = ast_translator_build_path(&ast_format_ulaw, &ast_format_conference);
+#ifdef	AC_USE_ALAW
 	conf->from_slinear_paths[AC_ALAW_INDEX] = ast_translator_build_path(&ast_format_alaw, &ast_format_conference);
+#endif
+#ifdef	AC_USE_GSM
 	conf->from_slinear_paths[AC_GSM_INDEX] = ast_translator_build_path(&ast_format_gsm, &ast_format_conference);
+#endif
 #endif
 #ifdef	AC_USE_SPEEX
 #if	ASTERISK_SRC_VERSION < 1000

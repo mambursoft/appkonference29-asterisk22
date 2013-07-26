@@ -50,6 +50,9 @@ struct ast_conf_frameq
 	ast_mutex_t lock;
 	AST_LIST_HEAD_NOLOCK(, ast_frame) frames;
 	unsigned int count;
+#ifdef	CACHE_AST_FRAMES
+	struct ast_frame *cache;
+#endif
 };
 
 struct ast_conf_member
@@ -159,7 +162,10 @@ struct ast_conf_member
 	// audio format this member is using
 	int write_format_index;
 	int read_format_index;
-
+#ifdef	CACHE_AST_FRAMES
+	// packet size for this audio format
+	int pkt_size;
+#endif
 	// member frame translators
 	struct ast_trans_pvt* to_slinear;
 	struct ast_trans_pvt* from_slinear;
@@ -204,5 +210,30 @@ void member_process_spoken_frames(ast_conference* conf,
 
 void member_process_outgoing_frames(ast_conference* conf,
 				    ast_conf_member *member);
+
+#ifdef	CACHE_AST_FRAMES
+static inline void astframe_cache_put(struct ast_frame** volatile cache, struct ast_frame *cf)
+{
+	struct ast_frame *hf = *cache;
+	AST_LIST_NEXT(cf, frame_list) = hf;
+	while (!__sync_bool_compare_and_swap(cache, hf, cf))
+	{
+		hf = *cache;
+		AST_LIST_NEXT(cf, frame_list) = hf;
+	}
+}
+
+static inline struct ast_frame *astframe_cache_get(struct ast_frame** volatile cache)
+{
+	struct ast_frame *cf = *cache;
+	struct ast_frame *hf = cf ? AST_LIST_NEXT(cf, frame_list) : NULL;
+	while (cf && !__sync_bool_compare_and_swap(cache, cf, hf))
+	{
+		cf = *cache;
+		hf = cf ? AST_LIST_NEXT(cf, frame_list) : NULL;
+	}
+	return cf;
+}
+#endif
 
 #endif

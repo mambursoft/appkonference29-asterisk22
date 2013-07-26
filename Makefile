@@ -44,6 +44,9 @@ REVISION = $(shell svnversion -n .)
 # cache_control_blocks ( 0 == OFF, 1 == ON )
 CACHE_CONTROL_BLOCKS ?= 1
 
+# cache_ast_frames ( 0 == OFF, 1 == ON )
+CACHE_AST_FRAMES ?= 1
+
 # score board ( 0 == OFF, 1 == ON )
 SPEAKER_SCOREBOARD ?= 1
 
@@ -127,22 +130,38 @@ CPPFLAGS += -DCACHE_CONF_FRAMES
 #
 
 #
-# Uncomment this if you want G.729A support (need to have the actual codec installed)
+# Uncomment this if you want ALAW
+#
+# CPPFLAGS += -DAC_USE_ALAW
+#
+
+ifeq ($(CACHE_AST_FRAMES), 1)
+CPPFLAGS += -DCACHE_AST_FRAMES
+else
+#
+# Uncomment this if you want GSM
+#
+# CPPFLAGS += -DAC_USE_GSM
+#
+
+#
+# Uncomment this if you want G.729A (need to have the actual codec installed)
 #
 # CPPFLAGS += -DAC_USE_G729A
 #
 
 #
-# Uncomment this if you want G.722 support (requires asterisk 1.6 or 1.8)
-#
-# CPPFLAGS += -DAC_USE_G722
-#
-
-#
-# Uncomment this if you want SPEEX support (need to have the actual codec installed)
+# Uncomment this if you want SPEEX (need to have the actual codec installed)
 #
 # CPPFLAGS += -DAC_USE_SPEEX
 #
+
+#
+# Uncomment this if you want G.722 (requires asterisk 1.6+)
+#
+# CPPFLAGS += -DAC_USE_G722
+#
+endif
 
 ifeq ($(CACHE_CONTROL_BLOCKS), 1)
 CPPFLAGS += -DCACHE_CONTROL_BLOCKS

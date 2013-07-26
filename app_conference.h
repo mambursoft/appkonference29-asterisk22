@@ -149,8 +149,12 @@
 	enum { 
 		AC_CONF_INDEX = 0,
 		AC_ULAW_INDEX,
+#ifdef	AC_USE_ALAW
 		AC_ALAW_INDEX,
+#endif
+#ifdef	AC_USE_GSM
 		AC_GSM_INDEX,
+#endif
 #ifdef	AC_USE_SPEEX
 		AC_SPEEX_INDEX,
 #endif
