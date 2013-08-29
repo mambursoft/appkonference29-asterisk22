@@ -36,8 +36,21 @@
 // struct declarations
 //
 
+struct ast_conf_listheaders
+{
+	// conference listheaders lock
+	ast_rwlock_t lock;
+	// speaker list
+	ast_conf_listentry speakerlistheader;
+	// member list
+	ast_conf_listentry memberlistheader;
+};
+
 struct ast_conference
 {
+#ifdef	CACHE_CONTROL_BLOCKS
+	ast_conference *nextfreeblock;
+#endif
 	// name
 	char name[CONF_NAME_LEN + 1];
 	
@@ -53,17 +66,11 @@ struct ast_conference
 	// conference volume
 	int volume;
 
-	// single-linked list of members in conference
-	ast_conf_member* memberlist;
-
-	// pointer to last member in list
-	ast_conf_member* memberlast;
-
 	int membercount;
         int id_count;
 
-	// conference data lock
-	ast_rwlock_t lock;
+	// conference listheaders
+	ast_conf_listheaders *listheaders;
 
 	// pointers to conference in doubly-linked list
 	ast_conference* next;

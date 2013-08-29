@@ -57,6 +57,9 @@ struct ast_conf_frameq
 
 struct ast_conf_member
 {
+#ifdef	CACHE_CONTROL_BLOCKS
+	ast_conf_member *nextfreeblock;
+#endif
 	ast_mutex_t lock; // member data mutex
 
 	struct ast_channel* chan; // member's channel
@@ -111,11 +114,14 @@ struct ast_conf_member
 	// speaking flag
 	short is_speaking;
 
-	// pointer to next member in linked list
-	ast_conf_member* next;
+	// conference listheaders
+	ast_conf_listheaders *listheaders;
 
-	// pointer to prev member in linked list
-	ast_conf_member* prev;
+	// speaker list entry
+	ast_conf_listentry speakerlistentry;
+
+	// member list entry
+	ast_conf_listentry memberlistentry;
 
 	// pointer to member's bucket list head
 	struct channel_bucket *bucket;
@@ -192,7 +198,7 @@ int member_exec(struct ast_channel* chan, const char* data);
 #endif
 
 ast_conf_member* create_member(struct ast_channel* chan, const char* data, char* conf_name);
-ast_conf_member* delete_member(ast_conf_member* member);
+void delete_member(ast_conf_member* member);
 
 // incoming queue
 void queue_incoming_frame(ast_conf_member* member, struct ast_frame* fr);

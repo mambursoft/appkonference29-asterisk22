@@ -80,6 +80,12 @@ static ast_conference* create_conf(char* name, ast_conf_member* member);
 static ast_conference* remove_conf(ast_conference* conf);
 static void add_member(ast_conf_member* member, ast_conference* conf);
 
+static void destroy_conf_listheaders(void *obj)
+{
+	ast_conf_listheaders *listheaders = obj;
+	ast_rwlock_destroy(&listheaders->lock);
+}
+
 //
 // main conference function
 //
@@ -227,7 +233,7 @@ static void conference_exec()
 		while (conf)
 		{
 			// acquire the conference lock
-			ast_rwlock_rdlock(&conf->lock);
+			ast_rwlock_rdlock(&conf->listheaders->lock);
 
 			//
 			// check if the conference is empty and if so
@@ -238,7 +244,7 @@ static void conference_exec()
 			{
 				if (ast_mutex_trylock(&conflist_lock))
 				{
-					ast_rwlock_unlock(&conf->lock);
+					ast_rwlock_unlock(&conf->listheaders->lock);
 
 					// get the next conference
 					conf = conf->next;
@@ -279,15 +285,15 @@ static void conference_exec()
 			// process conference frames
 			//
 
-			// conference member
-			ast_conf_member *member;
+			// list entry
+			ast_conf_listentry *listentry;
 
 			// update the current delivery time
 			conf->delivery_time = base;
 
 			// reset speaker and listener count
 			int speaker_count = 0;
-			int listener_count = 0;
+			int listener_count = conf->membercount;
 
 			// reset listener frame
 			conf->listener_frame = NULL;
@@ -296,8 +302,9 @@ static void conference_exec()
 			conf_frame *spoken_frames = NULL;
 
 			// loop over member list and retrieve incoming frames
-			for (member = conf->memberlist; member; member = member->next)
+			for (listentry = conf->listheaders->speakerlistheader.next; listentry != &conf->listheaders->speakerlistheader; listentry = listentry->next)
 			{
+				ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, speakerlistentry));
 				member_process_spoken_frames(conf,member,&spoken_frames,
 							     &listener_count, &speaker_count);
 			}
@@ -306,8 +313,9 @@ static void conference_exec()
 			conf_frame *send_frames = spoken_frames ? mix_frames(conf, spoken_frames, speaker_count, listener_count) : NULL;
 
 			// loop over member list and send outgoing frames
-			for (member = conf->memberlist; member; member = member->next)
+			for (listentry = conf->listheaders->memberlistheader.next; listentry != &conf->listheaders->memberlistheader; listentry = listentry->next)
 			{
+				ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
 				member_process_outgoing_frames(conf, member);
 			}
 
@@ -321,7 +329,7 @@ static void conference_exec()
 			}
 
 			// release conference lock
-			ast_rwlock_unlock(&conf->lock);
+			ast_rwlock_unlock(&conf->listheaders->lock);
 
 			// get the next conference
 			conf = conf->next;
@@ -400,7 +408,7 @@ void dealloc_conference(void)
 	while (confblocklist)
 	{
 		confblock = confblocklist;
-		confblocklist = confblocklist->next;
+		confblocklist = confblocklist->nextfreeblock;
 		ast_free(confblock);
 	}
 	
@@ -409,7 +417,7 @@ void dealloc_conference(void)
 	while (mbrblocklist)
 	{
 		mbrblock = mbrblocklist;
-		mbrblocklist = mbrblocklist->next;
+		mbrblocklist = mbrblocklist->nextfreeblock;
 		ast_free(mbrblock);
 	}
 #endif
@@ -510,7 +518,7 @@ static ast_conference* create_conf(char* name, ast_conf_member* member)
 	{
 		// get conference control block from the free list
 		conf = confblocklist;
-		confblocklist = confblocklist->next;
+		confblocklist = confblocklist->nextfreeblock;
 		memset(conf,0,sizeof(ast_conference));
 	}
 	else
@@ -536,8 +544,11 @@ static ast_conference* create_conf(char* name, ast_conf_member* member)
 	// copy name to conference
 	strncpy((char*)&(conf->name), name, sizeof(conf->name) - 1);
 
-	// initialize the conference lock
-	ast_rwlock_init(&conf->lock);
+	// initialize the conference data
+	conf->listheaders = ao2_alloc(sizeof(ast_conf_listheaders), destroy_conf_listheaders);
+	ast_rwlock_init(&conf->listheaders->lock);
+	init_listheader(&conf->listheaders->speakerlistheader);
+	init_listheader(&conf->listheaders->memberlistheader);
 
 	// build translation paths
 	conf->from_slinear_paths[AC_CONF_INDEX] = NULL;
@@ -717,8 +728,7 @@ ast_conference *remove_conf(ast_conference *conf)
 	AST_LIST_UNLOCK(conf->bucket);
 
 	// unlock and destroy read/write lock
-	ast_rwlock_unlock(&conf->lock);
-	ast_rwlock_destroy(&conf->lock);
+	ast_rwlock_unlock(&conf->listheaders->lock);
 
 	conf_temp = conf->next;
 
@@ -730,9 +740,12 @@ ast_conference *remove_conf(ast_conference *conf)
 
 	if (conf == conflist)
 		conflist = conf_temp;
+	
+	ao2_ref(conf->listheaders, -1);
+
 #ifdef	CACHE_CONTROL_BLOCKS
 	// put the conference control block on the free list
-	conf->next = confblocklist;
+	conf->nextfreeblock = confblocklist;
 	confblocklist = conf;
 #else
 	ast_free(conf);	
@@ -754,24 +767,20 @@ void end_conference(const char *name)
 	if ((conf = find_conf(name)))
 	{
 		// acquire the conference lock
-		ast_rwlock_rdlock(&conf->lock);
-
-		// get list of conference members
-		ast_conf_member* member = conf->memberlist;
+		ast_rwlock_rdlock(&conf->listheaders->lock);
 
 		// loop over member list and request hangup
-		while (member)
+		ast_conf_listentry *listentry;
+		for (listentry = conf->listheaders->memberlistheader.next; listentry != &conf->listheaders->memberlistheader; listentry = listentry->next)
 		{
+			ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
+
 			member->kick_flag = 1;
 			ast_queue_frame(member->chan, &ast_null_frame);
-
-			// go on to the next member
-			// (we have the conf lock, so we know this is okay)
-			member = member->next;
 		}
 
 		// release the conference lock
-		ast_rwlock_unlock(&conf->lock);
+		ast_rwlock_unlock(&conf->listheaders->lock);
 	}
 
 	// release the conference list lock
@@ -786,11 +795,9 @@ void end_conference(const char *name)
 static void add_member(ast_conf_member *member, ast_conference *conf)
 {
 	// acquire the conference lock
-	ast_rwlock_wrlock(&conf->lock);
+	ast_rwlock_wrlock(&conf->listheaders->lock);
 
-	//
 	// if spying, setup spyer/spyee
-	//
 	if (member->spyee_channel_name)
 	{
 		ast_conf_member *spyee = find_member(member->spyee_channel_name);
@@ -809,34 +816,34 @@ static void add_member(ast_conf_member *member, ast_conference *conf)
 		}
 	}
 
-	// update conference count
-	conf->membercount++;
-
 	// update moderator count
 	if (member->ismoderator)
 		conf->moderators++;
 
+	// update conference count
 	// calculate member identifier
-	member->conf_id = !conf->memberlast ? 1 : conf->memberlast->conf_id + 1;
-
-	//
-	// add member to list
-	//
-	if (!conf->memberlist)
-		conf->memberlist = conf->memberlast = member;
-	else {
-		member->prev = conf->memberlast; // dbl links
-		conf->memberlast->next = member;
-		conf->memberlast = member;
+	if (!conf->membercount++)
+	{
+		member->conf_id = 1;
 	}
+	else
+	{
+		ast_conf_member *memberlast = (ast_conf_member *)((char *)conf->listheaders->memberlistheader.next - offsetof(ast_conf_member, memberlistentry));
+		member->conf_id = memberlast->conf_id + 1;
+	}
+	
+	// add to member list
+	add_listentry(&conf->listheaders->memberlistheader, &member->memberlistentry);
+
+	// add member to speaker list
+	if (!member->mute_audio)
+		add_listentry(&conf->listheaders->speakerlistheader, &member->speakerlistentry);
 
 	// set pointer to conference
 	member->conf = conf;
 
 	// release the conference lock
-	ast_rwlock_unlock(&conf->lock);
-
-	return;
+	ast_rwlock_unlock(&conf->listheaders->lock);
 }
 
 void remove_member(ast_conf_member* member, ast_conference* conf, char* conf_name)
@@ -844,24 +851,17 @@ void remove_member(ast_conf_member* member, ast_conference* conf, char* conf_nam
 	int membercount;
 	int moderators;
 
-	ast_rwlock_wrlock(&conf->lock);
+	ast_rwlock_wrlock(&conf->listheaders->lock);
 
-	//
-	// remove member from list
-	//
-	if (!member->prev)
-		conf->memberlist = member->next;
-	else
-		member->prev->next = member->next;
-
-	if (member->next)
-		member->next->prev =  member->prev; // dbl links
-
-	if (conf->memberlast == member)
-		conf->memberlast = member->prev;
+	// remove from member list
+	remove_listentry(&member->memberlistentry);
 
 	// update member count
 	membercount = --conf->membercount;
+
+	// remove from speaker list
+	if (!member->mute_audio)
+		remove_listentry(&member->speakerlistentry);
 
 	// update moderator count
 	moderators = !member->ismoderator ? conf->moderators : --conf->moderators;
@@ -869,18 +869,16 @@ void remove_member(ast_conf_member* member, ast_conference* conf, char* conf_nam
 	// if this the last moderator and the flag is set then kick the rest
 	if (member->ismoderator && member->kick_conferees && !conf->moderators)
 	{
-		ast_conf_member *member_temp = conf->memberlist;
-		while (member_temp)
+		ast_conf_listentry *listentry;
+		for (listentry = conf->listheaders->memberlistheader.next; listentry != &conf->listheaders->memberlistheader; listentry = listentry->next)
 		{
-			member_temp->kick_flag = 1;
-			ast_queue_frame(member_temp->chan, &ast_null_frame);
-			member_temp = member_temp->next;
+			ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
+			member->kick_flag = 1;
+			ast_queue_frame(member->chan, &ast_null_frame);
 		}
 	}
 
-	//
 	// if spying sever connection to spyee
-	//
 	if (member->spy_partner)
 	{
 		if (member->spyee_channel_name)
@@ -894,7 +892,7 @@ void remove_member(ast_conf_member* member, ast_conference* conf, char* conf_nam
 		}
 	}
 
-	ast_rwlock_unlock(&conf->lock);
+	ast_rwlock_unlock(&conf->listheaders->lock);
 
 	// remove member from channel table
 	if (member->bucket)
@@ -988,6 +986,7 @@ void list_conferences(int fd)
 void list_members(int fd, const char *name)
 {
 	ast_conf_member *member;
+	ast_conf_listentry *listentry;
 	char volume_str[10];
 	char spy_str[10];
 	int duration;
@@ -1008,14 +1007,14 @@ void list_members(int fd, const char *name)
 			if (!strcasecmp((const char*)&(conf->name), name))
 			{
 				// acquire conference lock
-				ast_rwlock_rdlock(&conf->lock);
+				ast_rwlock_rdlock(&conf->listheaders->lock);
 
 				// print the header
 				ast_cli(fd, "%s:\n%-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-80.20s\n", conf->name, "User #", "Flags", "Audio", "Volume", "Duration", "Spy", "Channel");
 				// do the biz
-				member = conf->memberlist;
-				while (member)
+				for (listentry = conf->listheaders->memberlistheader.prev; listentry != &conf->listheaders->memberlistheader; listentry = listentry->prev)
 				{
+					member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
 					snprintf(volume_str, 10, "%d:%d", member->talk_volume, member->listen_volume);
 					if (member->spyee_channel_name && member->spy_partner)
 						snprintf(spy_str, 10, "%d", member->spy_partner->conf_id);
@@ -1029,11 +1028,10 @@ void list_members(int fd, const char *name)
 #else
 					member->conf_id, member->flags, !member->mute_audio ? "Unmuted" : "Muted", volume_str, duration_str , spy_str, ast_channel_name(member->chan));
 #endif
-					member = member->next;
 				}
 
 				// release conference lock
-				ast_rwlock_unlock(&conf->lock);
+				ast_rwlock_unlock(&conf->listheaders->lock);
 
 				break;
 			}
@@ -1049,6 +1047,7 @@ void list_members(int fd, const char *name)
 void list_all(int fd)
 {
 	ast_conf_member *member;
+	ast_conf_listentry *listentry;
 	char volume_str[10];
 	char spy_str[10];
 	int duration;
@@ -1066,14 +1065,14 @@ void list_all(int fd)
 		while (conf)
 		{
 			// acquire conference lock
-			ast_rwlock_rdlock(&conf->lock);
+			ast_rwlock_rdlock(&conf->listheaders->lock);
 
 			// print the header
 			ast_cli(fd, "%s:\n%-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-80.20s\n", conf->name, "User #", "Flags", "Audio", "Volume", "Duration", "Spy", "Channel");
 			// do the biz
-			member = conf->memberlist;
-			while (member)
+			for (listentry = conf->listheaders->memberlistheader.prev; listentry != &conf->listheaders->memberlistheader; listentry = listentry->prev)
 			{
+				member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
 				snprintf(volume_str, 10, "%d:%d", member->talk_volume, member->listen_volume);
 				if (member->spyee_channel_name && member->spy_partner)
 					snprintf(spy_str, 10, "%d", member->spy_partner->conf_id);
@@ -1087,11 +1086,10 @@ void list_all(int fd)
 #else
 				member->conf_id, member->flags, !member->mute_audio ? "Unmuted" : "Muted", volume_str, duration_str , spy_str, ast_channel_name(member->chan));
 #endif
-				member = member->next;
 			}
 
 			// release conference lock
-			ast_rwlock_unlock(&conf->lock);
+			ast_rwlock_unlock(&conf->listheaders->lock);
 
 			conf = conf->next;
 		}
@@ -1103,8 +1101,6 @@ void list_all(int fd)
 #ifdef	KICK_MEMBER
 void kick_member(const char* confname, int user_id)
 {
-	ast_conf_member *member;
-
 	// any conferences?
 	if (conflist)
 	{
@@ -1118,19 +1114,19 @@ void kick_member(const char* confname, int user_id)
 		{
 			if (!strcasecmp((const char*)&(conf->name), confname))
 			{
+  				ast_conf_listentry *listentry;
 				// do the biz
-				ast_rwlock_rdlock(&conf->lock);
-				member = conf->memberlist;
-				while (member)
+				ast_rwlock_rdlock(&conf->listheaders->lock);
+				for (listentry = conf->listheaders->memberlistheader.next; listentry != &conf->listheaders->memberlistheader; listentry = listentry->next)
 				  {
+					ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
 				    if (member->conf_id == user_id)
 				      {
 					member->kick_flag = 1;
 					ast_queue_frame(member->chan, &ast_null_frame);
 				      }
-				    member = member->next;
 				  }
-				ast_rwlock_unlock(&conf->lock);
+				ast_rwlock_unlock(&conf->listheaders->lock);
 				break;
 			}
 
@@ -1144,8 +1140,6 @@ void kick_member(const char* confname, int user_id)
 #endif
 void kick_all(void)
 {
-  ast_conf_member *member;
-
         // any conferences?
 	if (conflist)
 	{
@@ -1157,16 +1151,16 @@ void kick_all(void)
 		// loop through conf list
 		while (conf)
 		{
+  			ast_conf_listentry *listentry;
 			// do the biz
-			ast_rwlock_rdlock(&conf->lock);
-			member = conf->memberlist;
-			while (member)
+			ast_rwlock_rdlock(&conf->listheaders->lock);
+			for (listentry = conf->listheaders->memberlistheader.next; listentry != &conf->listheaders->memberlistheader; listentry = listentry->next)
 			{
+				ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
 				member->kick_flag = 1;
 				ast_queue_frame(member->chan, &ast_null_frame);
-				member = member->next;
 			}
-			ast_rwlock_unlock(&conf->lock);
+			ast_rwlock_unlock(&conf->listheaders->lock);
 
 			conf = conf->next;
 		}
@@ -1179,8 +1173,6 @@ void kick_all(void)
 #ifdef	MUTE_MEMBER
 void mute_member(const char* confname, int user_id)
 {
-  ast_conf_member *member;
-
         // any conferences?
 	if (conflist)
 	{
@@ -1194,17 +1186,23 @@ void mute_member(const char* confname, int user_id)
 		{
 			if (!strcasecmp((const char*)&(conf->name), confname))
 			{
+				ast_conf_listentry *listentry;
 				// do the biz
-				ast_rwlock_rdlock(&conf->lock);
-				member = conf->memberlist;
-				while (member)
+				ast_rwlock_rdlock(&conf->listheaders->lock);
+				for (listentry = conf->listheaders->memberlistheader.next; listentry != &conf->listheaders->memberlistheader; listentry = listentry->next)
 				  {
+					ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
 				    if (member->conf_id == user_id)
 				      {
 #if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
 						*(speaker_scoreboard + member->score_id) = '\x00';
 #endif
-					      member->mute_audio = 1;
+					      if (!member->mute_audio)
+					      {
+					      	member->mute_audio = 1;
+						remove_listentry(&member->speakerlistentry);
+						member->is_speaking = 0;
+					      }
 						manager_event(
 							EVENT_FLAG_CONF,
 							"ConferenceMemberMute",
@@ -1216,9 +1214,8 @@ void mute_member(const char* confname, int user_id)
 #endif
 						);
 				      }
-				    member = member->next;
 				  }
-				ast_rwlock_unlock(&conf->lock);
+				ast_rwlock_unlock(&conf->listheaders->lock);
 				break;
 			}
 
@@ -1232,8 +1229,6 @@ void mute_member(const char* confname, int user_id)
 #endif
 void mute_conference(const char* confname)
 {
-	ast_conf_member *member;
-
         // any conferences?
 	if (conflist)
 	{
@@ -1245,21 +1240,26 @@ void mute_conference(const char* confname)
 		// get conference
 		if  ((conf = find_conf(confname)))
 		{
+			ast_conf_listentry *listentry;
 			// do the biz
-			ast_rwlock_rdlock(&conf->lock);
-			member = conf->memberlist;
-			while (member)
+			ast_rwlock_rdlock(&conf->listheaders->lock);
+			for (listentry = conf->listheaders->memberlistheader.next; listentry != &conf->listheaders->memberlistheader; listentry = listentry->next)
 			  {
+			  	ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
 			    if (!member->ismoderator)
 			      {
 #if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
 					*(speaker_scoreboard + member->score_id) = '\x00';
 #endif
-				      member->mute_audio = 1;
+				      if (!member->mute_audio)
+				      {
+					member->mute_audio = 1;
+					remove_listentry(&member->speakerlistentry);
+					member->is_speaking = 0;
+					}
 			      }
-			    member = member->next;
 			  }
-			ast_rwlock_unlock(&conf->lock);
+			ast_rwlock_unlock(&conf->listheaders->lock);
 		}
 
 		// release mutex
@@ -1277,8 +1277,6 @@ void mute_conference(const char* confname)
 #ifdef	UNMUTE_MEMBER
 void unmute_member(const char* confname, int user_id)
 {
-  ast_conf_member *member;
-
         // any conferences?
 	if (conflist)
 	{
@@ -1292,14 +1290,19 @@ void unmute_member(const char* confname, int user_id)
 		{
 			if (!strcasecmp((const char*)&(conf->name), confname))
 			{
+				ast_conf_listentry *listentry;
 				// do the biz
-				ast_rwlock_rdlock(&conf->lock);
-				member = conf->memberlist;
-				while (member)
+				ast_rwlock_rdlock(&conf->listheaders->lock);
+				for (listentry = conf->listheaders->memberlistheader.next; listentry != &conf->listheaders->memberlistheader; listentry = listentry->next)
 				  {
+			  		ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
 				    if (member->conf_id == user_id)
 				      {
-					      member->mute_audio = 0;
+					if (member->mute_audio)
+					{
+						member->mute_audio = 0;
+						add_listentry(&conf->listheaders->speakerlistheader, &member->speakerlistentry);
+					}
 						manager_event(
 							EVENT_FLAG_CONF,
 							"ConferenceMemberUnmute",
@@ -1311,9 +1314,8 @@ void unmute_member(const char* confname, int user_id)
 #endif
 						);
 				      }
-				    member = member->next;
 				  }
-				ast_rwlock_unlock(&conf->lock);
+				ast_rwlock_unlock(&conf->listheaders->lock);
 				break;
 			}
 
@@ -1327,8 +1329,6 @@ void unmute_member(const char* confname, int user_id)
 #endif
 void unmute_conference(const char* confname)
 {
-	ast_conf_member *member;
-
         // any conferences?
 	if (conflist)
 	{
@@ -1340,18 +1340,22 @@ void unmute_conference(const char* confname)
 		// get conference
 		if ((conf = find_conf(confname)))
 		{
+			ast_conf_listentry *listentry;
 			// do the biz
-			ast_rwlock_rdlock(&conf->lock);
-			member = conf->memberlist;
-			while (member)
+			ast_rwlock_rdlock(&conf->listheaders->lock);
+			for (listentry = conf->listheaders->memberlistheader.next; listentry != &conf->listheaders->memberlistheader; listentry = listentry->next)
 			  {
+			  	ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
 			    if (!member->ismoderator)
 			      {
-				      member->mute_audio = 0;
+			      	if (member->mute_audio)
+				{
+					member->mute_audio = 0;
+					add_listentry(&conf->listheaders->speakerlistheader, &member->speakerlistentry);
+				}
 			      }
-			    member = member->next;
 			  }
-			ast_rwlock_unlock(&conf->lock);
+			ast_rwlock_unlock(&conf->listheaders->lock);
 		}
 
 		// release mutex
@@ -1552,13 +1556,13 @@ void volume(int fd, const char *conference, int up)
 	if ((conf = find_conf(conference)))
 	{
 		// acquire the conference lock
-		ast_rwlock_wrlock(&conf->lock);
+		ast_rwlock_wrlock(&conf->listheaders->lock);
 
 		// adjust volume
 		up ? conf->volume++ : conf->volume--;
 
 		// release the conference lock
-		ast_rwlock_unlock(&conf->lock);
+		ast_rwlock_unlock(&conf->listheaders->lock);
 	}
 
 	// release the conference list lock

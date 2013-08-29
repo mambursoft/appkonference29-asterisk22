@@ -393,7 +393,14 @@ char *conference_mutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_ar
 #if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
 		*(speaker_scoreboard + member->score_id) = '\x00';
 #endif
-		member->mute_audio = 1;
+		ast_rwlock_wrlock(&member->listheaders->lock);
+		if (!member->mute_audio)
+		{
+			member->mute_audio = 1;
+			remove_listentry(&member->speakerlistentry);
+			member->is_speaking = 0;
+		}
+		ast_rwlock_unlock(&member->listheaders->lock);
 
 		if (!--member->use_count && member->delete_flag)
 			ast_cond_signal (&member->delete_var);
@@ -530,7 +537,13 @@ char *conference_unmutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_
 	ast_conf_member *member = find_member(channel);
 	if (member)
 	{
-		member->mute_audio = 0;
+		ast_rwlock_wrlock(&member->listheaders->lock);
+		if (member->mute_audio)
+		{
+			member->mute_audio = 0;
+			add_listentry(&member->listheaders->speakerlistheader, &member->speakerlistentry);
+		}
+		ast_rwlock_unlock(&member->listheaders->lock);
 
 		if (!--member->use_count && member->delete_flag)
 			ast_cond_signal(&member->delete_var);

@@ -382,6 +382,9 @@ int member_exec(struct ast_channel* chan, const char* data)
 		return max_users_flag ? 0 : -1;
 	}
 
+	member->listheaders = conf->listheaders;
+	ao2_ref(conf->listheaders, +1);
+
 	// add member to channel table
 #if	ASTERISK_SRC_VERSION < 1100
 	member->bucket = &(channel_table[hash(member->chan->name) % CHANNEL_TABLE_SIZE]);
@@ -528,7 +531,7 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 		// get member control block from the free list
 		ast_mutex_lock(&mbrblocklist_lock);
 		member = mbrblocklist;
-		mbrblocklist = mbrblocklist->next;
+		mbrblocklist = mbrblocklist->nextfreeblock;
 		ast_mutex_unlock(&mbrblocklist_lock);
 #ifdef	SPEAKER_SCOREBOARD
 		score_id = member->score_id;
@@ -964,7 +967,7 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 	return member;
 }
 
-ast_conf_member* delete_member(ast_conf_member* member)
+void delete_member(ast_conf_member* member)
 {
 	ast_mutex_lock(&member->lock);
 
@@ -1038,10 +1041,6 @@ ast_conf_member* delete_member(ast_conf_member* member)
 	ast_translator_free_path(member->to_slinear);
 	ast_translator_free_path(member->from_slinear);
 
-	// get a pointer to the next
-	// member so we can return it
-	ast_conf_member* nm = member->next;
-
 	// free the member's copy of the spyee channel name
 	if (member->spyee_channel_name)
 	{
@@ -1061,16 +1060,21 @@ ast_conf_member* delete_member(ast_conf_member* member)
 		sound = next;
 	}
 
+	// decrement listheader count
+	if (member->listheaders)
+	{
+		ao2_ref(member->listheaders, -1);
+	}
+
 #ifdef	CACHE_CONTROL_BLOCKS
 	// put the member control block on the free list
 	ast_mutex_lock(&mbrblocklist_lock);
-	member->next = mbrblocklist;
+	member->nextfreeblock = mbrblocklist;
 	mbrblocklist = member;
 	ast_mutex_unlock(&mbrblocklist_lock);
 #else
 	ast_free(member);
 #endif
-	return nm;
 }
 
 //
@@ -1451,9 +1455,6 @@ void member_process_spoken_frames(ast_conference* conf,
 	{
 		// clear speaking state
 		member->is_speaking = 0;
-
-		// increment listener count
-		(*listener_count)++;
 	}
 	else
 	{
@@ -1472,7 +1473,8 @@ void member_process_spoken_frames(ast_conference* conf,
 
 		// increment speaker count
 		(*speaker_count)++;
-	}
 
-	return;
+		// decrement listener count
+		(*listener_count)--;
+	}
 }

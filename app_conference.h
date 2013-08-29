@@ -49,6 +49,7 @@
 #include <asterisk/file.h>
 #include <asterisk/cli.h>
 #include <asterisk/options.h>
+#include "asterisk/astobj2.h"
 
 #if	SILDET == 1
 #include "libwebrtc/webrtc_vad.h"
@@ -185,6 +186,7 @@ typedef struct ast_conf_member ast_conf_member;
 typedef struct ast_conf_soundq ast_conf_soundq;
 typedef struct ast_conf_frameq ast_conf_frameq;
 typedef struct conf_frame conf_frame;
+typedef struct ast_conf_listheaders ast_conf_listheaders;
 
 const char *argument_delimiter;
 
@@ -226,5 +228,31 @@ struct ast_format ast_format_slinear;
 struct ast_format ast_format_g722;
 #endif
 #endif
+
+typedef struct ast_conf_listentry
+{
+	struct ast_conf_listentry *next;
+	struct ast_conf_listentry *prev;
+} ast_conf_listentry;
+
+static inline void init_listheader(ast_conf_listentry *listheader)
+{
+	listheader->next = listheader->prev = listheader;
+}
+
+static inline void add_listentry(ast_conf_listentry *listheader, ast_conf_listentry *listentry)
+{
+	listentry->next = listheader->next;
+	listentry->prev = listheader;
+
+	listentry->next->prev = listentry;
+	listentry->prev->next = listentry;
+}
+
+static inline void remove_listentry(ast_conf_listentry *listentry)
+{
+	listentry->next->prev = listentry->prev;
+	listentry->prev->next = listentry->next;
+}
 
 #endif
