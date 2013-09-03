@@ -1582,6 +1582,7 @@ int hash(const char *name)
 	return h;
 }
 
+#ifdef	KONFERENCE_COUNT
 #if	ASTERISK_SRC_VERSION == 104
 int count_exec(struct ast_channel* chan, void* data)
 #else
@@ -1637,3 +1638,4 @@ int count_exec(struct ast_channel* chan, const char* data)
 	}
 	return res;
 }
+#endif

@@ -47,9 +47,11 @@ static char *app = "Konference";
 static char *synopsis = "Channel Independent Conference";
 static char *descrip = "Channel Independent Conference Application";
 
+#ifdef	KONFERENCE_COUNT
 static char *app2 = "KonferenceCount";
 static char *synopsis2 = "Channel Independent Conference Count";
 static char *descrip2 = "Channel Independent Conference Count Application";
+#endif
 
 #if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
 static int app_konference_main(struct ast_channel* chan, void* data)
@@ -70,6 +72,7 @@ static int app_konference_main(struct ast_channel* chan, const char* data)
 	return res;
 }
 
+#ifdef	KONFERENCE_COUNT
 #if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
 static int app_konferencecount_main(struct ast_channel* chan, void* data)
 #else
@@ -88,6 +91,7 @@ static int app_konferencecount_main(struct ast_channel* chan, const char* data)
 
 	return res;
 }
+#endif
 
 static int unload_module(void)
 {
@@ -100,7 +104,9 @@ static int unload_module(void)
 	unregister_conference_cli();
 
 	res |= ast_unregister_application(app);
+#ifdef	KONFERENCE_COUNT
 	res |= ast_unregister_application(app2);
+#endif
 
 	dealloc_conference();
 
@@ -118,7 +124,9 @@ static int load_module(void)
 	register_conference_cli();
 
 	res |= ast_register_application(app, app_konference_main, synopsis, descrip);
+#ifdef	KONFERENCE_COUNT
 	res |= ast_register_application(app2, app_konferencecount_main, synopsis2, descrip2);
+#endif
 
 	return res;
 }
