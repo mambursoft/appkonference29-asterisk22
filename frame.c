@@ -52,8 +52,6 @@ static inline void mix_slinear_frames(char *dst, const char *src, int samples)
 	{
 		((v4si *)dst)[i] = ((v4si *)dst)[i] + ((v4si *)src)[i];
 	}
-
-	return;
 }
 
 static inline void unmix_slinear_frame(char *dst, const char *src1, const char *src2, int samples)
@@ -64,8 +62,6 @@ static inline void unmix_slinear_frame(char *dst, const char *src1, const char *
 	{
 		((v4si *)dst)[i] = ((v4si *)src1)[i] - ((v4si *)src2)[i];
 	}
-
-	return;
 }
 
 #else
@@ -91,8 +87,6 @@ static void mix_slinear_frames(char *dst, const char *src, int samples)
 			((short*)dst)[i] = val;
 		}
 	}
-
-	return;
 }
 
 static void unmix_slinear_frame(char *dst, const char *src1, const char *src2, int samples)
@@ -116,8 +110,6 @@ static void unmix_slinear_frame(char *dst, const char *src1, const char *src2, i
 			((short*)dst)[i] = val;
 		}
 	}
-
-	return;
 }
 
 #endif
