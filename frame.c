@@ -499,7 +499,7 @@ conf_frame* delete_conf_frame(conf_frame* cf)
 	{
 #ifdef	CACHE_CONF_FRAMES
 		memset(cf,0,sizeof(conf_frame));
-		AST_LIST_INSERT_HEAD(&confFrameList, cf, frame_list);
+		AST_LIST_INSERT_HEAD(&confFrameList, cf, free_list);
 #else
 		ast_free(cf);
 #endif
@@ -513,7 +513,7 @@ conf_frame* create_conf_frame(ast_conf_member* member, struct ast_frame* fr)
 	conf_frame* cf;
 
 #ifdef	CACHE_CONF_FRAMES
-	cf  = AST_LIST_REMOVE_HEAD(&confFrameList, frame_list);
+	cf  = AST_LIST_REMOVE_HEAD(&confFrameList, free_list);
 	if (!cf && !(cf = ast_calloc(1, sizeof(conf_frame))))
 #else
 	if (!(cf  = ast_calloc(1, sizeof(conf_frame))))

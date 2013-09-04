@@ -526,12 +526,11 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 #ifdef	SPEAKER_SCOREBOARD
 	int score_id;
 #endif
-	if (mbrblocklist)
+	ast_mutex_lock(&mbrblocklist_lock);
+	if (!AST_LIST_EMPTY(&mbrBlockList))
 	{
 		// get member control block from the free list
-		ast_mutex_lock(&mbrblocklist_lock);
-		member = mbrblocklist;
-		mbrblocklist = mbrblocklist->nextfreeblock;
+		member  = AST_LIST_REMOVE_HEAD(&mbrBlockList, free_list);
 		ast_mutex_unlock(&mbrblocklist_lock);
 #ifdef	SPEAKER_SCOREBOARD
 		score_id = member->score_id;
@@ -540,6 +539,7 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 	}
 	else
 	{
+		ast_mutex_unlock(&mbrblocklist_lock);
 #endif
 		// allocate new member control block
 		if (!(member = ast_calloc(1,  sizeof(ast_conf_member))))
@@ -1069,8 +1069,7 @@ void delete_member(ast_conf_member* member)
 #ifdef	CACHE_CONTROL_BLOCKS
 	// put the member control block on the free list
 	ast_mutex_lock(&mbrblocklist_lock);
-	member->nextfreeblock = mbrblocklist;
-	mbrblocklist = member;
+	AST_LIST_INSERT_HEAD(&mbrBlockList, member, free_list);
 	ast_mutex_unlock(&mbrblocklist_lock);
 #else
 	ast_free(member);

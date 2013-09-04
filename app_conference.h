@@ -208,8 +208,8 @@ AST_LIST_HEAD_NOLOCK(confFrameList, conf_frame) confFrameList;
 conf_frame *silent_conf_frame;
 
 #ifdef	CACHE_CONTROL_BLOCKS
-ast_conference *confblocklist;
-ast_conf_member *mbrblocklist;
+AST_LIST_HEAD_NOLOCK(confBlockList, ast_conference) confBlockList;
+AST_LIST_HEAD_NOLOCK(mbrBlockList, ast_conf_member) mbrBlockList;
 #endif
 
 #if	ASTERISK_SRC_VERSION > 108

@@ -405,19 +405,17 @@ void dealloc_conference(void)
 #ifdef	CACHE_CONTROL_BLOCKS
 	//free conference blocks
 	ast_conference *confblock;
-	while (confblocklist)
+	while (!AST_LIST_EMPTY(&confBlockList))
 	{
-		confblock = confblocklist;
-		confblocklist = confblocklist->nextfreeblock;
+		confblock = AST_LIST_REMOVE_HEAD(&confBlockList, free_list);
 		ast_free(confblock);
 	}
 	
 	//free member blocks
 	ast_conf_member *mbrblock;
-	while (mbrblocklist)
+	while (!AST_LIST_EMPTY(&mbrBlockList))
 	{
-		mbrblock = mbrblocklist;
-		mbrblocklist = mbrblocklist->nextfreeblock;
+		mbrblock = AST_LIST_REMOVE_HEAD(&mbrBlockList, free_list);
 		ast_free(mbrblock);
 	}
 #endif
@@ -428,7 +426,7 @@ void dealloc_conference(void)
 #ifdef	CACHE_CONF_FRAMES
 	//free conf frames
 	conf_frame *cfr;
-	while ((cfr = AST_LIST_REMOVE_HEAD(&confFrameList, frame_list)))
+	while ((cfr = AST_LIST_REMOVE_HEAD(&confFrameList, free_list)))
 	{
 		ast_free(cfr);
 	}
@@ -514,11 +512,10 @@ static ast_conference* create_conf(char* name, ast_conf_member* member)
 	ast_conference *conf;
 
 #ifdef	CACHE_CONTROL_BLOCKS
-	if (confblocklist)
+	if (!AST_LIST_EMPTY(&confBlockList))
 	{
 		// get conference control block from the free list
-		conf = confblocklist;
-		confblocklist = confblocklist->nextfreeblock;
+		conf  = AST_LIST_REMOVE_HEAD(&confBlockList, free_list);
 		memset(conf,0,sizeof(ast_conference));
 	}
 	else
@@ -745,8 +742,7 @@ ast_conference *remove_conf(ast_conference *conf)
 
 #ifdef	CACHE_CONTROL_BLOCKS
 	// put the conference control block on the free list
-	conf->nextfreeblock = confblocklist;
-	confblocklist = conf;
+	AST_LIST_INSERT_HEAD(&confBlockList, conf, free_list);
 #else
 	ast_free(conf);	
 #endif

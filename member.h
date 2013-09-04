@@ -58,7 +58,7 @@ struct ast_conf_frameq
 struct ast_conf_member
 {
 #ifdef	CACHE_CONTROL_BLOCKS
-	ast_conf_member *nextfreeblock;
+	AST_LIST_ENTRY(ast_conf_member) free_list;
 #endif
 	ast_mutex_t lock; // member data mutex
 

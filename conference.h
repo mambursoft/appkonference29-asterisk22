@@ -49,7 +49,7 @@ struct ast_conf_listheaders
 struct ast_conference
 {
 #ifdef	CACHE_CONTROL_BLOCKS
-	ast_conference *nextfreeblock;
+	AST_LIST_ENTRY(ast_conference) free_list;
 #endif
 	// name
 	char name[CONF_NAME_LEN + 1];
