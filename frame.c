@@ -444,18 +444,12 @@ conf_frame* mix_multiple_speakers(
 			conf_frame *spy_frame = cf_spoken;
 
 			cf_spoken = cf_spoken->next;
-			if (cf_spoken)
-				cf_spoken->prev = NULL;
-
-			spy_frame->next = cf_sendFrames;
-			cf_sendFrames->prev = spy_frame;
-			spy_frame->prev = NULL;
 
 			spy_frame->member = spy_partner;
+			spy_frame->member->speaker_frame = spy_frame;
+			spy_frame->next = cf_sendFrames;
 
 			cf_sendFrames = spy_frame;
-
-			cf_sendFrames->member->speaker_frame = cf_sendFrames;
 		}
 	}
 
@@ -552,7 +546,6 @@ conf_frame* create_mix_frame(ast_conf_member* member, conf_frame* next, conf_fra
 	if (next)
 	{
 		(*cf)->next = next;
-		next->prev = *cf;
 	}
 
 	return *cf;

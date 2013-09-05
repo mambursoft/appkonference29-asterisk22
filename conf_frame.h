@@ -48,9 +48,8 @@ struct conf_frame
 	// who sent or gets this frame
 	ast_conf_member* member;
 
-	// linked-list pointers
+	// linked-list pointer
 	conf_frame* next;
-	conf_frame* prev;
 
 	// pointer to mixing buffer
 	char* mixed_buffer;

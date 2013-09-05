@@ -1464,7 +1464,6 @@ void member_process_spoken_frames(ast_conference* conf,
 		if (*spoken_frames)
 		{
 			cfr->next = *spoken_frames;
-			(*spoken_frames)->prev = cfr;
 		}
 
 		// point the list at the new frame
