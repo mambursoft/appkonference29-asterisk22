@@ -36,7 +36,7 @@ static struct ast_frame fr = { .frametype = AST_FRAME_VOICE,
 				.offset = AST_FRIENDLY_OFFSET,
 				.datalen = AST_CONF_FRAME_DATA_SIZE };
 
-static conf_frame cfr =  { .fr = &fr, .converted[AC_CONF_INDEX] = &fr };
+static conf_frame cfr =  { .fr = &fr, .converted[AC_CONF] = &fr };
 
 conf_frame *silent_conf_frame = &cfr;
 
@@ -127,7 +127,7 @@ conf_frame* mix_frames(ast_conference* conf, conf_frame* frames_in, int speaker_
 		ast_conf_member* mbr = NULL;
 
 		// copy orignal frame to converted array so speaker doesn't need to re-encode it
-		frames_in->converted[frames_in->member->read_format_index] = frames_in->fr;
+		frames_in->converted[frames_in->member->read_format] = frames_in->fr;
 
 		// convert frame to slinear and adjust volume; otherwise, drop both frames
 		if (!(frames_in->fr = convert_frame(frames_in->member->to_slinear, frames_in->fr, 0)))
@@ -139,23 +139,23 @@ conf_frame* mix_frames(ast_conference* conf, conf_frame* frames_in, int speaker_
 		{
 			ast_frame_adjust_volume(frames_in->fr, frames_in->talk_volume);
 #if	SILDET == 1 || SILDET == 2
-			if (frames_in->member->read_format_index != AC_CONF_INDEX && !frames_in->member->dsp)
+			if (frames_in->member->read_format != AC_CONF && !frames_in->member->dsp)
 #else
-			if (frames_in->member->read_format_index != AC_CONF_INDEX)
+			if (frames_in->member->read_format != AC_CONF)
 #endif
 				{
 #ifdef  CACHE_AST_FRAMES
-					astframe_cache_put(&frames_in->owner->incomingq.cache, frames_in->converted[frames_in->owner->read_format_index]);
+					astframe_cache_put(&frames_in->owner->incomingq.cache, frames_in->converted[frames_in->owner->read_format]);
 					frames_in->owner = NULL;
 #else
-					ast_frfree(frames_in->converted[frames_in->member->read_format_index]);
+					ast_frfree(frames_in->converted[frames_in->member->read_format]);
 #endif
-					frames_in->converted[frames_in->member->read_format_index] = NULL;
+					frames_in->converted[frames_in->member->read_format] = NULL;
 				}
 		}
 
 		// copy orignal frame to converted array so speakers doesn't need to re-encode it
-		frames_in->next->converted[frames_in->next->member->read_format_index] = frames_in->next->fr;
+		frames_in->next->converted[frames_in->next->member->read_format] = frames_in->next->fr;
 
 		// convert frame to slinear and adjust volume; otherwise, drop both frames
 		if (!(frames_in->next->fr = convert_frame(frames_in->next->member->to_slinear, frames_in->next->fr, 0)))
@@ -167,18 +167,18 @@ conf_frame* mix_frames(ast_conference* conf, conf_frame* frames_in, int speaker_
 		{
 			ast_frame_adjust_volume(frames_in->next->fr, frames_in->next->talk_volume);
 #if	SILDET == 1 || SILDET == 2
-			if (frames_in->next->member->read_format_index != AC_CONF_INDEX && !frames_in->next->member->dsp)
+			if (frames_in->next->member->read_format != AC_CONF && !frames_in->next->member->dsp)
 #else
-			if (frames_in->next->member->read_format_index != AC_CONF_INDEX)
+			if (frames_in->next->member->read_format != AC_CONF)
 #endif
 				{
 #ifdef  CACHE_AST_FRAMES
-					astframe_cache_put(&frames_in->next->owner->incomingq.cache, frames_in->next->converted[frames_in->next->owner->read_format_index]);
+					astframe_cache_put(&frames_in->next->owner->incomingq.cache, frames_in->next->converted[frames_in->next->owner->read_format]);
 					frames_in->next->owner = NULL;
 #else
-					ast_frfree(frames_in->next->converted[frames_in->next->member->read_format_index]);
+					ast_frfree(frames_in->next->converted[frames_in->next->member->read_format]);
 #endif
-					frames_in->next->converted[frames_in->next->member->read_format_index] = NULL;
+					frames_in->next->converted[frames_in->next->member->read_format] = NULL;
 				}
 		}
 
@@ -206,7 +206,7 @@ conf_frame* mix_single_speaker(ast_conference* conf, conf_frame* frames_in)
 	//
 
 	// copy orignal frame to converted array so listeners don't need to re-encode it
-	frames_in->converted[frames_in->member->read_format_index] = frames_in->fr;
+	frames_in->converted[frames_in->member->read_format] = frames_in->fr;
 
 	// convert frame to slinear; otherwise, drop the frame
 	if (!(frames_in->fr = convert_frame(frames_in->member->to_slinear, frames_in->fr, 0)))
@@ -219,18 +219,18 @@ conf_frame* mix_single_speaker(ast_conference* conf, conf_frame* frames_in)
 	{
 		ast_frame_adjust_volume(frames_in->fr, frames_in->talk_volume);
 #if	SILDET == 1 || SILDET == 2
-		if (frames_in->member->read_format_index != AC_CONF_INDEX && !frames_in->member->dsp)
+		if (frames_in->member->read_format != AC_CONF && !frames_in->member->dsp)
 #else
-		if (frames_in->member->read_format_index != AC_CONF_INDEX)
+		if (frames_in->member->read_format != AC_CONF)
 #endif
 		{
 #ifdef  CACHE_AST_FRAMES
-			astframe_cache_put(&frames_in->owner->incomingq.cache, frames_in->converted[frames_in->owner->read_format_index]);
+			astframe_cache_put(&frames_in->owner->incomingq.cache, frames_in->converted[frames_in->owner->read_format]);
 			frames_in->owner = NULL;
 #else
-			ast_frfree(frames_in->converted[frames_in->member->read_format_index]);
+			ast_frfree(frames_in->converted[frames_in->member->read_format]);
 #endif
-			frames_in->converted[frames_in->member->read_format_index] = NULL;
+			frames_in->converted[frames_in->member->read_format] = NULL;
 		}
 	}
 
@@ -282,7 +282,7 @@ conf_frame* mix_multiple_speakers(
 	while (cf_spoken)
 	{
 		// copy orignal frame to converted array so spyers don't need to re-encode it
-		cf_spoken->converted[cf_spoken->member->read_format_index] = cf_spoken->fr;
+		cf_spoken->converted[cf_spoken->member->read_format] = cf_spoken->fr;
 
 		if (!(cf_spoken->fr = convert_frame(cf_spoken->member->to_slinear, cf_spoken->fr, 0)))
 		{
@@ -294,18 +294,18 @@ conf_frame* mix_multiple_speakers(
 		{
 			ast_frame_adjust_volume(cf_spoken->fr, cf_spoken->member->talk_volume + conf->volume);
 #if	SILDET == 1 || SILDET == 2
-			if (cf_spoken->member->read_format_index != AC_CONF_INDEX && !cf_spoken->member->dsp)
+			if (cf_spoken->member->read_format != AC_CONF && !cf_spoken->member->dsp)
 #else
-			if (cf_spoken->member->read_format_index != AC_CONF_INDEX)
+			if (cf_spoken->member->read_format != AC_CONF)
 #endif
 			{
 #ifdef  CACHE_AST_FRAMES
-				astframe_cache_put(&cf_spoken->owner->incomingq.cache, cf_spoken->converted[cf_spoken->owner->read_format_index]);
+				astframe_cache_put(&cf_spoken->owner->incomingq.cache, cf_spoken->converted[cf_spoken->owner->read_format]);
 				cf_spoken->owner = NULL;
 #else
-				ast_frfree(cf_spoken->converted[cf_spoken->member->read_format_index]);
+				ast_frfree(cf_spoken->converted[cf_spoken->member->read_format]);
 #endif
-				cf_spoken->converted[cf_spoken->member->read_format_index] = NULL;
+				cf_spoken->converted[cf_spoken->member->read_format] = NULL;
 			}
 		}
 
@@ -469,10 +469,10 @@ conf_frame* delete_conf_frame(conf_frame* cf)
 #ifdef	CACHE_AST_FRAMES
 	if (cf->owner)
 	{
-		astframe_cache_put(&cf->owner->incomingq.cache, cf->converted[cf->owner->read_format_index]);
-		if (cf->owner->read_format_index != AC_CONF_INDEX)
+		astframe_cache_put(&cf->owner->incomingq.cache, cf->converted[cf->owner->read_format]);
+		if (cf->owner->read_format != AC_CONF)
 		{
-			cf->converted[cf->owner->read_format_index] = NULL;
+			cf->converted[cf->owner->read_format] = NULL;
 			ast_frfree(cf->fr);
 		}
 	}

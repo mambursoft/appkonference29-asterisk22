@@ -165,9 +165,9 @@ struct ast_conf_member
 	int ignore_vad_result;
 #endif
 
-	// audio format this member is using
-	int write_format_index;
-	int read_format_index;
+	// audio formats
+	ac_formats write_format;
+	ac_formats read_format;
 #ifdef	CACHE_AST_FRAMES
 	// packet size for this audio format
 	int pkt_size;

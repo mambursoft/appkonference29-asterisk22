@@ -147,27 +147,27 @@
 //
 // format translation values
 //
-	enum { 
-		AC_CONF_INDEX = 0,
-		AC_ULAW_INDEX,
+typedef	enum { 
+		AC_CONF = 0,
+		AC_ULAW,
 #ifdef	AC_USE_ALAW
-		AC_ALAW_INDEX,
+		AC_ALAW,
 #endif
 #ifdef	AC_USE_GSM
-		AC_GSM_INDEX,
+		AC_GSM,
 #endif
 #ifdef	AC_USE_SPEEX
-		AC_SPEEX_INDEX,
+		AC_SPEEX,
 #endif
 #ifdef	AC_USE_G729A
-		AC_G729A_INDEX,
+		AC_G729A,
 #endif
 #ifdef	AC_USE_G722
-		AC_SLINEAR_INDEX,
-		AC_G722_INDEX,
+		AC_SLINEAR,
+		AC_G722,
 #endif
 		AC_SUPPORTED_FORMATS
-		};
+		} ac_formats;
 
 //
 // Default conference max users is zero, that is, unbounded

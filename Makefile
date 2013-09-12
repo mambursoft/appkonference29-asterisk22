@@ -145,15 +145,15 @@ else
 #
 
 #
-# Uncomment this if you want G.729A (need to have the actual codec installed)
-#
-# CPPFLAGS += -DAC_USE_G729A
-#
-
-#
 # Uncomment this if you want SPEEX (need to have the actual codec installed)
 #
 # CPPFLAGS += -DAC_USE_SPEEX
+#
+
+#
+# Uncomment this if you want G.729A (need to have the actual codec installed)
+#
+# CPPFLAGS += -DAC_USE_G729A
 #
 
 #

@@ -842,38 +842,38 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 #endif
 	{
 		case AST_FORMAT_CONFERENCE:
-			member->write_format_index = AC_CONF_INDEX;
+			member->write_format = AC_CONF;
 			break;
 
 		case AST_FORMAT_ULAW:
-			member->write_format_index = AC_ULAW_INDEX;
+			member->write_format = AC_ULAW;
 			break;
 #ifdef  AC_USE_ALAW
 	        case AST_FORMAT_ALAW:
-			member->write_format_index = AC_ALAW_INDEX;
+			member->write_format = AC_ALAW;
 			break;
 #endif
 #ifdef	AC_USE_GSM
 		case AST_FORMAT_GSM:
-			member->write_format_index = AC_GSM_INDEX;
+			member->write_format = AC_GSM;
 			break;
 #endif
 #ifdef	AC_USE_SPEEX
 		case AST_FORMAT_SPEEX:
-			member->write_format_index = AC_SPEEX_INDEX;
+			member->write_format = AC_SPEEX;
 			break;
 #endif
 #ifdef AC_USE_G729A
 		case AST_FORMAT_G729A:
-			member->write_format_index = AC_G729A_INDEX;
+			member->write_format = AC_G729A;
 			break;
 #endif
 #ifdef AC_USE_G722
 		case AST_FORMAT_SLINEAR:
-			member->write_format_index = AC_SLINEAR_INDEX;
+			member->write_format = AC_SLINEAR;
 			break;
 		case AST_FORMAT_G722:
-			member->write_format_index = AC_G722_INDEX;
+			member->write_format = AC_G722;
 			break;
 #endif
 		default:
@@ -905,14 +905,14 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 #endif
 	{
 		case AST_FORMAT_CONFERENCE:
-			member->read_format_index = AC_CONF_INDEX;
+			member->read_format = AC_CONF;
 #ifdef	CACHE_AST_FRAMES
 			member->pkt_size = 320;
 #endif
 			break;
 
 		case AST_FORMAT_ULAW:
-			member->read_format_index = AC_ULAW_INDEX;
+			member->read_format = AC_ULAW;
 #ifdef	CACHE_AST_FRAMES
 #if	SILDET == 1 || SILDET == 2
 			member->pkt_size = !member->dsp ? 160 : 320;
@@ -923,7 +923,7 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 			break;
 #ifdef  AC_USE_ALAW
 		case AST_FORMAT_ALAW:
-			member->read_format_index = AC_ALAW_INDEX;
+			member->read_format = AC_ALAW;
 #ifdef	CACHE_AST_FRAMES
 #if	SILDET == 1 || SILDET == 2
 			member->pkt_size = !member->dsp ? 160 : 320;
@@ -935,25 +935,25 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 #endif
 #ifdef	AC_USE_GSM
 		case AST_FORMAT_GSM:
-			member->read_format_index = AC_GSM_INDEX;
+			member->read_format = AC_GSM;
 			break;
 #endif
 #ifdef	AC_USE_SPEEX
 		case AST_FORMAT_SPEEX:
-			member->read_format_index = AC_SPEEX_INDEX;
+			member->read_format = AC_SPEEX;
 			break;
 #endif
 #ifdef AC_USE_G729A
 		case AST_FORMAT_G729A:
-			member->read_format_index = AC_G729A_INDEX;
+			member->read_format = AC_G729A;
 			break;
 #endif
 #ifdef AC_USE_G722
 		case AST_FORMAT_SLINEAR:
-			member->read_format_index = AC_SLINEAR_INDEX;
+			member->read_format = AC_SLINEAR;
 			break;
 		case AST_FORMAT_G722:
-			member->read_format_index = AC_G722_INDEX;
+			member->read_format = AC_G722;
 			break;
 #endif
 		default:
@@ -1253,7 +1253,7 @@ void queue_frame_for_listener(
 	if (frame)
 	{
 		// try for a pre-converted frame; otherwise, convert (and store) the frame
-		if ((qf = frame->converted[member->write_format_index]) && !member->listen_volume)
+		if ((qf = frame->converted[member->write_format]) && !member->listen_volume)
 		{
 			queue_outgoing_frame(member, qf, conf->delivery_time);
 		}
@@ -1262,9 +1262,9 @@ void queue_frame_for_listener(
 			if (!member->listen_volume)
 			{
 				// convert using the conference's translation path
-				qf = convert_frame(conf->from_slinear_paths[member->write_format_index], frame->fr, 0);
+				qf = convert_frame(conf->from_slinear_paths[member->write_format], frame->fr, 0);
 
-				frame->converted[member->write_format_index] = qf;
+				frame->converted[member->write_format] = qf;
 
 				queue_outgoing_frame(member, qf, conf->delivery_time);
 			}
@@ -1273,14 +1273,14 @@ void queue_frame_for_listener(
 				ast_frame_adjust_volume(frame->fr, member->listen_volume);
 
 				// convert using the conference's translation path
-				qf = convert_frame(conf->from_slinear_paths[member->write_format_index], frame->fr, 0);
+				qf = convert_frame(conf->from_slinear_paths[member->write_format], frame->fr, 0);
 
 				ast_frame_adjust_volume(frame->fr, -member->listen_volume);
 
 				queue_outgoing_frame(member, qf, conf->delivery_time);
 
 				// free frame (the translator's copy)
-				if (conf->from_slinear_paths[member->write_format_index])
+				if (conf->from_slinear_paths[member->write_format])
 					ast_frfree(qf);
 			}
 		}
@@ -1303,7 +1303,7 @@ void queue_frame_for_speaker(
 	if (frame)
 	{
 		// try for a pre-converted frame; otherwise, convert the frame
-		if ((qf = frame->converted[member->write_format_index]) && !member->listen_volume)
+		if ((qf = frame->converted[member->write_format]) && !member->listen_volume)
 		{
 			queue_outgoing_frame(member, qf, conf->delivery_time);
 		}
@@ -1339,7 +1339,7 @@ void queue_silent_frame(
 )
 {
 	// get the appropriate silent frame
-	struct ast_frame* qf = silent_conf_frame->converted[member->write_format_index];
+	struct ast_frame* qf = silent_conf_frame->converted[member->write_format];
 
 	if (!qf)
 	{
@@ -1362,7 +1362,7 @@ void queue_silent_frame(
 				qf = ast_frisolate(qf);
 
 				// cache the new, isolated frame
-				silent_conf_frame->converted[member->write_format_index] = qf;
+				silent_conf_frame->converted[member->write_format] = qf;
 			}
 
 			ast_translator_free_path(trans);
