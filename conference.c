@@ -77,7 +77,7 @@ static int conference_count;
 // Forward function declarations
 static ast_conference* find_conf(const char* name);
 static ast_conference* create_conf(char* name, ast_conf_member* member);
-static ast_conference* remove_conf(ast_conference* conf);
+static void remove_conf(ast_conference **conf);
 static void add_member(ast_conf_member* member, ast_conference* conf);
 
 static void destroy_conf_listheaders(void *obj)
@@ -108,11 +108,6 @@ static void conference_exec()
 
 	// set base timestamps
 	base = tf_base = ast_tvnow();
-
-	// current conference
-	ast_conference *conf = NULL;
-	// last conference list
-	ast_conference *lastconflist = NULL;
 
 	//
 	// conference thread loop
@@ -220,45 +215,35 @@ static void conference_exec()
 		base = ast_tvadd(base, epoch);
 
 		// get the first entry
-		if (!ast_mutex_trylock(&conflist_lock))
-		{
-			conf = lastconflist = conflist;
-			ast_mutex_unlock(&conflist_lock);
-		}
-		else
-		{
-			conf  = lastconflist;
-		}
+		ast_conference *conflisthead = conflist;
+		ast_conference **conf  = &conflisthead;
 
-		while (conf)
+		while (*conf)
 		{
 			// acquire the conference lock
-			ast_rwlock_rdlock(&conf->listheaders->lock);
+			ast_rwlock_rdlock(&(*conf)->listheaders->lock);
 
 			//
 			// check if the conference is empty and if so
 			// remove it and continue to the next conference
 			//
 
-			if (!conf->membercount)
+			if (!(*conf)->membercount)
 			{
-				if (ast_mutex_trylock(&conflist_lock))
+				int res;
+				if ((res = ast_mutex_trylock(&conflist_lock)) || conflisthead != conflist)
 				{
-					ast_rwlock_unlock(&conf->listheaders->lock);
+					if (!res) ast_mutex_unlock(&conflist_lock);
+
+					ast_rwlock_unlock(&(*conf)->listheaders->lock);
 
 					// get the next conference
-					conf = conf->next;
+					conf = &(*conf)->next;
 
 					continue;
 				}
 
-				conf = remove_conf(conf);
-
-				if (conf == conflist)
-				{
-					// update last conference list
-					lastconflist = conf;
-				}
+				remove_conf(conf);
 
 				if (!conference_count)
 				{
@@ -289,34 +274,34 @@ static void conference_exec()
 			ast_conf_listentry *listentry;
 
 			// update the current delivery time
-			conf->delivery_time = base;
+			(*conf)->delivery_time = base;
 
 			// reset speaker and listener count
 			int speaker_count = 0;
-			int listener_count = conf->membercount;
+			int listener_count = (*conf)->membercount;
 
 			// reset listener frame
-			conf->listener_frame = NULL;
+			(*conf)->listener_frame = NULL;
 
 			// reset pointer lists
 			conf_frame *spoken_frames = NULL;
 
 			// loop over member list and retrieve incoming frames
-			for (listentry = conf->listheaders->speakerlistheader.next; listentry != &conf->listheaders->speakerlistheader; listentry = listentry->next)
+			for (listentry = (*conf)->listheaders->speakerlistheader.next; listentry != &(*conf)->listheaders->speakerlistheader; listentry = listentry->next)
 			{
 				ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, speakerlistentry));
-				member_process_spoken_frames(conf,member,&spoken_frames,
+				member_process_spoken_frames(*conf,member,&spoken_frames,
 							     &listener_count, &speaker_count);
 			}
 
 			// mix incoming frames and get batch of outgoing frames
-			conf_frame *send_frames = spoken_frames ? mix_frames(conf, spoken_frames, speaker_count, listener_count) : NULL;
+			conf_frame *send_frames = spoken_frames ? mix_frames(*conf, spoken_frames, speaker_count, listener_count) : NULL;
 
 			// loop over member list and send outgoing frames
-			for (listentry = conf->listheaders->memberlistheader.next; listentry != &conf->listheaders->memberlistheader; listentry = listentry->next)
+			for (listentry = (*conf)->listheaders->memberlistheader.next; listentry != &(*conf)->listheaders->memberlistheader; listentry = listentry->next)
 			{
 				ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
-				member_process_outgoing_frames(conf, member);
+				member_process_outgoing_frames(*conf, member);
 			}
 
 			// delete send frames
@@ -329,10 +314,10 @@ static void conference_exec()
 			}
 
 			// release conference lock
-			ast_rwlock_unlock(&conf->listheaders->lock);
+			ast_rwlock_unlock(&(*conf)->listheaders->lock);
 
 			// get the next conference
-			conf = conf->next;
+			conf = &(*conf)->next;
 		}
 #if	defined(TIMERFD) || defined(KQUEUE)
 		}
@@ -671,12 +656,6 @@ static ast_conference* create_conf(char* name, ast_conf_member* member)
 	// add the initial member
 	add_member(member, conf);
 
-	// prepend new conference to conflist
-	if (conflist)
-		conflist->prev = conf;
-	conf->next = conflist;
-	conflist = conf;
-
 	// add member to channel table
 	conf->bucket = &(conference_table[hash(conf->name) % CONFERENCE_TABLE_SIZE]);
 
@@ -687,70 +666,63 @@ static ast_conference* create_conf(char* name, ast_conf_member* member)
 	// count new conference
 	++conference_count;
 
+	// add conference to conflist
+	conf->next = conflist;
+	conflist = conf;
+
 	return conf;
 }
 
 //This function should be called with conflist_lock and conf->lock held
-ast_conference *remove_conf(ast_conference *conf)
+void remove_conf(ast_conference **conf)
 {
-
-	ast_conference *conf_temp;
-
 	//
 	// do some frame clean up
 	//
-
 	int c;
 	for (c = 0; c < AC_SUPPORTED_FORMATS; ++c)
 	{
 		// free the translation paths
-		if (conf->from_slinear_paths[c])
+		if ((*conf)->from_slinear_paths[c])
 		{
-			ast_translator_free_path(conf->from_slinear_paths[c]);
+			ast_translator_free_path((*conf)->from_slinear_paths[c]);
 		}
 	}
 
 	// speaker frames
-	if (conf->mixAstFrame)
+	if ((*conf)->mixAstFrame)
 	{
-		ast_free(conf->mixAstFrame);
+		ast_free((*conf)->mixAstFrame);
 	}
-	if (conf->mixConfFrame)
+	if ((*conf)->mixConfFrame)
 	{
-		ast_free(conf->mixConfFrame);
+		ast_free((*conf)->mixConfFrame);
 	}
 
-	AST_LIST_LOCK(conf->bucket);
-	AST_LIST_REMOVE(conf->bucket, conf, hash_entry);
-	AST_LIST_UNLOCK(conf->bucket);
+	AST_LIST_LOCK((*conf)->bucket);
+	AST_LIST_REMOVE((*conf)->bucket, *conf, hash_entry);
+	AST_LIST_UNLOCK((*conf)->bucket);
 
 	// unlock and destroy read/write lock
-	ast_rwlock_unlock(&conf->listheaders->lock);
-
-	conf_temp = conf->next;
-
-	if (conf->prev)
-		conf->prev->next = conf->next;
-
-	if (conf->next)
-		conf->next->prev = conf->prev;
-
-	if (conf == conflist)
-		conflist = conf_temp;
+	ast_rwlock_unlock(&(*conf)->listheaders->lock);
 	
-	ao2_ref(conf->listheaders, -1);
+	ao2_ref((*conf)->listheaders, -1);
 
-#ifdef	CACHE_CONTROL_BLOCKS
-	// put the conference control block on the free list
-	AST_LIST_INSERT_HEAD(&confBlockList, conf, free_list);
-#else
-	ast_free(conf);	
-#endif
+	ast_conference *conf_temp = *conf;
+	*conf = conf_temp->next;
+
+	if (conf_temp == conflist)
+		conflist = *conf;
+
 	// update conference count
 	--conference_count;
 
-	return conf_temp;
-
+#ifdef	CACHE_CONTROL_BLOCKS
+	// put the conference control block on the free list
+	AST_LIST_INSERT_HEAD(&confBlockList, conf_temp, free_list);
+#else
+	ast_free(conf_temp);	
+#endif
 }
 
 void end_conference(const char *name)

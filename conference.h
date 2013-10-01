@@ -72,9 +72,8 @@ struct ast_conference
 	// conference listheaders
 	ast_conf_listheaders *listheaders;
 
-	// pointers to conference in doubly-linked list
+	// conference list pointer
 	ast_conference* next;
-	ast_conference* prev;
 
 	// pointer to conference's bucket list head
 	struct conference_bucket *bucket;
