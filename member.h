@@ -132,6 +132,8 @@ struct ast_conf_member
 	ast_conf_member* spy_partner;
 	// spyee pointer to whisper frame
 	conf_frame* whisper_frame;
+	// speaker frame list entry
+	AST_LIST_ENTRY(ast_conf_member) speaker_frame_list_entry;
 
 	// start time
 	struct timeval time_entered;

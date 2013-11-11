@@ -307,8 +307,11 @@ static void conference_exec()
 			// delete send frames
 			while (send_frames)
 			{
-				if (send_frames->member)
-					send_frames->member->speaker_frame = NULL; // reset speaker frame
+				ast_conf_member *entry;
+				AST_LIST_TRAVERSE(&send_frames->speaker_frame_list_head, entry, speaker_frame_list_entry)
+				{
+					entry->speaker_frame = NULL; // reset speaker frame
+				}
 
 				send_frames = delete_conf_frame(send_frames);
 			}

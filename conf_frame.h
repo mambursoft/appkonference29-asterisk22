@@ -35,6 +35,10 @@ struct conf_frame
 	// pointer to next frame in cache
 	AST_LIST_ENTRY(conf_frame) free_list;
 #endif
+
+	// list of speakers receiving this frame
+	AST_LIST_HEAD_NOLOCK(, ast_conf_member) speaker_frame_list_head;
+
 	// frame audio data
 	struct ast_frame* fr;
 

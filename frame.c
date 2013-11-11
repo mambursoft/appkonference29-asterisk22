@@ -188,7 +188,10 @@ conf_frame* mix_frames(ast_conference* conf, conf_frame* frames_in, int speaker_
 		frames_in->next->member = mbr;
 
 		frames_in->member->speaker_frame = frames_in;
+		AST_LIST_INSERT_HEAD(&frames_in->speaker_frame_list_head, frames_in->member, speaker_frame_list_entry);
+
 		frames_in->next->member->speaker_frame = frames_in->next;
+		AST_LIST_INSERT_HEAD(&frames_in->next->speaker_frame_list_head, frames_in->next->member, speaker_frame_list_entry);
 
 		return frames_in;
 	}
@@ -250,12 +253,16 @@ conf_frame* mix_single_speaker(ast_conference* conf, conf_frame* frames_in)
 			frames_in->member = frames_in->member->spy_partner;
 
 			frames_in->member->speaker_frame = conf->listener_frame = frames_in;
+
+			AST_LIST_INSERT_HEAD(&frames_in->speaker_frame_list_head, frames_in->member, speaker_frame_list_entry);
 		}
 		else
 		{
 			frames_in->member = frames_in->member->spy_partner;
 
 			frames_in->member->speaker_frame = frames_in;
+
+			AST_LIST_INSERT_HEAD(&frames_in->speaker_frame_list_head, frames_in->member, speaker_frame_list_entry);
 		}
 	}
 
@@ -373,6 +380,8 @@ conf_frame* mix_multiple_speakers(
 				return NULL;
 
 			cf_sendFrames->member->speaker_frame = cf_sendFrames;
+
+			AST_LIST_INSERT_HEAD(&cf_sendFrames->speaker_frame_list_head, cf_sendFrames->member, speaker_frame_list_entry);
 		}
 		else if (!cf_spoken->member->spy_partner->is_speaking)
 		{
@@ -399,6 +408,8 @@ conf_frame* mix_multiple_speakers(
 				return NULL;
 
 			cf_sendFrames->member->speaker_frame = cf_sendFrames;
+
+			AST_LIST_INSERT_HEAD(&cf_sendFrames->speaker_frame_list_head, cf_sendFrames->member, speaker_frame_list_entry);
 		}
 
 		cf_spoken = cf_spoken->next;
@@ -447,6 +458,9 @@ conf_frame* mix_multiple_speakers(
 
 			spy_frame->member = spy_partner;
 			spy_frame->member->speaker_frame = spy_frame;
+
+			AST_LIST_INSERT_HEAD(&spy_frame->speaker_frame_list_head, spy_frame->member, speaker_frame_list_entry);
+
 			spy_frame->next = cf_sendFrames;
 
 			cf_sendFrames = spy_frame;
