@@ -775,10 +775,10 @@ static void add_member(ast_conf_member *member, ast_conference *conf)
 
 		if (spyee)
 		{
-			if (!spyee->spy_partner && spyee->conf == conf)
+			if (!spyee->spyee_channel_name && spyee != member && spyee->conf == conf)
 			{
-				spyee->spy_partner = member;
-				member->spy_partner = spyee;
+				AST_LIST_INSERT_HEAD(&spyee->spy_list.head, member, spy_list.entry);
+				AST_LIST_INSERT_HEAD(&member->spy_list.head, spyee, spy_list.entry);
 			}
 
 			if (!--spyee->use_count && spyee->delete_flag)
@@ -850,16 +850,40 @@ void remove_member(ast_conf_member* member, ast_conference* conf, char* conf_nam
 	}
 
 	// if spying sever connection to spyee
-	if (member->spy_partner)
+	if (!AST_LIST_EMPTY(&member->spy_list.head))
 	{
+		ast_conf_member *entry;
 		if (member->spyee_channel_name)
 		{
-			member->spy_partner->spy_partner = NULL;
+			ast_conf_member *spyee = AST_LIST_REMOVE_HEAD(&member->spy_list.head, spy_list.entry);
+			AST_LIST_TRAVERSE_SAFE_BEGIN(&spyee->spy_list.head, entry, spy_list.entry)
+			{
+				if (member == entry)
+				{
+#if	ASTERISK_SRC_VERSION == 104
+					AST_LIST_REMOVE_CURRENT(&spyee->spy_list.head, spy_list.entry);
+#else
+					AST_LIST_REMOVE_CURRENT(spy_list.entry);
+#endif
+					break;
+				}
+			}
+			AST_LIST_TRAVERSE_SAFE_END
 		}
 		else
 		{
-			member->spy_partner->kick_flag = 1;
-			ast_queue_frame(member->spy_partner->chan, &ast_null_frame);
+			AST_LIST_TRAVERSE_SAFE_BEGIN(&member->spy_list.head, entry, spy_list.entry)
+			{
+				AST_LIST_REMOVE_HEAD(&entry->spy_list.head, spy_list.entry);
+				entry->kick_flag = 1;
+				ast_queue_frame(entry->chan, &ast_null_frame);
+#if	ASTERISK_SRC_VERSION == 104
+				AST_LIST_REMOVE_CURRENT(&member->spy_list.head, spy_list.entry);
+#else
+				AST_LIST_REMOVE_CURRENT(spy_list.entry);
+#endif
+			}
+			AST_LIST_TRAVERSE_SAFE_END
 		}
 	}
 
@@ -987,8 +1011,8 @@ void list_members(int fd, const char *name)
 				{
 					member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
 					snprintf(volume_str, 10, "%d:%d", member->talk_volume, member->listen_volume);
-					if (member->spyee_channel_name && member->spy_partner)
-						snprintf(spy_str, 10, "%d", member->spy_partner->conf_id);
+					if (member->spyee_channel_name && !AST_LIST_EMPTY(&member->spy_list.head))
+						snprintf(spy_str, 10, "%d", AST_LIST_FIRST(&member->spy_list.head)->conf_id);
 					else
 						strcpy(spy_str , "*");
 					duration = (int)(ast_tvdiff_ms(ast_tvnow(),member->time_entered) / 1000);
@@ -1045,8 +1069,8 @@ void list_all(int fd)
 			{
 				member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
 				snprintf(volume_str, 10, "%d:%d", member->talk_volume, member->listen_volume);
-				if (member->spyee_channel_name && member->spy_partner)
-					snprintf(spy_str, 10, "%d", member->spy_partner->conf_id);
+				if (member->spyee_channel_name && !AST_LIST_EMPTY(&member->spy_list.head))
+					snprintf(spy_str, 10, "%d", AST_LIST_FIRST(&member->spy_list.head)->conf_id);
 				else
 					strcpy(spy_str , "*");
 				duration = (int)(ast_tvdiff_ms(ast_tvnow(),member->time_entered) / 1000);

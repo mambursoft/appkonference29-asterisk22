@@ -187,6 +187,7 @@ typedef struct ast_conf_soundq ast_conf_soundq;
 typedef struct ast_conf_frameq ast_conf_frameq;
 typedef struct conf_frame conf_frame;
 typedef struct ast_conf_listheaders ast_conf_listheaders;
+typedef struct spy_list spy_list;
 
 const char *argument_delimiter;
 

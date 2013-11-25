@@ -55,6 +55,12 @@ struct ast_conf_frameq
 #endif
 };
 
+struct spy_list
+{
+	AST_LIST_HEAD_NOLOCK(, ast_conf_member) head;
+	AST_LIST_ENTRY(ast_conf_member) entry;
+};
+
 struct ast_conf_member
 {
 #ifdef	CACHE_CONTROL_BLOCKS
@@ -128,8 +134,8 @@ struct ast_conf_member
 	// list entry for member's bucket list
 	AST_LIST_ENTRY(ast_conf_member) hash_entry;
 
-	// spyer pointer to spyee or vice versa
-	ast_conf_member* spy_partner;
+	// spyer pointer to spyee list or vice versa
+	spy_list spy_list;
 	// spyee pointer to whisper frame
 	conf_frame* whisper_frame;
 	// speaker frame list entry

@@ -237,7 +237,7 @@ conf_frame* mix_single_speaker(ast_conference* conf, conf_frame* frames_in)
 		}
 	}
 
-	if (!frames_in->member->spy_partner)
+	if (AST_LIST_EMPTY(&frames_in->member->spy_list.head))
 	{
 		// speaker is neither a spyee nor a spyer
 
@@ -250,15 +250,18 @@ conf_frame* mix_single_speaker(ast_conference* conf, conf_frame* frames_in)
 		// speaker is either a spyee or a spyer
 		if (!frames_in->member->spyee_channel_name)
 		{
-			frames_in->member = frames_in->member->spy_partner;
+			ast_conf_member *entry;
+			AST_LIST_TRAVERSE(&frames_in->member->spy_list.head, entry, spy_list.entry)
+			{
+				entry->speaker_frame = frames_in;
+				AST_LIST_INSERT_HEAD(&frames_in->speaker_frame_list_head, entry, speaker_frame_list_entry);
+			}
 
-			frames_in->member->speaker_frame = conf->listener_frame = frames_in;
-
-			AST_LIST_INSERT_HEAD(&frames_in->speaker_frame_list_head, frames_in->member, speaker_frame_list_entry);
+			conf->listener_frame = frames_in;
 		}
 		else
 		{
-			frames_in->member = frames_in->member->spy_partner;
+			frames_in->member = AST_LIST_FIRST(&frames_in->member->spy_list.head);
 
 			frames_in->member->speaker_frame = frames_in;
 
@@ -327,7 +330,19 @@ conf_frame* mix_multiple_speakers(
 		} 
 		else
 		{
-			cf_spoken->member->spy_partner->whisper_frame = cf_spoken;
+			ast_conf_member *spyee = AST_LIST_FIRST(&cf_spoken->member->spy_list.head);
+			if (!spyee->whisper_frame)
+			{
+				spyee->whisper_frame = cf_spoken;
+			}
+			else
+			{
+#if     ASTERISK_SRC_VERSION == 104
+				mix_slinear_frames(spyee->whisper_frame->fr->data, cf_spoken->fr->data, AST_CONF_BLOCK_SAMPLES);
+#else
+				mix_slinear_frames(spyee->whisper_frame->fr->data.ptr, cf_spoken->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
+#endif
+			}
 		}
 
 		cf_spoken = cf_spoken->next;
@@ -365,15 +380,15 @@ conf_frame* mix_multiple_speakers(
 #else
 			unmix_slinear_frame(cf_sendFrames->mixed_buffer, conf->listenerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
 #endif
-
-			if (cf_spoken->member->spy_partner && cf_spoken->member->spy_partner->is_speaking)
+			// add whisper voice
+			if (cf_spoken->member->whisper_frame)
 			{
-				// add whisper voice
 #if	ASTERISK_SRC_VERSION == 104
 				mix_slinear_frames(cf_sendFrames->mixed_buffer, cf_spoken->member->whisper_frame->fr->data, AST_CONF_BLOCK_SAMPLES);
 #else
 				mix_slinear_frames(cf_sendFrames->mixed_buffer, cf_spoken->member->whisper_frame->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
 #endif
+				cf_spoken->member->whisper_frame = NULL; // reset whisper frame
 			}
 
 			if (!(cf_sendFrames->fr = create_slinear_frame(&cf_sendFrames->member->mixAstFrame, cf_sendFrames->mixed_buffer)))
@@ -383,33 +398,43 @@ conf_frame* mix_multiple_speakers(
 
 			AST_LIST_INSERT_HEAD(&cf_sendFrames->speaker_frame_list_head, cf_sendFrames->member, speaker_frame_list_entry);
 		}
-		else if (!cf_spoken->member->spy_partner->is_speaking)
+		else if (!AST_LIST_FIRST(&cf_spoken->member->spy_list.head)->is_speaking)
 		{
-			// allocate/reuse a mix buffer for whisper
-			if (!cf_spoken->member->speakerBuffer)
-				cf_spoken->member->speakerBuffer = ast_malloc(AST_CONF_BUFFER_SIZE);
+			ast_conf_member *spyee = AST_LIST_FIRST(&cf_spoken->member->spy_list.head);
+			conf_frame *whisper_frame = spyee->whisper_frame;
 
-			// copy listener buffer for whisper
-			memcpy(cf_spoken->member->speakerBuffer,conf->listenerBuffer,AST_CONF_BUFFER_SIZE);
+			// add whisper voice
+			if (whisper_frame)
+			{
+				// reset whisper frame
+				spyee->whisper_frame = NULL;
 
-			if (!(cf_sendFrames = create_mix_frame(cf_spoken->member->spy_partner, cf_sendFrames, &cf_spoken->member->mixConfFrame)))
-				return NULL;
+				// allocate/reuse a mix buffer for whisper
+				if (!cf_spoken->member->speakerBuffer)
+					cf_spoken->member->speakerBuffer = ast_malloc(AST_CONF_BUFFER_SIZE);
 
-			cf_sendFrames->mixed_buffer = cf_spoken->member->speakerBuffer + AST_FRIENDLY_OFFSET;
+				// copy listener buffer for whisper
+				memcpy(cf_spoken->member->speakerBuffer,conf->listenerBuffer,AST_CONF_BUFFER_SIZE);
 
-			// add the whisper voice
+				if (!(cf_sendFrames = create_mix_frame(AST_LIST_FIRST(&cf_spoken->member->spy_list.head), cf_sendFrames, &cf_spoken->member->mixConfFrame)))
+					return NULL;
+
+				cf_sendFrames->mixed_buffer = cf_spoken->member->speakerBuffer + AST_FRIENDLY_OFFSET;
+
+				// add the whisper voice
 #if	ASTERISK_SRC_VERSION == 104
-			mix_slinear_frames(cf_spoken->member->speakerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data, AST_CONF_BLOCK_SAMPLES);
+				mix_slinear_frames(cf_spoken->member->speakerBuffer + AST_FRIENDLY_OFFSET, whisper_frame->fr->data, AST_CONF_BLOCK_SAMPLES);
 #else
-			mix_slinear_frames(cf_spoken->member->speakerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
+				mix_slinear_frames(cf_spoken->member->speakerBuffer + AST_FRIENDLY_OFFSET, whisper_frame->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
 #endif
 
-			if (!(cf_sendFrames->fr = create_slinear_frame(&cf_sendFrames->member->mixAstFrame, cf_sendFrames->mixed_buffer)))
-				return NULL;
+				if (!(cf_sendFrames->fr = create_slinear_frame(&cf_sendFrames->member->mixAstFrame, cf_sendFrames->mixed_buffer)))
+					return NULL;
 
-			cf_sendFrames->member->speaker_frame = cf_sendFrames;
+				cf_sendFrames->member->speaker_frame = cf_sendFrames;
 
-			AST_LIST_INSERT_HEAD(&cf_sendFrames->speaker_frame_list_head, cf_sendFrames->member, speaker_frame_list_entry);
+				AST_LIST_INSERT_HEAD(&cf_sendFrames->speaker_frame_list_head, cf_sendFrames->member, speaker_frame_list_entry);
+			}
 		}
 
 		cf_spoken = cf_spoken->next;
@@ -441,9 +466,7 @@ conf_frame* mix_multiple_speakers(
 
 	while (cf_spoken)
 	{
-		ast_conf_member *spy_partner = cf_spoken->member->spy_partner;
-
-		if (!spy_partner || cf_spoken->member->spyee_channel_name)
+		if (AST_LIST_EMPTY(&cf_spoken->member->spy_list.head) || cf_spoken->member->spyee_channel_name)
 		{
 			// delete the frame
 			cf_spoken = delete_conf_frame(cf_spoken);
@@ -456,10 +479,13 @@ conf_frame* mix_multiple_speakers(
 
 			cf_spoken = cf_spoken->next;
 
-			spy_frame->member = spy_partner;
-			spy_frame->member->speaker_frame = spy_frame;
-
-			AST_LIST_INSERT_HEAD(&spy_frame->speaker_frame_list_head, spy_frame->member, speaker_frame_list_entry);
+			ast_conf_member *entry;
+			AST_LIST_TRAVERSE(&spy_frame->member->spy_list.head, entry, spy_list.entry)
+			{
+				entry->speaker_frame = spy_frame;
+				AST_LIST_INSERT_HEAD(&spy_frame->speaker_frame_list_head, entry, speaker_frame_list_entry);
+			}
+			spy_frame->member = NULL;
 
 			spy_frame->next = cf_sendFrames;
 

@@ -446,7 +446,7 @@ int member_exec(struct ast_channel* chan, const char* data)
 	);
 
 	// if spyer setup failed, set variable and exit conference
-	if (member->spyee_channel_name && !member->spy_partner)
+	if (member->spyee_channel_name && AST_LIST_EMPTY(&member->spy_list.head))
 	{
 		remove_member(member, conf, conf_name);
 		pbx_builtin_setvar_helper(member->chan, "KONFERENCE", "SPYFAILED");
@@ -1396,7 +1396,7 @@ void member_process_outgoing_frames(ast_conference* conf,
 		return;
 	}
 
-	if (!member->spy_partner)
+	if (AST_LIST_EMPTY(&member->spy_list.head))
 	{
 		// neither a spyer nor a spyee
 		if (!member->is_speaking) 
@@ -1428,12 +1428,21 @@ void member_process_outgoing_frames(ast_conference* conf,
 		else
 		{
 			// spyee -- use member translator if spyee speaking or spyer whispering to spyee
-			if (member->is_speaking || member->spy_partner->is_speaking)
+			if (member->is_speaking)
 			{
 				queue_frame_for_speaker(conf, member);
 			}
 			else
 			{
+				ast_conf_member *entry;
+				AST_LIST_TRAVERSE(&member->spy_list.head, entry, spy_list.entry)
+				{
+					if (member == AST_LIST_FIRST(&entry->spy_list.head) && entry->is_speaking)
+					{
+						queue_frame_for_speaker(conf, member);
+						return;
+					}
+				}
 				queue_frame_for_listener(conf, member);
 			}
 		}
