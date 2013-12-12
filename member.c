@@ -1115,6 +1115,10 @@ void queue_incoming_frame(ast_conf_member* member, struct ast_frame* fr)
 #else
 		memcpy(cf->data.ptr, fr->data.ptr, fr->datalen);
 #endif
+		ast_copy_flags(cf, fr, AST_FRFLAG_HAS_TIMING_INFO);
+		cf->ts = fr->ts;
+		cf->len = fr->len;
+		cf->seqno = fr->seqno;
 		fr = cf;
 	}    
 	else
@@ -1209,6 +1213,10 @@ void queue_outgoing_frame(ast_conf_member* member, struct ast_frame* fr, struct 
 #else
                 memcpy(cf->data.ptr, fr->data.ptr, fr->datalen);
 #endif
+		ast_copy_flags(cf, fr, AST_FRFLAG_HAS_TIMING_INFO);
+		cf->ts = fr->ts;
+		cf->len = fr->len;
+		cf->seqno = fr->seqno;
                 fr = cf;
         }    
 	else 
