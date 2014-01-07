@@ -358,10 +358,11 @@ int member_exec(struct ast_channel* chan, const char* data)
 	// create a new member for the conference
  	//
 
+	int max_users = AST_CONF_MAX_USERS;
 	char conf_name[CONF_NAME_LEN + 1]  = { 0 };
 	ast_conf_member *member;
 
-	if (!(member = create_member(chan, (const char*)(data), conf_name)))
+	if (!(member = create_member(chan, (const char*)(data), conf_name, &max_users)))
 	{
 		// unable to create member, return an error
 		ast_log(LOG_ERROR, "unable to create member\n");
@@ -372,14 +373,13 @@ int member_exec(struct ast_channel* chan, const char* data)
 	// setup a conference for the new member
 	//
 
-	char max_users_flag = 0;
 	ast_conference *conf;
 
-	if (!(conf = join_conference(member, conf_name, &max_users_flag)))
+	if (!(conf = join_conference(member, conf_name, max_users)))
 	{
-		ast_log(LOG_NOTICE, "unable to setup member conference %s: max_users_flag is %d\n", conf_name, max_users_flag);
 		delete_member(member);
-		return max_users_flag ? 0 : -1;
+		const char *konference = pbx_builtin_getvar_helper(chan, "KONFERENCE");
+		return !strcmp(konference, "MAXUSERS") ? 0 : -1;
 	}
 
 	member->listheaders = conf->listheaders;
@@ -519,7 +519,7 @@ int member_exec(struct ast_channel* chan, const char* data)
 // manange member functions
 //
 
-ast_conf_member* create_member(struct ast_channel *chan, const char* data, char* conf_name)
+ast_conf_member* create_member(struct ast_channel *chan, const char* data, char* conf_name, int* max_users)
 {
 	ast_conf_member *member;
 #ifdef	CACHE_CONTROL_BLOCKS
@@ -575,7 +575,6 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 	member->vad_prob_start = AST_CONF_PROB_START;
 	member->vad_prob_continue = AST_CONF_PROB_CONTINUE;
 #endif
-	member->max_users = AST_CONF_MAX_USERS;
 
 	//
 	// initialize member with passed data values
@@ -632,7 +631,7 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 
 		if (!strncasecmp(key, arg_max_users, sizeof(arg_max_users) - 1))
 		{
-			member->max_users = strtol(value, (char **)NULL, 10);
+			*max_users = strtol(value, (char **)NULL, 10);
 		} else if (!strncasecmp(key, arg_conf_type, sizeof(arg_conf_type) - 1))
 		{
 			strncpy(member->type, value, MEMBER_TYPE_LEN);

@@ -83,8 +83,6 @@ struct ast_conf_member
 	char type[MEMBER_TYPE_LEN + 1];		// conference type
 	char *spyee_channel_name; // spyee  channel name
 
-	int max_users; // zero or max users for this conference
-
 	// block ids
 	int conf_id;
 #if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
@@ -205,7 +203,7 @@ int member_exec(struct ast_channel* chan, void* data);
 int member_exec(struct ast_channel* chan, const char* data);
 #endif
 
-ast_conf_member* create_member(struct ast_channel* chan, const char* data, char* conf_name);
+ast_conf_member* create_member(struct ast_channel* chan, const char* data, char* conf_name, int* max_users);
 void delete_member(ast_conf_member* member);
 
 // incoming queue

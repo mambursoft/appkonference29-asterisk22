@@ -426,7 +426,7 @@ void dealloc_conference(void)
 #endif
 }
 
-ast_conference* join_conference(ast_conf_member* member, char* conf_name, char* max_users_flag)
+ast_conference* join_conference(ast_conf_member* member, char* conf_name, int max_users)
 {
 	ast_conference* conf = NULL;
 
@@ -457,11 +457,10 @@ ast_conference* join_conference(ast_conf_member* member, char* conf_name, char* 
 		// once we call add_member(), this thread
 		// is responsible for calling delete_member()
 		//
-		if (!member->max_users || (member->max_users > conf->membercount)) {
+		if (!max_users || (max_users > conf->membercount)) {
 			add_member(member, conf);
 		} else {
 			pbx_builtin_setvar_helper(member->chan, "KONFERENCE", "MAXUSERS");
-			*max_users_flag = 1;
 			conf = NULL;
 		}
 	}
