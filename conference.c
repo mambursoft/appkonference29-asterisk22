@@ -59,6 +59,14 @@ struct ast_format ast_format_g722 = { .id = AST_FORMAT_G722 };
 // list of current conferences
 static ast_conference *conflist;
 
+// base timestamp
+static struct timeval base;
+
+// thread frequency vars
+static int tf_expirations;
+static int tf_max_expirations;
+static struct timeval tf_base;
+
 #ifdef	TIMERFD
 // timer file descriptor
 static int timerfd = -1;
@@ -79,6 +87,9 @@ static ast_conference* find_conf(const char* name);
 static ast_conference* create_conf(char* name, ast_conf_member* member);
 static void remove_conf(ast_conference **conf);
 static void add_member(ast_conf_member* member, ast_conference* conf);
+static void process_conference(ast_conference *conf);
+static void check_frequency(struct timeval *tf_base, int *tf_expirations, int *tf_max_expirations);
+static int get_expirations(void);
 
 static void destroy_conf_listheaders(void *obj)
 {
@@ -92,17 +103,6 @@ static void destroy_conf_listheaders(void *obj)
 
 static void conference_exec()
 {
-	// thread frequency variable
-	int tf_count = 0;
-
-#if	defined(TIMERFD) || defined(KQUEUE)
-	int tf_expirations = 0;
-	int tf_max_expirations = 0;
-#endif
-
-	// timer timestamps
-	struct timeval base, tf_base;
-
 	// conference epoch - 20 milliseconds
 	struct timeval epoch = ast_tv(0, AST_CONF_FRAME_INTERVAL * 1000);
 
@@ -115,47 +115,188 @@ static void conference_exec()
 
 	while (42)
 	{
+		// update expirations
+		uint64_t expirations = get_expirations();
+		tf_expirations += expirations;
+		if (expirations > tf_max_expirations) tf_max_expirations = expirations;
+
+		// loop for expirations
+		for (; expirations; expirations--)
+		{
+
+			//
+			// check thread frequency
+			//
+			check_frequency(&tf_base, &tf_expirations, &tf_max_expirations);
+
+			//
+			// process the conference list
+			//
+
+			// increment the timer base (it will be used later to timestamp outgoing frames)
+			base = ast_tvadd(base, epoch);
+
+			// get the first entry
+			ast_conference *conflisthead = conflist;
+			ast_conference **conf  = &conflisthead;
+
+			while (*conf)
+			{
+				// acquire the conference lock
+				ast_rwlock_rdlock(&(*conf)->listheaders->lock);
+
+				//
+				// check if the conference is empty and if so
+				// remove it and continue to the next conference
+				//
+
+				if (!(*conf)->membercount)
+				{
+					int res;
+					if ((res = ast_mutex_trylock(&conflist_lock)) || conflisthead != conflist)
+					{
+						if (!res) ast_mutex_unlock(&conflist_lock);
+
+						ast_rwlock_unlock(&(*conf)->listheaders->lock);
+
+						// get the next conference
+						conf = &(*conf)->next;
+
+						continue;
+					}
+
+					remove_conf(conf);
+
+					if (!conference_count)
+					{
+						// release the conference list lock
+						ast_mutex_unlock(&conflist_lock);
+#ifdef	TIMERFD
+						// close timer file
+						close(timerfd);
+#elif	KQUEUE
+						// close kqueue file
+						close(kqueuefd);
+#endif
+						// exit the conference thread
+						pthread_exit(NULL);
+					}
+
+					// release the conference list lock
+					ast_mutex_unlock(&conflist_lock);
+
+					continue; // next conference
+				}
+
+				// update the current delivery time
+				(*conf)->delivery_time = base;
+
+				// process conference frames
+				process_conference(*conf);
+
+				// release conference lock
+				ast_rwlock_unlock(&(*conf)->listheaders->lock);
+
+				// get the next conference
+				conf = &(*conf)->next;
+			}
+		}
+	}
+}
+
+void process_conference(ast_conference *conf)
+{
+
+	// list entry
+	ast_conf_listentry *listentry;
+
+	// reset speaker and listener count
+	int speaker_count = 0;
+	int listener_count = conf->membercount;
+
+	// reset listener frame
+	conf->listener_frame = NULL;
+
+	// reset pointer lists
+	conf_frame *spoken_frames = NULL;
+
+	// loop over member list and retrieve incoming frames
+	for (listentry = conf->listheaders->speakerlistheader.next; listentry != &conf->listheaders->speakerlistheader; listentry = listentry->next)
+	{
+		ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, speakerlistentry));
+		member_process_spoken_frames(conf,member,&spoken_frames,
+					     &listener_count, &speaker_count);
+	}
+
+	// mix incoming frames and get batch of outgoing frames
+	conf_frame *send_frames = spoken_frames ? mix_frames(conf, spoken_frames, speaker_count, listener_count) : NULL;
+
+	// loop over member list and send outgoing frames
+	for (listentry = conf->listheaders->memberlistheader.next; listentry != &conf->listheaders->memberlistheader; listentry = listentry->next)
+	{
+		ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
+		member_process_outgoing_frames(conf, member);
+	}
+
+	// delete send frames
+	while (send_frames)
+	{
+		ast_conf_member *entry;
+		AST_LIST_TRAVERSE(&send_frames->speaker_frame_list_head, entry, speaker_frame_list_entry)
+		{
+			entry->speaker_frame = NULL; // reset speaker frame
+		}
+
+		send_frames = delete_conf_frame(send_frames);
+	}
+}
+
+static void check_frequency(struct timeval *tf_base, int *tf_expirations, int *tf_max_expirations)
+{
+	static int tf_count = 0;
+
+	if (++tf_count >= AST_CONF_FRAMES_PER_SECOND)
+	{
+		// update current timestamp
+		struct timeval tf_curr = ast_tvnow();
+
+		// compute timestamp difference
+		long tf_diff = ast_tvdiff_ms(tf_curr, *tf_base);
+
+		// compute sampling frequency
+		float tf_frequency = (float)(tf_diff) / (float)(tf_count);
+
+		if ((tf_frequency <= (float)(AST_CONF_FRAME_INTERVAL - 1))
+			|| (tf_frequency >= (float)(AST_CONF_FRAME_INTERVAL + 1)))
+		{
+			ast_log(LOG_WARNING, "processed frame frequency variation, tf_count => %d, tf_diff => %ld, tf_frequency => %2.4f, tf_expirations = %d tf_max_expirations = %d\n", tf_count, tf_diff, tf_frequency, *tf_expirations, *tf_max_expirations);
+		}
+
+		// reset values
+		*tf_base = tf_curr;
+		tf_count = 0;
+		*tf_expirations = 0;
+		*tf_max_expirations = 0;
+	}
+}
+
+static int get_expirations(void)
+{
 #ifdef	TIMERFD
 		uint64_t expirations;
-
 		// wait for start of epoch
 		if (read(timerfd, &expirations, sizeof(expirations)) == -1)
 		{
 			ast_log(LOG_ERROR, "unable to read timer!? %s\n", strerror(errno));
 		}
-
-#ifdef	TIMERFD_EXPIRATIONS
-		// check expirations
-		if (expirations != 1)
-		{
-			ast_log(LOG_NOTICE, "timer read expirations = %ld!?\n", expirations);
-		}
-#endif
-		// update expirations
-		tf_expirations += expirations;
-		if (expirations > tf_max_expirations) tf_max_expirations = expirations;
-		// process expirations
-		for (; expirations; expirations--)
-		{
+		return expirations;
 #elif	KQUEUE
 		// wait for start of epoch
 		if (kevent(kqueuefd, &inqueue, 1, &outqueue, 1, NULL) == -1)
 		{
 			ast_log(LOG_NOTICE, "unable to read timer!? %s\n", strerror(errno));
 		}
-#ifdef	KQUEUE_EXPIRATIONS
-		// check expirations
-		if (outqueue.data != 1) 
-		{
-			ast_log(LOG_NOTICE, "kqueue expirations = %ld!?\n", outqueue.data);
-		}
-#endif
-		// update expirations
-		tf_expirations += outqueue.data;
-		if (outqueue.data > tf_max_expirations) tf_max_expirations = outqueue.data;
-		// process expirations
-		for (; outqueue.data; outqueue.data--)
-		{
+		return outqueue.data;
 #else
 		// update the current timestamp
 		struct timeval curr = ast_tvnow();
@@ -170,166 +311,17 @@ static void conference_exec()
 		{
 			// sleep for time_sleep (as microseconds)
 			usleep(time_sleep * 1000);
+			return 1;
 		}
-#endif
-
-		//
-		// check thread frequency
-		//
-
-		if (++tf_count >= AST_CONF_FRAMES_PER_SECOND)
+		else
 		{
-			// update current timestamp
-			struct timeval tf_curr = ast_tvnow();
-
-			// compute timestamp difference
-			long tf_diff = ast_tvdiff_ms(tf_curr, tf_base);
-
-			// compute sampling frequency
-			float tf_frequency = (float)(tf_diff) / (float)(tf_count);
-
-			if ((tf_frequency <= (float)(AST_CONF_FRAME_INTERVAL - 1))
-				|| (tf_frequency >= (float)(AST_CONF_FRAME_INTERVAL + 1)))
-			{
-#if	defined(TIMERFD) || defined(KQUEUE)
-				ast_log(LOG_WARNING, "processed frame frequency variation, tf_count => %d, tf_diff => %ld, tf_frequency => %2.4f, tf_expirations = %d tf_max_expirations = %d\n", tf_count, tf_diff, tf_frequency, tf_expirations, tf_max_expirations);
-#else
-				ast_log(LOG_WARNING, "processed frame frequency variation, tf_count => %d, tf_diff => %ld, tf_frequency => %2.4f\n", tf_count, tf_diff, tf_frequency);
-#endif
-			}
-
-			// reset values
-			tf_base = tf_curr;
-			tf_count = 0;
-#if	defined(TIMERFD) || defined(KQUEUE)
-			tf_expirations = 0;
-			tf_max_expirations = 0;
-#endif
-		}
-
-		//
-		// process the conference list
-		//
-
-		// increment the timer base (it will be used later to timestamp outgoing frames)
-		base = ast_tvadd(base, epoch);
-
-		// get the first entry
-		ast_conference *conflisthead = conflist;
-		ast_conference **conf  = &conflisthead;
-
-		while (*conf)
-		{
-			// acquire the conference lock
-			ast_rwlock_rdlock(&(*conf)->listheaders->lock);
-
-			//
-			// check if the conference is empty and if so
-			// remove it and continue to the next conference
-			//
-
-			if (!(*conf)->membercount)
-			{
-				int res;
-				if ((res = ast_mutex_trylock(&conflist_lock)) || conflisthead != conflist)
-				{
-					if (!res) ast_mutex_unlock(&conflist_lock);
-
-					ast_rwlock_unlock(&(*conf)->listheaders->lock);
-
-					// get the next conference
-					conf = &(*conf)->next;
-
-					continue;
-				}
-
-				remove_conf(conf);
-
-				if (!conference_count)
-				{
-					// release the conference list lock
-					ast_mutex_unlock(&conflist_lock);
-#ifdef	TIMERFD
-					// close timer file
-					close(timerfd);
-#elif	KQUEUE
-					// close kqueue file
-					close(kqueuefd);
-#endif
-					// exit the conference thread
-					pthread_exit(NULL);
-				}
-
-				// release the conference list lock
-				ast_mutex_unlock(&conflist_lock);
-
-				continue; // next conference
-			}
-
-			//
-			// process conference frames
-			//
-
-			// list entry
-			ast_conf_listentry *listentry;
-
-			// update the current delivery time
-			(*conf)->delivery_time = base;
-
-			// reset speaker and listener count
-			int speaker_count = 0;
-			int listener_count = (*conf)->membercount;
-
-			// reset listener frame
-			(*conf)->listener_frame = NULL;
-
-			// reset pointer lists
-			conf_frame *spoken_frames = NULL;
-
-			// loop over member list and retrieve incoming frames
-			for (listentry = (*conf)->listheaders->speakerlistheader.next; listentry != &(*conf)->listheaders->speakerlistheader; listentry = listentry->next)
-			{
-				ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, speakerlistentry));
-				member_process_spoken_frames(*conf,member,&spoken_frames,
-							     &listener_count, &speaker_count);
-			}
-
-			// mix incoming frames and get batch of outgoing frames
-			conf_frame *send_frames = spoken_frames ? mix_frames(*conf, spoken_frames, speaker_count, listener_count) : NULL;
-
-			// loop over member list and send outgoing frames
-			for (listentry = (*conf)->listheaders->memberlistheader.next; listentry != &(*conf)->listheaders->memberlistheader; listentry = listentry->next)
-			{
-				ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
-				member_process_outgoing_frames(*conf, member);
-			}
-
-			// delete send frames
-			while (send_frames)
-			{
-				ast_conf_member *entry;
-				AST_LIST_TRAVERSE(&send_frames->speaker_frame_list_head, entry, speaker_frame_list_entry)
-				{
-					entry->speaker_frame = NULL; // reset speaker frame
-				}
-
-				send_frames = delete_conf_frame(send_frames);
-			}
-
-			// release conference lock
-			ast_rwlock_unlock(&(*conf)->listheaders->lock);
-
-			// get the next conference
-			conf = &(*conf)->next;
-		}
-#if	defined(TIMERFD) || defined(KQUEUE)
+			return time_diff / AST_CONF_FRAME_INTERVAL;
 		}
 #endif
-	}
 }
 
 //
-// manange conference functions
+// conference functions
 //
 
 // called by app_conference.c:load_module()
