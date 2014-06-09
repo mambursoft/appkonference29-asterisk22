@@ -63,9 +63,11 @@ static ast_conference *conflist;
 static struct timeval base;
 
 // thread frequency vars
+#ifdef	CHECK_THREAD_FREQUENCY
 static int tf_expirations;
 static int tf_max_expirations;
 static struct timeval tf_base;
+#endif
 
 #ifdef	TIMERFD
 // timer file descriptor
@@ -88,7 +90,9 @@ static ast_conference* create_conf(char* name, ast_conf_member* member);
 static void remove_conf(ast_conference **conf);
 static void add_member(ast_conf_member* member, ast_conference* conf);
 static void process_conference(ast_conference *conf);
-static void check_frequency(struct timeval *tf_base, int *tf_expirations, int *tf_max_expirations);
+#ifdef	CHECK_THREAD_FREQUENCY
+static void check_frequency(uint64_t expirations);
+#endif
 static int get_expirations(void);
 
 static void destroy_conf_listheaders(void *obj)
@@ -107,7 +111,11 @@ static void conference_exec()
 	struct timeval epoch = ast_tv(0, AST_CONF_FRAME_INTERVAL * 1000);
 
 	// set base timestamps
+#ifdef	CHECK_THREAD_FREQUENCY
 	base = tf_base = ast_tvnow();
+#else
+	base = ast_tvnow();
+#endif
 
 	//
 	// conference thread loop
@@ -117,17 +125,18 @@ static void conference_exec()
 	{
 		// update expirations
 		uint64_t expirations = get_expirations();
+#ifdef	CHECK_THREAD_FREQUENCY
 		tf_expirations += expirations;
 		if (expirations > tf_max_expirations) tf_max_expirations = expirations;
 
+		//
+		// check thread frequency
+		//
+		check_frequency(expirations);
+#endif
 		// loop for expirations
 		for (; expirations; expirations--)
 		{
-
-			//
-			// check thread frequency
-			//
-			check_frequency(&tf_base, &tf_expirations, &tf_max_expirations);
 
 			//
 			// process the conference list
@@ -251,17 +260,20 @@ void process_conference(ast_conference *conf)
 	}
 }
 
-static void check_frequency(struct timeval *tf_base, int *tf_expirations, int *tf_max_expirations)
+#ifdef	CHECK_THREAD_FREQUENCY
+static void check_frequency(uint64_t expirations)
 {
 	static int tf_count = 0;
 
-	if (++tf_count >= AST_CONF_FRAMES_PER_SECOND)
+	tf_count += expirations;
+
+	if (tf_count >= AST_CONF_FRAMES_PER_SECOND)
 	{
 		// update current timestamp
 		struct timeval tf_curr = ast_tvnow();
 
 		// compute timestamp difference
-		long tf_diff = ast_tvdiff_ms(tf_curr, *tf_base);
+		long tf_diff = ast_tvdiff_ms(tf_curr, tf_base);
 
 		// compute sampling frequency
 		float tf_frequency = (float)(tf_diff) / (float)(tf_count);
@@ -269,16 +281,17 @@ static void check_frequency(struct timeval *tf_base, int *tf_expirations, int *t
 		if ((tf_frequency <= (float)(AST_CONF_FRAME_INTERVAL - 1))
 			|| (tf_frequency >= (float)(AST_CONF_FRAME_INTERVAL + 1)))
 		{
-			ast_log(LOG_WARNING, "processed frame frequency variation, tf_count => %d, tf_diff => %ld, tf_frequency => %2.4f, tf_expirations = %d tf_max_expirations = %d\n", tf_count, tf_diff, tf_frequency, *tf_expirations, *tf_max_expirations);
+			ast_log(LOG_WARNING, "processed frame frequency variation, tf_count => %d, tf_diff => %ld, tf_frequency => %2.4f, tf_expirations = %d tf_max_expirations = %d\n", tf_count, tf_diff, tf_frequency, tf_expirations, tf_max_expirations);
 		}
 
 		// reset values
-		*tf_base = tf_curr;
+		tf_base = tf_curr;
 		tf_count = 0;
-		*tf_expirations = 0;
-		*tf_max_expirations = 0;
+		tf_expirations = 0;
+		tf_max_expirations = 0;
 	}
 }
+#endif
 
 static int get_expirations(void)
 {
