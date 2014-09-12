@@ -51,6 +51,10 @@
 #include <asterisk/options.h>
 #include "asterisk/astobj2.h"
 
+#if	ASTERISK_SRC_VERSION >= 1300
+#include <asterisk/format_compatibility.h>
+#endif
+
 #if	SILDET == 1
 #include "libwebrtc/webrtc_vad.h"
 
@@ -117,9 +121,18 @@
 #endif
 
 #ifndef	AC_USE_G722
+#if	ASTERISK_SRC_VERSION >= 1300
+#define AST_FORMAT_CONFERENCE AST_FORMAT_SLIN
+#else
 #define AST_FORMAT_CONFERENCE AST_FORMAT_SLINEAR
+#endif
+#else
+#if	ASTERISK_SRC_VERSION >= 1300
+#define AST_FORMAT_CONFERENCE AST_FORMAT_SLIN16
+#define AST_FORMAT_SLINEAR AST_FORMAT_SLIN
 #else
 #define AST_FORMAT_CONFERENCE AST_FORMAT_SLINEAR16
+#endif
 #endif
 
 // 1000 ms-per-second / 20 ms-per-frame = 50 frames-per-second
@@ -149,7 +162,9 @@
 //
 typedef	enum { 
 		AC_CONF = 0,
+#ifdef	AC_USE_ULAW
 		AC_ULAW,
+#endif
 #ifdef	AC_USE_ALAW
 		AC_ALAW,
 #endif
@@ -213,7 +228,13 @@ AST_LIST_HEAD_NOLOCK(confBlockList, ast_conference) confBlockList;
 AST_LIST_HEAD_NOLOCK(mbrBlockList, ast_conf_member) mbrBlockList;
 #endif
 
-#if	ASTERISK_SRC_VERSION > 108
+#if	ASTERISK_SRC_VERSION >= 1300
+#ifndef  AC_USE_G722
+#define ast_format_conference ast_format_slin
+#else
+#define ast_format_conference ast_format_slin16
+#endif
+#elif	ASTERISK_SRC_VERSION > 108
 struct ast_format ast_format_conference;
 struct ast_format ast_format_ulaw;
 struct ast_format ast_format_alaw;

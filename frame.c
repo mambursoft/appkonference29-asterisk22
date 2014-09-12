@@ -28,8 +28,10 @@ static struct ast_frame fr = { .frametype = AST_FRAME_VOICE,
 #elif	ASTERISK_SRC_VERSION == 106
 				.subclass = AST_FORMAT_CONFERENCE,
 				.data.ptr = &(data[AST_FRIENDLY_OFFSET]),
-#else
+#elif	ASTERISK_SRC_VERSION < 1300
 				.subclass.integer = AST_FORMAT_CONFERENCE,
+				.data.ptr = &(data[AST_FRIENDLY_OFFSET]),
+#else
 				.data.ptr = &(data[AST_FRIENDLY_OFFSET]),
 #endif
 				.samples = AST_CONF_BLOCK_SAMPLES,
@@ -607,8 +609,10 @@ struct ast_frame* create_slinear_frame(struct ast_frame **f, char* data)
 		(*f)->frametype = AST_FRAME_VOICE;
 #if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
 		(*f)->subclass = AST_FORMAT_CONFERENCE;
-#else
+#elif	ASTERISK_SRC_VERSION < 1300
 		(*f)->subclass.integer = AST_FORMAT_CONFERENCE;
+#else
+		(*f)->subclass.format = ast_format_conference;
 #endif
 		(*f)->samples = AST_CONF_BLOCK_SAMPLES;
 		(*f)->offset = AST_FRIENDLY_OFFSET;

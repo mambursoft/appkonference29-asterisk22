@@ -35,6 +35,7 @@
 #include <sys/time.h>
 #endif
 
+#if	ASTERISK_SRC_VERSION < 1300
 #if	ASTERISK_SRC_VERSION > 108
 struct ast_format ast_format_conference = { .id = AST_FORMAT_CONFERENCE };
 struct ast_format ast_format_ulaw = { .id = AST_FORMAT_ULAW };
@@ -49,6 +50,7 @@ struct ast_format ast_format_g729a = { .id = AST_FORMAT_G729A };
 #ifdef  AC_USE_G722
 struct ast_format ast_format_slinear = { .id = AST_FORMAT_SLINEAR };
 struct ast_format ast_format_g722 = { .id = AST_FORMAT_G722 };
+#endif
 #endif
 #endif
 
@@ -379,6 +381,9 @@ int init_conference(void)
 		return -1;
 	}
 #endif
+#if	ASTERISK_SRC_VERSION >= 1300
+	silent_conf_frame->fr->subclass.format = ast_format_conference;
+#endif
 	return 0;
 }
 
@@ -541,44 +546,68 @@ static ast_conference* create_conf(char* name, ast_conf_member* member)
 
 	// build translation paths
 	conf->from_slinear_paths[AC_CONF] = NULL;
+
+#ifdef	AC_USE_ULAW
 #if	ASTERISK_SRC_VERSION < 1000
 	conf->from_slinear_paths[AC_ULAW] = ast_translator_build_path(AST_FORMAT_ULAW, AST_FORMAT_CONFERENCE);
-#ifdef	AC_USE_ALAW
-	conf->from_slinear_paths[AC_ALAW] = ast_translator_build_path(AST_FORMAT_ALAW, AST_FORMAT_CONFERENCE);
-#endif
-#ifdef	AC_USE_GSM
-	conf->from_slinear_paths[AC_GSM] = ast_translator_build_path(AST_FORMAT_GSM, AST_FORMAT_CONFERENCE);
-#endif
-#else
+#elif	ASTERISK_SRC_VERSION < 1300
 	conf->from_slinear_paths[AC_ULAW] = ast_translator_build_path(&ast_format_ulaw, &ast_format_conference);
+#else
+	conf->from_slinear_paths[AC_ULAW] = ast_translator_build_path(ast_format_ulaw, ast_format_conference);
+#endif
+#endif
+
+
 #ifdef	AC_USE_ALAW
+#if	ASTERISK_SRC_VERSION < 1000
+	conf->from_slinear_paths[AC_ALAW] = ast_translator_build_path(AST_FORMAT_ALAW, AST_FORMAT_CONFERENCE);
+#elif	ASTERISK_SRC_VERSION < 1300
 	conf->from_slinear_paths[AC_ALAW] = ast_translator_build_path(&ast_format_alaw, &ast_format_conference);
+#else
+	conf->from_slinear_paths[AC_ALAW] = ast_translator_build_path(ast_format_alaw, ast_format_conference);
 #endif
+#endif
+
 #ifdef	AC_USE_GSM
+#if	ASTERISK_SRC_VERSION < 1000
+	conf->from_slinear_paths[AC_GSM] = ast_translator_build_path(AST_FORMAT_GSM, AST_FORMAT_CONFERENCE);
+#elif	ASTERISK_SRC_VERSION < 1300
 	conf->from_slinear_paths[AC_GSM] = ast_translator_build_path(&ast_format_gsm, &ast_format_conference);
+#else
+	conf->from_slinear_paths[AC_GSM] = ast_translator_build_path(ast_format_gsm, ast_format_conference);
 #endif
 #endif
+
 #ifdef	AC_USE_SPEEX
 #if	ASTERISK_SRC_VERSION < 1000
 	conf->from_slinear_paths[AC_SPEEX] = ast_translator_build_path(AST_FORMAT_SPEEX, AST_FORMAT_CONFERENCE);
-#else
+#elif	ASTERISK_SRC_VERSION < 1300
 	conf->from_slinear_paths[AC_SPEEX] = ast_translator_build_path(&ast_format_speex, &ast_format_conference);
+#else
+	conf->from_slinear_paths[AC_SPEEX] = ast_translator_build_path(ast_format_speex, ast_format_conference);
 #endif
 #endif
+
 #ifdef AC_USE_G729A
 #if	ASTERISK_SRC_VERSION < 1000
 	conf->from_slinear_paths[AC_G729A] = ast_translator_build_path(AST_FORMAT_G729A, AST_FORMAT_CONFERENCE);
-#else
+#elif	ASTERISK_SRC_VERSION < 1300
 	conf->from_slinear_paths[AC_G729A] = ast_translator_build_path(&ast_format_g729a, &ast_format_conference);
+#else
+	conf->from_slinear_paths[AC_G729A] = ast_translator_build_path(ast_format_g729a, ast_format_conference);
 #endif
 #endif
+
 #ifdef AC_USE_G722
 #if	ASTERISK_SRC_VERSION < 1000
 	conf->from_slinear_paths[AC_SLINEAR] = ast_translator_build_path(AST_FORMAT_SLINEAR, AST_FORMAT_CONFERENCE);
 	conf->from_slinear_paths[AC_G722] = ast_translator_build_path(AST_FORMAT_G722, AST_FORMAT_CONFERENCE);
-#else
+#elif	ASTERISK_SRC_VERSION < 1300
 	conf->from_slinear_paths[AC_SLINEAR] = ast_translator_build_path(&ast_format_slinear, &ast_format_conference);
 	conf->from_slinear_paths[AC_G722] = ast_translator_build_path(&ast_format_g722, &ast_format_conference);
+#else
+	conf->from_slinear_paths[AC_SLINEAR] = ast_translator_build_path(ast_format_slinear, ast_format_conference);
+	conf->from_slinear_paths[AC_G722] = ast_translator_build_path(ast_format_g722, ast_format_conference);
 #endif
 #endif
 
