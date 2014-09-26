@@ -64,8 +64,9 @@ static ast_conference *conflist;
 // base timestamp
 static struct timeval base;
 
-// thread frequency vars
+// tf variables
 #ifdef	CHECK_THREAD_FREQUENCY
+static int tf_count;
 static int tf_expirations;
 static int tf_max_expirations;
 static struct timeval tf_base;
@@ -115,6 +116,8 @@ static void conference_exec()
 	// set base timestamps
 #ifdef	CHECK_THREAD_FREQUENCY
 	base = tf_base = ast_tvnow();
+	// reset tf variables
+	tf_count = tf_expirations = tf_max_expirations = 0;
 #else
 	base = ast_tvnow();
 #endif
@@ -128,12 +131,7 @@ static void conference_exec()
 		// update expirations
 		uint64_t expirations = get_expirations();
 #ifdef	CHECK_THREAD_FREQUENCY
-		tf_expirations += expirations;
-		if (expirations > tf_max_expirations) tf_max_expirations = expirations;
-
-		//
 		// check thread frequency
-		//
 		check_frequency(expirations);
 #endif
 		// loop for expirations
@@ -265,10 +263,12 @@ void process_conference(ast_conference *conf)
 #ifdef	CHECK_THREAD_FREQUENCY
 static void check_frequency(uint64_t expirations)
 {
-	static int tf_count = 0;
-
+	// update tf variables
+	tf_expirations++;
 	tf_count += expirations;
+	if (expirations > tf_max_expirations) tf_max_expirations = expirations;
 
+	// calculate tf
 	if (tf_count >= AST_CONF_FRAMES_PER_SECOND)
 	{
 		// update current timestamp
@@ -286,11 +286,11 @@ static void check_frequency(uint64_t expirations)
 			ast_log(LOG_WARNING, "processed frame frequency variation, tf_count => %d, tf_diff => %ld, tf_frequency => %2.4f, tf_expirations = %d tf_max_expirations = %d\n", tf_count, tf_diff, tf_frequency, tf_expirations, tf_max_expirations);
 		}
 
-		// reset values
+		// update base
 		tf_base = tf_curr;
-		tf_count = 0;
-		tf_expirations = 0;
-		tf_max_expirations = 0;
+
+		// reset tf values
+		tf_count = tf_expirations = tf_max_expirations = 0;
 	}
 }
 #endif
