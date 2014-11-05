@@ -604,7 +604,7 @@ char *conference_play_sound(struct ast_cli_entry *e, int cmd, struct ast_cli_arg
 	int mute = argc > 5 && !strcmp(argv[argc-1], "mute") ? 1 : 0;
 	int tone = argc > 5 && !strcmp(argv[argc-1], "tone") ? 1 : 0;
 
-	play_sound_channel(fd, channel, file, mute, tone, !mute && !tone ? argc - 4 : argc - 5);
+	play_sound_channel(channel, file, mute, tone, !mute && !tone ? argc - 4 : argc - 5);
 
 	return SUCCESS;
 }
@@ -643,7 +643,7 @@ char *conference_stop_sounds(struct ast_cli_entry *e, int cmd, struct ast_cli_ar
 
 	const char *channel = argv[3];
 
-	stop_sound_channel(fd, channel);
+	stop_sound_channel(channel);
 
 	return SUCCESS;
 }
@@ -682,7 +682,7 @@ char *conference_start_moh(struct ast_cli_entry *e, int cmd, struct ast_cli_args
 
 	const char *channel = argv[3];
 
-	start_moh_channel(fd, channel);
+	start_moh_channel(channel);
 
 	return SUCCESS;
 }
@@ -721,7 +721,7 @@ char *conference_stop_moh(struct ast_cli_entry *e, int cmd, struct ast_cli_args 
 
 	const char *channel = argv[3];
 
-	stop_moh_channel(fd, channel);
+	stop_moh_channel(channel);
 
 	return SUCCESS;
 }
@@ -769,7 +769,7 @@ char *conference_talkvolume(struct ast_cli_entry *e, int cmd, struct ast_cli_arg
 	else
 		return SHOWUSAGE;
 
-	talk_volume_channel(fd, channel, up);
+	adjust_talk_volume_channel(channel, up);
 
 	return SUCCESS;
 }
@@ -816,7 +816,7 @@ char *conference_listenvolume(struct ast_cli_entry *e, int cmd, struct ast_cli_a
 	else
 		return SHOWUSAGE;
 
-	listen_volume_channel(fd, channel, up);
+	adjust_listen_volume_channel(channel, up);
 
 	return SUCCESS;
 }
@@ -864,7 +864,7 @@ char *conference_volume(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a
 	else
 		return SHOWUSAGE;
 
-	volume(fd, conference, up);
+	adjust_volume_conference(conference, up);
 
 	return SUCCESS;
 }

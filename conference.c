@@ -1423,9 +1423,9 @@ ast_conf_member *find_member(const char *chan)
 }
 
 #if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
-void play_sound_channel(int fd, const char *channel, char **file, int mute, int tone, int n)
+void play_sound_channel(const char *channel, char **file, int mute, int tone, int n)
 #else
-void play_sound_channel(int fd, const char *channel, const char * const *file, int mute, int tone, int n)
+void play_sound_channel(const char *channel, const char * const *file, int mute, int tone, int n)
 #endif
 {
 	ast_conf_member *member;
@@ -1463,7 +1463,7 @@ void play_sound_channel(int fd, const char *channel, const char * const *file, i
 	}
 }
 
-void stop_sound_channel(int fd, const char *channel)
+void stop_sound_channel(const char *channel)
 {
 	ast_conf_member *member;
 	ast_conf_soundq *sound;
@@ -1489,7 +1489,7 @@ void stop_sound_channel(int fd, const char *channel)
 	}
 }
 
-void start_moh_channel(int fd, const char *channel)
+void start_moh_channel(const char *channel)
 {
 	ast_conf_member *member;
 
@@ -1526,7 +1526,7 @@ void start_moh_channel(int fd, const char *channel)
 	}
 }
 
-void stop_moh_channel(int fd, const char *channel)
+void stop_moh_channel(const char *channel)
 {
 	ast_conf_member *member;
 
@@ -1546,7 +1546,7 @@ void stop_moh_channel(int fd, const char *channel)
 	}
 }
 
-void talk_volume_channel(int fd, const char *channel, int up)
+void adjust_talk_volume_channel(const char *channel, int up)
 {
 	ast_conf_member *member;
 
@@ -1560,7 +1560,7 @@ void talk_volume_channel(int fd, const char *channel, int up)
 	}
 }
 
-void listen_volume_channel(int fd, const char *channel, int up)
+void adjust_listen_volume_channel(const char *channel, int up)
 {
 	ast_conf_member *member;
 
@@ -1574,7 +1574,7 @@ void listen_volume_channel(int fd, const char *channel, int up)
 	}
 }
 
-void volume(int fd, const char *conference, int up)
+void adjust_volume_conference(const char *conference, int up)
 {
 	ast_conference *conf;
 
