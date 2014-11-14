@@ -33,6 +33,23 @@ AST_MUTEX_DEFINE_STATIC(speaker_scoreboard_lock);
 
 #endif
 
+char kick_data[160+AST_FRIENDLY_OFFSET] = { [AST_FRIENDLY_OFFSET] = KICK };
+char stop_data[160+AST_FRIENDLY_OFFSET] = { [AST_FRIENDLY_OFFSET] = STOP };
+char hold_data[160+AST_FRIENDLY_OFFSET] = { [AST_FRIENDLY_OFFSET] = HOLD };
+char cont_data[160+AST_FRIENDLY_OFFSET] = { [AST_FRIENDLY_OFFSET] = CONT };
+
+#if     ASTERISK_SRC_VERSION == 104
+struct ast_frame kick_frame = {.frametype = AST_FRAME_TEXT, .data = &kick_data[AST_FRIENDLY_OFFSET], .datalen = 160};
+struct ast_frame stop_frame = {.frametype = AST_FRAME_TEXT, .data = &stop_data[AST_FRIENDLY_OFFSET], .datalen = 160};
+struct ast_frame hold_frame = {.frametype = AST_FRAME_TEXT, .data = &hold_data[AST_FRIENDLY_OFFSET], .datalen = 160};
+struct ast_frame cont_frame = {.frametype = AST_FRAME_TEXT, .data = &cont_data[AST_FRIENDLY_OFFSET], .datalen = 160};
+#else
+struct ast_frame kick_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = &kick_data[AST_FRIENDLY_OFFSET], .datalen = 160};
+struct ast_frame stop_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = &stop_data[AST_FRIENDLY_OFFSET], .datalen = 160};
+struct ast_frame hold_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = &hold_data[AST_FRIENDLY_OFFSET], .datalen = 160};
+struct ast_frame cont_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = &cont_data[AST_FRIENDLY_OFFSET], .datalen = 160};
+#endif
+
 // process an incoming frame.  Returns 0 normally, 1 if hangup was received.
 static int process_incoming(ast_conf_member *member, ast_conference *conf, struct ast_frame *f)
 {
@@ -195,27 +212,127 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 			if (f->subclass.integer == AST_CONTROL_HANGUP)
 #endif
 			{
-				// hangup received
-
-				// free the input frame
 				ast_frfree(f);
 
-				// break out of the while (42)
-				return 1;
+				return 1; // break while (42)
 			}
 			break;
 		}
-		case AST_FRAME_NULL:
+		case AST_FRAME_TEXT:
 		{
-			if (member->kick_flag)
+#if     ASTERISK_SRC_VERSION == 104
+			switch (((const char *)f->data)[0])
+#else
+			switch (((const char *)f->data.ptr)[0])
+#endif
 			{
-				// free the input frame
-				ast_frfree(f);
+				case KICK:
+				{
+						member->kick_flag = 1;
+						ast_frfree(f);
+						return 1; // break while (42)
+				}
+				case 'P':
+				{
+#if	ASTERISK_SRC_VERSION < 1100
+					if (!ast_test_flag(member->chan, AST_FLAG_MOH))
+#else
+					if (!ast_test_flag(ast_channel_flags(member->chan), AST_FLAG_MOH))
+#endif
+					{
+						ast_conf_soundq *newsound;
+						ast_conf_soundq **q;
+#if     ASTERISK_SRC_VERSION == 104
+						char *sound = (char*)f->data;
+#else
+						char *sound = (char*)f->data.ptr;
+#endif
+						newsound = ast_calloc(1, sizeof(ast_conf_soundq));
+						ast_copy_string(newsound->name, &sound[1], 160-1);
+						for (q=&member->soundq; *q; q = &((*q)->next));
+						*q = newsound;
+						if (member->soundq == newsound)
+							ast_activate_generator(member->chan, &play_sound_generator, (void *)member);
+					}
+					break;
+				}
+				case STOP:
+				{
+#if     ASTERISK_SRC_VERSION < 1100
+					if (!ast_test_flag(member->chan, AST_FLAG_MOH))
+#else
+					if (!ast_test_flag(ast_channel_flags(member->chan), AST_FLAG_MOH))
+#endif
+					{
+						ast_conf_soundq *next;
+						ast_conf_soundq *sound = member->soundq;
 
-				// break out of the while (42)
-				return 1;
+						member->soundq = NULL;
+
+						while (sound)
+						{
+							if (sound->stream)
+								ast_stopstream(member->chan);
+							next = sound->next;
+							ast_free(sound);
+							sound = next;
+						}
+
+						member->muted = 0;
+
+						ast_deactivate_generator(member->chan);
+					}
+					break;
+				}
+				case HOLD:
+				{
+					ast_conf_soundq *next;
+					ast_conf_soundq *sound = member->soundq;
+
+					member->soundq = NULL;
+
+					while (sound)
+					{
+						if (sound->stream)
+							ast_stopstream(member->chan);
+						next = sound->next;
+						ast_free(sound);
+						sound = next;
+					}
+
+					member->muted = 1;
+					member->ready_for_outgoing = 0;
+
+					ast_moh_start(member->chan, NULL, NULL);
+					break;
+				}
+				case CONT:
+				{
+#if     ASTERISK_SRC_VERSION < 1100
+					if (ast_test_flag(member->chan, AST_FLAG_MOH))
+#else
+					if (ast_test_flag(ast_channel_flags(member->chan), AST_FLAG_MOH))
+#endif
+					{
+						member->muted = 0;
+						member->ready_for_outgoing = 1;
+
+						ast_moh_stop(member->chan);
+					}
+					break;
+				}
+				default:
+				{
+#if     ASTERISK_SRC_VERSION == 104
+					ast_log(LOG_NOTICE, "processing unknown msg text = %s channel = %s\n", (char *)f->data, member->chan->name);
+#elif	ASTERISK_SRC_VERSION < 1100
+					ast_log(LOG_NOTICE, "processing unknown msg text = %s channel = %s\n", (char *)f->data.ptr, member->chan->name);
+#else
+					ast_log(LOG_NOTICE, "processing unknown msg text = %s channel = %s\n", (char *)f->data.ptr, ast_channel_name(member->chan));
+#endif
+					break;
+				}
 			}
-			break;
 		}
 		default:
 		{
@@ -229,96 +346,13 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 	return 0;
 }
 
-// get the next frame from the soundq
-static struct ast_frame *get_next_soundframe(ast_conf_member *member)
-{
-	struct ast_frame *f;
-
-	while (!(f = member->soundq->stream && !member->soundq->stopped ? ast_readframe(member->soundq->stream) : NULL))
-	{
-		ast_conf_soundq *toboot = member->soundq;
-
-		if (!toboot->stopped && !toboot->stream)
-		{
-#if	ASTERISK_SRC_VERSION < 1100
-			if ((toboot->stream = ast_openstream(member->chan, toboot->name, member->chan->language)))
-#else
-			if ((toboot->stream = ast_openstream(member->chan, toboot->name, ast_channel_language(member->chan))))
-#endif
-				continue;
-		}
-
-		if (toboot->stream)
-		{
-			ast_stopstream(member->chan);
-#ifdef	SOUND_COMPLETE_EVENTS
-			// notify applications via mgr interface that this sound has been played
-			manager_event(
-				EVENT_FLAG_CONF,
-				"ConferenceSoundComplete",
-				"Channel: %s\r\n"
-				"Sound: %s\r\n",
-#if	ASTERISK_SRC_VERSION < 1100
-				member->chan->name,
-#else
-				ast_channel_name(member->chan),
-#endif
-				toboot->name
-			);
-#endif
-		}
-
-		ast_mutex_lock(&member->lock);
-		if (!(member->soundq = toboot->next))
-		{
-			member->muted = 0;
-			ast_mutex_unlock(&member->lock);
-			ast_free(toboot);
-			return NULL;
-		} else {
-			ast_mutex_unlock(&member->lock);
-			ast_free(toboot);
-			continue;
-		}
-
-	}
-	return f;
-}
-
-
-// process outgoing frames for the channel, playing either normal conference audio,
-// or requested sounds
+// process outgoing frames for the channel
 static void process_outgoing(ast_conf_member *member)
 {
-	struct ast_frame *cf,*sf;
+	struct ast_frame *cf;
 
 	while ((cf = get_outgoing_frame(member)))
 	{
-		// if we're playing sounds, we can just replace the frame with the
-		// next sound frame, and send it instead
-		if (member->soundq)
-		{
-			if ((sf = get_next_soundframe(member)))
-			{
-				// use dequeued frame delivery time
-				sf->delivery = cf->delivery;
-		
-				// free voice frame
-#ifdef  CACHE_AST_FRAMES
-				astframe_cache_put(&member->outgoingq.cache, cf);
-#else
-				ast_frfree(cf);
-#endif
-				// send sound frame
-				ast_write(member->chan, sf);
-
-				// free sound frame
-				ast_frfree(sf);
-
-				continue;
-    			}
-		}
-
 		// send the frame
 		ast_write(member->chan, cf);
 
@@ -1503,3 +1537,77 @@ void member_process_spoken_frames(ast_conference* conf,
 		(*listener_count)--;
 	}
 }
+
+// get the next frame from the soundq
+static struct ast_frame *get_next_soundframe(ast_conf_member *member)
+{
+	struct ast_frame *f;
+
+	while (!(f = member->soundq->stream ? ast_readframe(member->soundq->stream) : NULL))
+	{
+		ast_conf_soundq *toboot = member->soundq;
+
+		if (!toboot->stream)
+		{
+#if	ASTERISK_SRC_VERSION < 1100
+			if ((toboot->stream = ast_openstream_full(member->chan, toboot->name, member->chan->language, 1)))
+#else
+			if ((toboot->stream = ast_openstream_full(member->chan, toboot->name, ast_channel_language(member->chan), 1)))
+#endif
+				continue;
+		}
+
+		if (toboot->stream)
+		{
+			ast_stopstream(member->chan);
+		}
+
+		if (!(member->soundq = toboot->next))
+		{
+			member->muted = 0;
+			ast_free(toboot);
+			return NULL;
+		} else {
+			ast_free(toboot);
+			continue;
+		}
+
+	}
+	return f;
+}
+
+static void *conf_sound_alloc(struct ast_channel *chan, void *params)
+{
+	ast_conf_member *member = (ast_conf_member *)params;
+
+	member->ready_for_outgoing = 0;
+
+	return params;
+}
+
+static void conf_sound_release(struct ast_channel *chan, void *data)
+{
+	ast_conf_member *member = (ast_conf_member *)data;
+
+	member->ready_for_outgoing = 1;
+}
+
+static int conf_sound_generator(struct ast_channel *chan, void *data, int len, int samples)
+{
+	ast_conf_member *member = (ast_conf_member *)data;
+	struct ast_frame *f = get_next_soundframe(member);
+
+	if (!f)
+		return -1;
+
+	ast_write(chan, f);
+	ast_frfree(f);
+
+	return 0;
+}
+
+struct ast_generator play_sound_generator = {
+	.alloc = conf_sound_alloc,
+	.release = conf_sound_release,
+	.generate = conf_sound_generator,
+};

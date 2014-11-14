@@ -779,8 +779,7 @@ void end_conference(const char *name)
 		{
 			ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
 
-			member->kick_flag = 1;
-			ast_queue_frame(member->chan, &ast_null_frame);
+			ast_queue_frame(member->chan, &kick_frame);
 		}
 
 		// release the conference lock
@@ -877,8 +876,7 @@ void remove_member(ast_conf_member* member, ast_conference* conf, char* conf_nam
 		for (listentry = conf->listheaders->memberlistheader.next; listentry != &conf->listheaders->memberlistheader; listentry = listentry->next)
 		{
 			ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
-			member->kick_flag = 1;
-			ast_queue_frame(member->chan, &ast_null_frame);
+			ast_queue_frame(member->chan, &kick_frame);
 		}
 	}
 
@@ -908,8 +906,7 @@ void remove_member(ast_conf_member* member, ast_conference* conf, char* conf_nam
 			AST_LIST_TRAVERSE_SAFE_BEGIN(&member->spy_list.head, entry, spy_list.entry)
 			{
 				AST_LIST_REMOVE_HEAD(&entry->spy_list.head, spy_list.entry);
-				entry->kick_flag = 1;
-				ast_queue_frame(entry->chan, &ast_null_frame);
+				ast_queue_frame(entry->chan, &kick_frame);
 #if	ASTERISK_SRC_VERSION == 104
 				AST_LIST_REMOVE_CURRENT(&member->spy_list.head, spy_list.entry);
 #else
@@ -1150,8 +1147,7 @@ void kick_member(const char* confname, int user_id)
 					ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
 				    if (member->conf_id == user_id)
 				      {
-					member->kick_flag = 1;
-					ast_queue_frame(member->chan, &ast_null_frame);
+					ast_queue_frame(member->chan, &kick_frame);
 				      }
 				  }
 				ast_rwlock_unlock(&conf->listheaders->lock);
@@ -1185,8 +1181,7 @@ void kick_all(void)
 			for (listentry = conf->listheaders->memberlistheader.next; listentry != &conf->listheaders->memberlistheader; listentry = listentry->next)
 			{
 				ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
-				member->kick_flag = 1;
-				ast_queue_frame(member->chan, &ast_null_frame);
+				ast_queue_frame(member->chan, &kick_frame);
 			}
 			ast_rwlock_unlock(&conf->listheaders->lock);
 
@@ -1429,27 +1424,21 @@ void play_sound_channel(const char *channel, const char * const *file, int mute,
 #endif
 {
 	ast_conf_member *member;
-	ast_conf_soundq *newsound;
-	ast_conf_soundq **q;
 
 	if ((member = find_member(channel)))
 	{
-#if	ASTERISK_SRC_VERSION < 1100
-		if (!member->norecv_audio && !ast_test_flag(member->chan, AST_FLAG_MOH)
-#else
-		if (!member->norecv_audio && !ast_test_flag(ast_channel_flags(member->chan), AST_FLAG_MOH)
-#endif
-				&& (!tone || !member->soundq))
+		if (!member->norecv_audio && (!tone || !member->soundq))
 		{
 			while (n-- > 0) {
-				if (!(newsound = ast_calloc(1, sizeof(ast_conf_soundq))))
-					break;
 
-				ast_copy_string(newsound->name, *file, sizeof(newsound->name));
-
-				// append sound to the end of the list.
-				for (q=&member->soundq; *q; q = &((*q)->next));
-				*q = newsound;
+				char play_data[160+AST_FRIENDLY_OFFSET] = { [AST_FRIENDLY_OFFSET] = PLAY };
+#if     ASTERISK_SRC_VERSION == 104
+				struct ast_frame play_frame = {.frametype = AST_FRAME_TEXT, .data = &play_data[AST_FRIENDLY_OFFSET], .datalen = 160};
+#else
+				struct ast_frame play_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = play_data, .datalen = 160};
+#endif
+				ast_copy_string(&play_data[AST_FRIENDLY_OFFSET+1], *file, 160-2);
+				ast_queue_frame(member->chan, &play_frame);
 
 				file++;
 			}
@@ -1466,22 +1455,14 @@ void play_sound_channel(const char *channel, const char * const *file, int mute,
 void stop_sound_channel(const char *channel)
 {
 	ast_conf_member *member;
-	ast_conf_soundq *sound;
-	ast_conf_soundq *next;
 
 	if ((member = find_member(channel)))
 	{
-		// clear all sounds
-		sound = member->soundq;
-
-		while (sound)
+		if (!member->norecv_audio)
 		{
-			next = sound->next;
-			sound->stopped = 1;
-			sound = next;
-		}
+			ast_queue_frame(member->chan, &stop_frame);
 
-			member->muted = 0;
+		}
 
 		if (!--member->use_count && member->delete_flag)
 			ast_cond_signal(&member->delete_var);
@@ -1496,28 +1477,8 @@ void start_moh_channel(const char *channel)
 	if ((member = find_member(channel)))
 	{
 		if (!member->norecv_audio)
-			{
-			// clear all sounds
-			ast_conf_soundq *next;
-			ast_conf_soundq *sound = member->soundq;
-
-			while (sound)
-			{
-				next = sound->next;
-				sound->stopped = 1;
-				sound = next;
-			}
-
-			member->muted = 1;
-			member->ready_for_outgoing = 0;
-
-			struct ast_frame *f; 
-			while ((f = get_outgoing_frame(member)))
-			{
-				ast_frfree(f);
-			}
-
-			ast_moh_start(member->chan, NULL, NULL);
+		{
+			ast_queue_frame(member->chan, &hold_frame);
 		}
 
 		if (!--member->use_count && member->delete_flag)
@@ -1534,10 +1495,7 @@ void stop_moh_channel(const char *channel)
 	{
 		if (!member->norecv_audio)
 		{
-			member->muted = 0;
-			member->ready_for_outgoing = 1;
-
-			ast_moh_stop(member->chan);
+			ast_queue_frame(member->chan, &cont_frame);
 		}
 
 		if (!--member->use_count && member->delete_flag)

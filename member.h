@@ -39,9 +39,8 @@
 
 struct ast_conf_soundq
 {
-	char name[256];
+	char name[160];
 	struct ast_filestream *stream; // the stream
-	int stopped;
 	struct ast_conf_soundq *next;
 };
 
