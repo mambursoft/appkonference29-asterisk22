@@ -232,7 +232,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 						ast_frfree(f);
 						return 1; // break while (42)
 				}
-				case 'P':
+				case PLAY:
 				{
 #if	ASTERISK_SRC_VERSION < 1100
 					if (!ast_test_flag(member->chan, AST_FLAG_MOH))
@@ -1100,6 +1100,8 @@ void delete_member(ast_conf_member* member)
 		ast_free(sound);
 		sound = next;
 	}
+
+	ast_deactivate_generator(member->chan);
 
 	// decrement listheader count
 	if (member->listheaders)
