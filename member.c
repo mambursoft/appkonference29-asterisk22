@@ -248,7 +248,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 						char *sound = (char*)f->data.ptr;
 #endif
 						newsound = ast_calloc(1, sizeof(ast_conf_soundq));
-						ast_copy_string(newsound->name, &sound[1], 160-1);
+						ast_copy_string(newsound->name, &sound[1], 160-2);
 						for (q=&member->soundq; *q; q = &((*q)->next));
 						*q = newsound;
 						if (member->soundq == newsound)
@@ -264,20 +264,6 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 					if (!ast_test_flag(ast_channel_flags(member->chan), AST_FLAG_MOH))
 #endif
 					{
-						ast_conf_soundq *next;
-						ast_conf_soundq *sound = member->soundq;
-
-						member->soundq = NULL;
-
-						while (sound)
-						{
-							if (sound->stream)
-								ast_stopstream(member->chan);
-							next = sound->next;
-							ast_free(sound);
-							sound = next;
-						}
-
 						member->muted = 0;
 
 						ast_deactivate_generator(member->chan);
@@ -286,20 +272,6 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 				}
 				case HOLD:
 				{
-					ast_conf_soundq *next;
-					ast_conf_soundq *sound = member->soundq;
-
-					member->soundq = NULL;
-
-					while (sound)
-					{
-						if (sound->stream)
-							ast_stopstream(member->chan);
-						next = sound->next;
-						ast_free(sound);
-						sound = next;
-					}
-
 					member->muted = 1;
 					member->ready_for_outgoing = 0;
 
@@ -1089,18 +1061,6 @@ void delete_member(ast_conf_member* member)
 	}
 
 	// clear all sounds
-	ast_conf_soundq *sound = member->soundq;
-	ast_conf_soundq *next;
-
-	while (sound)
-	{
-		next = sound->next;
-		if (sound->stream)
-			ast_stopstream(member->chan);
-		ast_free(sound);
-		sound = next;
-	}
-
 	ast_deactivate_generator(member->chan);
 
 	// decrement listheader count
@@ -1590,6 +1550,20 @@ static void *conf_sound_alloc(struct ast_channel *chan, void *params)
 static void conf_sound_release(struct ast_channel *chan, void *data)
 {
 	ast_conf_member *member = (ast_conf_member *)data;
+
+	ast_conf_soundq *next;
+	ast_conf_soundq *sound = member->soundq;
+
+	member->soundq = NULL;
+
+	while (sound)
+	{
+		if (sound->stream)
+			ast_stopstream(member->chan);
+		next = sound->next;
+		ast_free(sound);
+		sound = next;
+	}
 
 	member->ready_for_outgoing = 1;
 }
