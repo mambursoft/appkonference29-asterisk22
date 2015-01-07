@@ -91,7 +91,6 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 				{
 					//
 					// we ignore the preprocessor's outcome if we've seen voice frames
-					// in within the last AST_CONF_FRAMES_TO_SKIP frames
 					//
 					if (member->ignore_vad_result > 0)
 					{
@@ -1118,9 +1117,7 @@ void queue_incoming_frame(ast_conf_member* member, struct ast_frame* fr)
 #else
 		memcpy(cf->data.ptr, fr->data.ptr, fr->datalen);
 #endif
-		ast_copy_flags(cf, fr, AST_FRFLAG_HAS_TIMING_INFO);
 		cf->ts = fr->ts;
-		cf->len = fr->len;
 		cf->seqno = fr->seqno;
 		fr = cf;
 	}    
@@ -1150,10 +1147,9 @@ void queue_incoming_frame(ast_conf_member* member, struct ast_frame* fr)
 		cf->data.ptr = (char*)cf + sizeof(struct ast_frame) + AST_FRIENDLY_OFFSET;
 		memcpy(cf->data.ptr, fr->data.ptr, fr->datalen);
 #endif
-		ast_copy_flags(cf, fr, AST_FRFLAG_HAS_TIMING_INFO);
 		cf->ts = fr->ts;
-		cf->len = fr->len;
 		cf->seqno = fr->seqno;
+		cf->len = AST_CONF_FRAME_INTERVAL;
 		fr = cf;
 	}
 #else
