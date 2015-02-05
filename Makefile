@@ -96,6 +96,7 @@ CFLAGS += -O3 -ffast-math -funroll-all-loops -fsingle-precision-constant
 #CFLAGS += $(shell if $(CC) -march=$(PROC) -S -o /dev/null -xc /dev/null >/dev/null 2>&1; then echo "-march=$(PROC)"; fi)
 CFLAGS += $(shell if uname -m | grep -q ppc; then echo "-fsigned-char"; fi)
 CFLAGS += -fPIC
+#CFLAGS += -std=gnu89 
 
 #
 # preprocessor flags
