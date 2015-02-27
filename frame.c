@@ -44,7 +44,7 @@ conf_frame *silent_conf_frame = &cfr;
 
 #ifdef	VECTORS
 
-typedef short v4si __attribute__ ((vector_size (16))); 
+typedef short v8hi __attribute__ ((vector_size (16))); 
 
 static inline void mix_slinear_frames(char *dst, const char *src, int samples)
 {
@@ -52,7 +52,7 @@ static inline void mix_slinear_frames(char *dst, const char *src, int samples)
 
 	for (i = 0; i < samples / 8; ++i)
 	{
-		((v4si *)dst)[i] = ((v4si *)dst)[i] + ((v4si *)src)[i];
+		((v8hi *) dst)[i] = __builtin_ia32_paddsw128(((v8hi *) dst)[i] , ((v8hi *) src)[i]);
 	}
 }
 
@@ -62,7 +62,7 @@ static inline void unmix_slinear_frame(char *dst, const char *src1, const char *
 
 	for (i = 0; i < samples / 8; ++i)
 	{
-		((v4si *)dst)[i] = ((v4si *)src1)[i] - ((v4si *)src2)[i];
+		((v8hi *) dst)[i] = __builtin_ia32_psubsw128(((v8hi *) src1)[i] , ((v8hi *) src2)[i]);
 	}
 }
 
