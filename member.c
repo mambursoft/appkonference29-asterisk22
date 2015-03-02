@@ -1117,6 +1117,7 @@ void queue_incoming_frame(ast_conf_member* member, struct ast_frame* fr)
 #else
 		memcpy(cf->data.ptr, fr->data.ptr, fr->datalen);
 #endif
+		cf->delivery = fr->delivery;
 		cf->ts = fr->ts;
 		cf->seqno = fr->seqno;
 		fr = cf;
@@ -1137,7 +1138,6 @@ void queue_incoming_frame(ast_conf_member* member, struct ast_frame* fr)
 #endif
 		cf->datalen = member->pkt_size;
 		cf->samples = 160;
-		cf->delivery = fr->delivery;
 		cf->mallocd = AST_MALLOCD_HDR;
 		cf->offset = AST_FRIENDLY_OFFSET;
 #if	ASTERISK_SRC_VERSION == 104
@@ -1147,6 +1147,7 @@ void queue_incoming_frame(ast_conf_member* member, struct ast_frame* fr)
 		cf->data.ptr = (char*)cf + sizeof(struct ast_frame) + AST_FRIENDLY_OFFSET;
 		memcpy(cf->data.ptr, fr->data.ptr, fr->datalen);
 #endif
+		cf->delivery = fr->delivery;
 		cf->ts = fr->ts;
 		cf->seqno = fr->seqno;
 		cf->len = AST_CONF_FRAME_INTERVAL;
