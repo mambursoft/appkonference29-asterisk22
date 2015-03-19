@@ -1282,12 +1282,12 @@ void queue_frame_for_listener(
 			}
 			else
 			{
-				ast_frame_adjust_volume(frame->fr, member->listen_volume);
+				qf = ast_frdup(frame->fr);
+
+				ast_frame_adjust_volume(qf, member->listen_volume > 0 ? member->listen_volume + 1 : member->listen_volume - 1);
 
 				// convert using the conference's translation path
-				qf = convert_frame(conf->from_slinear_paths[member->write_format], frame->fr, 0);
-
-				ast_frame_adjust_volume(frame->fr, -member->listen_volume);
+				qf = convert_frame(conf->from_slinear_paths[member->write_format], qf, 1);
 
 				queue_outgoing_frame(member, qf, conf->delivery_time);
 
@@ -1323,7 +1323,7 @@ void queue_frame_for_speaker(
 		{
 			if (member->listen_volume)
 			{
-				ast_frame_adjust_volume(frame->fr, member->listen_volume);
+				ast_frame_adjust_volume(frame->fr, member->listen_volume > 0 ? member->listen_volume + 1 : member->listen_volume - 1);
 			}
 
 			// convert using the member's translation path
