@@ -805,9 +805,9 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 	else
 	{
 #if	ASTERISK_SRC_VERSION < 1000
-		member->to_slinear = ast_translator_build_path(AST_FORMAT_CONFERENCE, member->chan->readformat);
+		member->to_slinear = ast_translator_build_path(AST_FORMAT_CONFERENCE, chan->readformat);
 #elif	ASTERISK_SRC_VERSION < 1100
-		member->to_slinear = ast_translator_build_path(&ast_format_conference, &member->chan->readformat);
+		member->to_slinear = ast_translator_build_path(&ast_format_conference, &chan->readformat);
 #elif	ASTERISK_SRC_VERSION < 1300
 		member->to_slinear = ast_translator_build_path(&ast_format_conference, ast_channel_readformat(chan));
 #else
@@ -817,9 +817,9 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 #else	// SILDET
 
 #if	ASTERISK_SRC_VERSION < 1000
-	member->to_slinear = ast_translator_build_path(AST_FORMAT_CONFERENCE, member->chan->readformat);
+	member->to_slinear = ast_translator_build_path(AST_FORMAT_CONFERENCE, chan->readformat);
 #elif	ASTERISK_SRC_VERSION < 1100
-	member->to_slinear = ast_translator_build_path(&ast_format_conference, &member->chan->readformat);
+	member->to_slinear = ast_translator_build_path(&ast_format_conference, &chan->readformat);
 #elif	ASTERISK_SRC_VERSION < 1300
 	member->to_slinear = ast_translator_build_path(&ast_format_conference, ast_channel_readformat(chan));
 #else
@@ -829,24 +829,24 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 #endif	// SILDET
 
 #if	ASTERISK_SRC_VERSION < 1000
-	member->from_slinear = ast_translator_build_path(member->chan->writeformat, AST_FORMAT_CONFERENCE);
+	member->from_slinear = ast_translator_build_path(chan->writeformat, AST_FORMAT_CONFERENCE);
 #elif	ASTERISK_SRC_VERSION < 1100
-	member->from_slinear = ast_translator_build_path(&member->chan->writeformat, &ast_format_conference);
+	member->from_slinear = ast_translator_build_path(&chan->writeformat, &ast_format_conference);
 #elif	ASTERISK_SRC_VERSION < 1300
-	member->from_slinear = ast_translator_build_path(ast_channel_writeformat(member->chan), &ast_format_conference);
+	member->from_slinear = ast_translator_build_path(ast_channel_writeformat(chan), &ast_format_conference);
 #else
-	member->from_slinear = ast_translator_build_path(ast_channel_writeformat(member->chan), ast_format_conference);
+	member->from_slinear = ast_translator_build_path(ast_channel_writeformat(chan), ast_format_conference);
 #endif
 
 	// index for converted_frames array
 #if	ASTERISK_SRC_VERSION < 1000
-	switch (member->chan->writeformat)
+	switch (chan->writeformat)
 #elif	ASTERISK_SRC_VERSION < 1100
-	switch (member->chan->writeformat.id)
+	switch (chan->writeformat.id)
 #elif	ASTERISK_SRC_VERSION < 1300
-	switch (ast_channel_writeformat(member->chan)->id)
+	switch (ast_channel_writeformat(chan)->id)
 #else
-	switch (ast_format_compatibility_format2bitfield(ast_channel_writeformat(member->chan)))
+	switch (ast_format_compatibility_format2bitfield(ast_channel_writeformat(chan)))
 #endif
 	{
 		case AST_FORMAT_CONFERENCE:
@@ -893,25 +893,25 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 #if	SILDET == 1 || SILDET == 2
 
 #if	ASTERISK_SRC_VERSION < 1000
-	switch (member->dsp ? AST_FORMAT_CONFERENCE : member->chan->readformat)
+	switch (member->dsp ? AST_FORMAT_CONFERENCE : chan->readformat)
 #elif	ASTERISK_SRC_VERSION < 1100
-	switch (member->dsp ? AST_FORMAT_CONFERENCE : member->chan->readformat.id)
+	switch (member->dsp ? AST_FORMAT_CONFERENCE : chan->readformat.id)
 #elif	ASTERISK_SRC_VERSION < 1300
-	switch (member->dsp ? AST_FORMAT_CONFERENCE : ast_channel_readformat(member->chan)->id)
+	switch (member->dsp ? AST_FORMAT_CONFERENCE : ast_channel_readformat(chan)->id)
 #else
-	switch (member->dsp ? AST_FORMAT_CONFERENCE : ast_format_compatibility_format2bitfield(ast_channel_readformat(member->chan)))
+	switch (member->dsp ? AST_FORMAT_CONFERENCE : ast_format_compatibility_format2bitfield(ast_channel_readformat(chan)))
 #endif
 
 #else	// SILDET
 
 #if	ASTERISK_SRC_VERSION < 1000
-	switch (member->chan->readformat)
+	switch (chan->readformat)
 #elif	ASTERISK_SRC_VERSION < 1100
-	switch (member->chan->readformat.id)
+	switch (chan->readformat.id)
 #elif	ASTERISK_SRC_VERSION < 1300
-	switch (ast_channel_readformat(member->chan)->id)
+	switch (ast_channel_readformat(chan)->id)
 #else
-	switch (ast_format_compatibility_format2bitfield(ast_channel_readformat(member->chan)))
+	switch (ast_format_compatibility_format2bitfield(ast_channel_readformat(chan)))
 #endif
 
 #endif	// SILDET
