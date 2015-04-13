@@ -872,7 +872,11 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 			break;
 #endif
 #ifdef AC_USE_G729A
+#if	ASTERISK_SRC_VERSION < 1300
 		case AST_FORMAT_G729A:
+#else
+		case AST_FORMAT_G729:
+#endif
 			member->write_format = AC_G729A;
 			break;
 #endif
@@ -956,7 +960,11 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 			break;
 #endif
 #ifdef AC_USE_G729A
+#if	ASTERISK_SRC_VERSION < 1300
 		case AST_FORMAT_G729A:
+#else
+		case AST_FORMAT_G729:
+#endif
 			member->read_format = AC_G729A;
 			break;
 #endif

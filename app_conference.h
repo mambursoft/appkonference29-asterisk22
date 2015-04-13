@@ -237,8 +237,12 @@ AST_LIST_HEAD_NOLOCK(mbrBlockList, ast_conf_member) mbrBlockList;
 #elif	ASTERISK_SRC_VERSION > 108
 struct ast_format ast_format_conference;
 struct ast_format ast_format_ulaw;
+#ifdef	AC_USE_ALAW
 struct ast_format ast_format_alaw;
+#endif
+#ifdef	AC_USE_GSM
 struct ast_format ast_format_gsm;
+#endif
 #ifdef	AC_USE_SPEEX
 struct ast_format ast_format_speex;
 #endif

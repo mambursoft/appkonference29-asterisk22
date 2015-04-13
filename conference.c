@@ -35,12 +35,15 @@
 #include <sys/time.h>
 #endif
 
-#if	ASTERISK_SRC_VERSION < 1300
-#if	ASTERISK_SRC_VERSION > 108
+#if	ASTERISK_SRC_VERSION > 108 && ASTERISK_SRC_VERSION < 1300
 struct ast_format ast_format_conference = { .id = AST_FORMAT_CONFERENCE };
 struct ast_format ast_format_ulaw = { .id = AST_FORMAT_ULAW };
+#ifdef  AC_USE_ALAW
 struct ast_format ast_format_alaw = { .id = AST_FORMAT_ALAW };
+#endif
+#ifdef  AC_USE_GSM
 struct ast_format ast_format_gsm = { .id = AST_FORMAT_GSM };
+#endif
 #ifdef  AC_USE_SPEEX
 struct ast_format ast_format_speex = { .id = AST_FORMAT_SPEEX };
 #endif
@@ -50,7 +53,6 @@ struct ast_format ast_format_g729a = { .id = AST_FORMAT_G729A };
 #ifdef  AC_USE_G722
 struct ast_format ast_format_slinear = { .id = AST_FORMAT_SLINEAR };
 struct ast_format ast_format_g722 = { .id = AST_FORMAT_G722 };
-#endif
 #endif
 #endif
 
@@ -594,7 +596,7 @@ static ast_conference* create_conf(char* name, ast_conf_member* member)
 #elif	ASTERISK_SRC_VERSION < 1300
 	conf->from_slinear_paths[AC_G729A] = ast_translator_build_path(&ast_format_g729a, &ast_format_conference);
 #else
-	conf->from_slinear_paths[AC_G729A] = ast_translator_build_path(ast_format_g729a, ast_format_conference);
+	conf->from_slinear_paths[AC_G729A] = ast_translator_build_path(ast_format_g729, ast_format_conference);
 #endif
 #endif
 
@@ -606,7 +608,7 @@ static ast_conference* create_conf(char* name, ast_conf_member* member)
 	conf->from_slinear_paths[AC_SLINEAR] = ast_translator_build_path(&ast_format_slinear, &ast_format_conference);
 	conf->from_slinear_paths[AC_G722] = ast_translator_build_path(&ast_format_g722, &ast_format_conference);
 #else
-	conf->from_slinear_paths[AC_SLINEAR] = ast_translator_build_path(ast_format_slinear, ast_format_conference);
+	conf->from_slinear_paths[AC_SLINEAR] = ast_translator_build_path(ast_format_slin, ast_format_conference);
 	conf->from_slinear_paths[AC_G722] = ast_translator_build_path(ast_format_g722, ast_format_conference);
 #endif
 #endif
