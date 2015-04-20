@@ -1142,7 +1142,7 @@ void queue_incoming_frame(ast_conf_member* member, struct ast_frame* fr)
 #if	ASTERISK_SRC_VERSION < 1300
 		cf->subclass = fr->subclass;
 #else
-		cf->subclass.format = fr->subclass.format;
+		cf->subclass.format = ao2_bump(fr->subclass.format);
 #endif
 		cf->datalen = member->pkt_size;
 		cf->samples = 160;
