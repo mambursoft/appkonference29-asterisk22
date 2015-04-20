@@ -1437,7 +1437,7 @@ void play_sound_channel(const char *channel, const char * const *file, int mute,
 #if     ASTERISK_SRC_VERSION == 104
 				struct ast_frame play_frame = {.frametype = AST_FRAME_TEXT, .data = &play_data[AST_FRIENDLY_OFFSET], .datalen = 160};
 #else
-				struct ast_frame play_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = play_data, .datalen = 160};
+				struct ast_frame play_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = &play_data[AST_FRIENDLY_OFFSET], .datalen = 160};
 #endif
 				ast_copy_string(&play_data[AST_FRIENDLY_OFFSET+1], *file, 160-2);
 				ast_queue_frame(member->chan, &play_frame);
