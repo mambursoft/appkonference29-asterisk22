@@ -153,8 +153,29 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 				queue_incoming_frame(member, f);
 			break;
 		}
-		// In Asterisk 1.4 AST_FRAME_DTMF is equivalent to AST_FRAME_DTMF_END
-		case AST_FRAME_DTMF:
+		case AST_FRAME_DTMF_BEGIN:
+		case AST_FRAME_NULL:
+		{
+#if     ASTERISK_SRC_VERSION < 1100
+			if (member->chan->generatordata == member)
+			{
+				member->chan->generatordata = NULL;
+				int res = member->chan->generator->generate(member->chan, member, 0, 0);
+				member->chan->generatordata = member;
+				if (res) ast_deactivate_generator(member->chan);
+			}
+#else
+			if (ast_channel_generatordata(member->chan) == member)
+			{
+				ast_channel_generatordata_set(member->chan, NULL);
+				int res = (ast_channel_generator(member->chan)->generate)(member->chan, member, 0, 0);
+				ast_channel_generatordata_set(member->chan, member);
+				if (res) ast_deactivate_generator(member->chan);
+			}
+#endif
+			break;
+		}
+		case AST_FRAME_DTMF_END:
 		{
 			if (member->dtmf_relay)
 			{
@@ -271,10 +292,17 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 				}
 				case HOLD:
 				{
-					member->muted = 1;
-					member->ready_for_outgoing = 0;
+#if     ASTERISK_SRC_VERSION < 1100
+					if (!ast_test_flag(member->chan, AST_FLAG_MOH))
+#else
+					if (!ast_test_flag(ast_channel_flags(member->chan), AST_FLAG_MOH))
+#endif
+					{
+						member->muted = 1;
+						member->ready_for_outgoing = 0;
 
-					ast_moh_start(member->chan, NULL, NULL);
+						ast_moh_start(member->chan, NULL, NULL);
+					}
 					break;
 				}
 				case CONT:
@@ -304,6 +332,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 					break;
 				}
 			}
+			break;
 		}
 		default:
 		{
@@ -1068,7 +1097,14 @@ void delete_member(ast_conf_member* member)
 	}
 
 	// clear all sounds
-	ast_deactivate_generator(member->chan);
+#if     ASTERISK_SRC_VERSION < 1100
+	if (member->chan->generatordata == member)
+#else
+	if (ast_channel_generatordata(member->chan) == member)
+#endif
+	{
+		ast_deactivate_generator(member->chan);
+	}
 
 	// decrement listheader count
 	if (member->listheaders)
