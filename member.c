@@ -153,6 +153,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 				queue_incoming_frame(member, f);
 			break;
 		}
+#if     ASTERISK_SRC_VERSION < 1110
 		case AST_FRAME_DTMF_BEGIN:
 		case AST_FRAME_NULL:
 		{
@@ -175,6 +176,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 #endif
 			break;
 		}
+#endif
 		case AST_FRAME_DTMF_END:
 		{
 			if (member->dtmf_relay)
