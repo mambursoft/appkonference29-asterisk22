@@ -344,6 +344,9 @@ static int get_expirations(void)
 // called by app_conference.c:load_module()
 int init_conference(void)
 {
+	// init silent frame
+	silent_conf_frame = create_silent_frame();
+
 	int i;
 	//init channel entries
 	for (i = 0; i < CHANNEL_TABLE_SIZE; i++)
@@ -383,9 +386,6 @@ int init_conference(void)
 		return -1;
 	}
 #endif
-#if	ASTERISK_SRC_VERSION >= 1300
-	silent_conf_frame->fr->subclass.format = ast_format_conference;
-#endif
 	return 0;
 }
 
@@ -393,6 +393,9 @@ int init_conference(void)
 // called by app_conference.c:unload_module()
 void dealloc_conference(void)
 {
+	// delete silent frame
+	delete_silent_frame(silent_conf_frame);
+
 	int i;
 	//destroy channel entires
 	for (i = 0; i < CHANNEL_TABLE_SIZE; i++)
@@ -419,9 +422,6 @@ void dealloc_conference(void)
 		ast_free(mbrblock);
 	}
 #endif
-	//free silent frames
-	for (i = 1; i < AC_SUPPORTED_FORMATS; ++i)
-		if (silent_conf_frame->converted[i]) ast_frfree(silent_conf_frame->converted[i]);
 
 #ifdef	CACHE_CONF_FRAMES
 	//free conf frames

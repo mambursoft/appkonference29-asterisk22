@@ -19,29 +19,6 @@
 #include "asterisk/autoconfig.h"
 #include "frame.h"
 
-static char data[AST_CONF_BUFFER_SIZE];
-
-static struct ast_frame fr = { .frametype = AST_FRAME_VOICE, 
-#if     ASTERISK_SRC_VERSION == 104
-				.subclass = AST_FORMAT_CONFERENCE,
-				.data = &(data[AST_FRIENDLY_OFFSET]),
-#elif	ASTERISK_SRC_VERSION == 106
-				.subclass = AST_FORMAT_CONFERENCE,
-				.data.ptr = &(data[AST_FRIENDLY_OFFSET]),
-#elif	ASTERISK_SRC_VERSION < 1300
-				.subclass.integer = AST_FORMAT_CONFERENCE,
-				.data.ptr = &(data[AST_FRIENDLY_OFFSET]),
-#else
-				.data.ptr = &(data[AST_FRIENDLY_OFFSET]),
-#endif
-				.samples = AST_CONF_BLOCK_SAMPLES,
-				.offset = AST_FRIENDLY_OFFSET,
-				.datalen = AST_CONF_FRAME_DATA_SIZE };
-
-static conf_frame cfr =  { .fr = &fr, .converted[AC_CONF] = &fr };
-
-conf_frame *silent_conf_frame = &cfr;
-
 #ifdef	VECTORS
 
 typedef short v8hi __attribute__ ((vector_size (16))); 
@@ -625,4 +602,30 @@ struct ast_frame* create_slinear_frame(struct ast_frame **f, char* data)
 	(*f)->data.ptr = data;
 #endif
 	return *f;
+}
+
+conf_frame *create_silent_frame(void)
+{
+	static char data[AST_CONF_BUFFER_SIZE];
+
+	static conf_frame silent_conf_frame;
+
+	silent_conf_frame.converted[AC_CONF] = create_slinear_frame(&silent_conf_frame.fr, data);
+
+	return &silent_conf_frame;
+}
+
+void delete_silent_frame(conf_frame *silent_conf_frame)
+{
+	//free silent frames
+	int i;
+	for (i = 1; i < AC_SUPPORTED_FORMATS; ++i)
+	{
+		if (silent_conf_frame->converted[i])
+		{
+			ast_frfree(silent_conf_frame->converted[i]);
+		}
+	}
+
+	ast_free(silent_conf_frame->fr);
 }
