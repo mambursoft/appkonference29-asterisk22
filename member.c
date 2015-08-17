@@ -961,22 +961,14 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 		case AST_FORMAT_ULAW:
 			member->read_format = AC_ULAW;
 #ifdef	CACHE_AST_FRAMES
-#if	SILDET == 1 || SILDET == 2
-			member->pkt_size = !member->dsp ? 160 : 320;
-#else
 			member->pkt_size = 160;
-#endif
 #endif
 			break;
 #ifdef  AC_USE_ALAW
 		case AST_FORMAT_ALAW:
 			member->read_format = AC_ALAW;
 #ifdef	CACHE_AST_FRAMES
-#if	SILDET == 1 || SILDET == 2
-			member->pkt_size = !member->dsp ? 160 : 320;
-#else
 			member->pkt_size = 160;
-#endif
 #endif
 			break;
 #endif
