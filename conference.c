@@ -96,7 +96,7 @@ static void remove_conf(ast_conference **conf);
 static void add_member(ast_conf_member* member, ast_conference* conf);
 static void process_conference(ast_conference *conf);
 #ifdef	CHECK_THREAD_FREQUENCY
-static void check_frequency(uint64_t expirations);
+static void check_frequency(void);
 #endif
 static int get_expirations(void);
 
@@ -133,8 +133,9 @@ static void conference_exec()
 		// update expirations
 		uint64_t expirations = get_expirations();
 #ifdef	CHECK_THREAD_FREQUENCY
-		// check thread frequency
-		check_frequency(expirations);
+		// update tf variables
+		tf_expirations += expirations;
+		if (expirations > tf_max_expirations) tf_max_expirations = expirations;
 #endif
 		// loop for expirations
 		for (; expirations; expirations--)
@@ -212,6 +213,10 @@ static void conference_exec()
 				conf = &(*conf)->next;
 			}
 		}
+#ifdef	CHECK_THREAD_FREQUENCY
+		// check thread frequency
+		check_frequency();
+#endif
 	}
 }
 
@@ -263,15 +268,10 @@ void process_conference(ast_conference *conf)
 }
 
 #ifdef	CHECK_THREAD_FREQUENCY
-static void check_frequency(uint64_t expirations)
+static void check_frequency(void)
 {
-	// update tf variables
-	tf_expirations++;
-	tf_count += expirations;
-	if (expirations > tf_max_expirations) tf_max_expirations = expirations;
-
 	// calculate tf
-	if (tf_count >= AST_CONF_FRAMES_PER_SECOND)
+	if (++tf_count == AST_CONF_FRAMES_PER_SECOND)
 	{
 		// update current timestamp
 		struct timeval tf_curr = ast_tvnow();
@@ -279,13 +279,11 @@ static void check_frequency(uint64_t expirations)
 		// compute timestamp difference
 		long tf_diff = ast_tvdiff_ms(tf_curr, tf_base);
 
-		// compute sampling frequency
-		float tf_frequency = (float)(tf_diff) / (float)(tf_count);
-
-		if ((tf_frequency <= (float)(AST_CONF_FRAME_INTERVAL - 1))
-			|| (tf_frequency >= (float)(AST_CONF_FRAME_INTERVAL + 1)))
+		if (tf_diff > TF_MAX_VARIATION)
 		{
-			ast_log(LOG_WARNING, "processed frame frequency variation, tf_count => %d, tf_diff => %ld, tf_frequency => %2.4f, tf_expirations = %d tf_max_expirations = %d\n", tf_count, tf_diff, tf_frequency, tf_expirations, tf_max_expirations);
+			ast_log(LOG_WARNING,
+				"processed frame frequency variation, tf_diff = %ld, tf_expirations = %d tf_max_expirations = %d\n",
+				tf_diff, tf_expirations, tf_max_expirations);
 		}
 
 		// update base

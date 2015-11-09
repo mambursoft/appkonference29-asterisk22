@@ -157,6 +157,10 @@
 // event before we check for outgoing frames
 #define AST_CONF_WAITFOR_LATENCY 40
 
+#ifdef	CHECK_THREAD_FREQUENCY
+#define	TF_MAX_VARIATION	1050
+#endif
+
 //
 // format translation values
 //
