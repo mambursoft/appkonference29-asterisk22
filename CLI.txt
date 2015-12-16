@@ -4,32 +4,16 @@ might be outdated. As always, the source code is the definitive reference
 (cli.[ch] and conference.[ch]).  You can also obtain help/usage information by
 using Asterisk CLI help system ("help konference")
 
-A member in a conference can be referred to by its id or by its channel.  Id
-is a positive number assigned automatically when the member joins the
-conference.  Channel is Asterisk channel identifier. To obtain a list of
-member ids and channels in a conference, do:
-
-*CLI> konference list <conference name>
-
 Current command line used by app_konference:
-
-- konference debug: enable debugging for a conference
-  usage: konference debug <conference_name> [ on | off ]
 
 - konference end: stops a conference
   usage: konference end <conference name> [nohangup]
-
-- konference kick: kick member from a conference
-  usage: konference kick <conference_name> <member id>
 
 - konference kickchannel: kick channel from a conference
   usage: konference kickchannel <channel>
 
 - konference list: list members of a conference. If no conference is specified, all conferences are listed
-  usage: konference list {conference_name}
-
-- konference mute: mute member in a conference
-  usage: konference mute <conference_name> <member id>
+  usage: konference list <conference_name>
 
 - konference muteconference: mute all members in a conference
   usage: konference muteconference <conference_name>
@@ -64,9 +48,6 @@ Current command line used by app_konference:
   
 - konference restart: kick all users in all conferences
   usage: konference restart
-
-- konference unmute: unmute member in a conference
-  usage: konference unmute <conference_name> <member id>
 
 - konference unmuteconference: unmute members in a conference
   usage: konference unmuteconference <conference_name>

@@ -177,50 +177,7 @@ char *conference_list(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) 
 	}
 	return SUCCESS;
 }
-#ifdef	KICK_MEMBER
-//
-// kick member <member id>
-//
-static char conference_kick_usage[] =
-	"Usage: konference kick <conference> <member id>\n"
-	"       Kick member <member id> from conference <conference>\n"
-;
 
-#define CONFERENCE_KICK_CHOICES { "konference", "kick", NULL }
-static char conference_kick_summary[] = "Kick member from a conference";
-
-#ifndef AST_CLI_DEFINE
-static struct ast_cli_entry cli_kick = {
-	CONFERENCE_KICK_CHOICES,
-	conference_kick,
-	conference_kick_summary,
-	conference_kick_usage
-};
-int conference_kick(int fd, int argc, char *argv[]) {
-#else
-static char conference_kick_command[] = "konference kick";
-char *conference_kick(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
-#if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
-	static char *choices[] = CONFERENCE_KICK_CHOICES;
-#else
-	static const char *const choices[] = CONFERENCE_KICK_CHOICES;
-#endif
-	NEWCLI_SWITCH(conference_kick_command,conference_kick_usage)
-#endif
-	if (argc < 4)
-		return SHOWUSAGE;
-
-	// get the conference name
-	const char* name = argv[2];
-
-	int member_id;
-	sscanf(argv[3], "%d", &member_id);
-
-	kick_member(name, member_id);
-
-	return SUCCESS;
-}
-#endif
 //
 // kick member <channel>
 //
@@ -268,50 +225,7 @@ char *conference_kickchannel(struct ast_cli_entry *e, int cmd, struct ast_cli_ar
 
 	return SUCCESS;
 }
-#ifdef	MUTE_MEMBER
-//
-// mute member <member id>
-//
-static char conference_mute_usage[] =
-	"Usage: konference mute <conference_name> <member id>\n"
-	"       Mute member in a conference\n"
-;
 
-#define CONFERENCE_MUTE_CHOICES { "konference", "mute", NULL }
-static char conference_mute_summary[] = "Mute member in a conference";
-
-#ifndef AST_CLI_DEFINE
-static struct ast_cli_entry cli_mute = {
-	CONFERENCE_MUTE_CHOICES,
-	conference_mute,
-	conference_mute_summary,
-	conference_mute_usage
-};
-int conference_mute(int fd, int argc, char *argv[]) {
-#else
-static char conference_mute_command[] = "konference mute";
-char *conference_mute(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
-#if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
-	static char *choices[] = CONFERENCE_MUTE_CHOICES;
-#else
-	static const char *const choices[] = CONFERENCE_MUTE_CHOICES;
-#endif
-	NEWCLI_SWITCH(conference_mute_command,conference_mute_usage)
-#endif
-	if (argc < 4)
-		return SHOWUSAGE;
-
-	// get the conference name
-	const char* name = argv[2];
-
-	int member_id;
-	sscanf(argv[3], "%d", &member_id);
-
-	mute_member(name, member_id);
-
-	return SUCCESS;
-}
-#endif
 //
 // mute conference
 //
@@ -415,50 +329,7 @@ char *conference_mutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_ar
 
 	return SUCCESS;
 }
-#ifdef	UNMUTE_MEMBER
-//
-// unmute member <member id>
-//
-static char conference_unmute_usage[] =
-	"Usage: konference unmute <conference_name> <member id>\n"
-	"       Unmute member in a conference\n"
-;
 
-#define CONFERENCE_UNMUTE_CHOICES { "konference", "unmute", NULL }
-static char conference_unmute_summary[] = "Unmute member in a conference";
-
-#ifndef AST_CLI_DEFINE
-static struct ast_cli_entry cli_unmute = {
-	CONFERENCE_UNMUTE_CHOICES,
-	conference_unmute,
-	conference_unmute_summary,
-	conference_unmute_usage
-};
-int conference_unmute(int fd, int argc, char *argv[]) {
-#else
-static char conference_unmute_command[] = "konference unmute";
-char *conference_unmute(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
-#if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
-	static char *choices[] = CONFERENCE_UNMUTE_CHOICES;
-#else
-	static const char *const choices[] = CONFERENCE_UNMUTE_CHOICES;
-#endif
-	NEWCLI_SWITCH(conference_unmute_command,conference_unmute_usage)
-#endif
-	if (argc < 4)
-		return SHOWUSAGE;
-
-	// get the conference name
-	const char* name = argv[2];
-
-	int member_id;
-	sscanf(argv[3], "%d", &member_id);
-
-	unmute_member(name, member_id);
-
-	return SUCCESS;
-}
-#endif
 //
 // unmute conference
 //
@@ -918,18 +789,9 @@ static struct ast_cli_entry app_konference_commands[] = {
 	AST_CLI_DEFINE(conference_version, conference_version_summary),
 	AST_CLI_DEFINE(conference_restart, conference_restart_summary),
 	AST_CLI_DEFINE(conference_list, conference_list_summary),
-#ifdef	KICK_MEMBER
-	AST_CLI_DEFINE(conference_kick, conference_kick_summary),
-#endif
 	AST_CLI_DEFINE(conference_kickchannel, conference_kickchannel_summary),
-#ifdef	MUTE_MEMBER
-	AST_CLI_DEFINE(conference_mute, conference_mute_summary),
-#endif
 	AST_CLI_DEFINE(conference_muteconference, conference_muteconference_summary),
 	AST_CLI_DEFINE(conference_mutechannel, conference_mutechannel_summary),
-#ifdef	UNMUTE_MEMBER
-	AST_CLI_DEFINE(conference_unmute, conference_unmute_summary),
-#endif
 	AST_CLI_DEFINE(conference_unmuteconference, conference_unmuteconference_summary),
 	AST_CLI_DEFINE(conference_unmutechannel, conference_unmutechannel_summary),
 	AST_CLI_DEFINE(conference_play_sound, conference_play_sound_summary),
@@ -951,18 +813,9 @@ void register_conference_cli(void)
 	ast_cli_register(&cli_version);
 	ast_cli_register(&cli_restart);
 	ast_cli_register(&cli_list);
-#ifdef	KICK_MEMBER
-	ast_cli_register(&cli_kick);
-#endif
 	ast_cli_register(&cli_kickchannel);
-#ifdef	MUTE_MEMBER
-	ast_cli_register(&cli_mute);
-#endif
 	ast_cli_register(&cli_muteconference);
 	ast_cli_register(&cli_mutechannel);
-#ifdef	UNMUTE_MEMBER
-	ast_cli_register(&cli_unmute);
-#endif
 	ast_cli_register(&cli_unmuteconference);
 	ast_cli_register(&cli_unmutechannel);
 	ast_cli_register(&cli_play_sound);
@@ -984,18 +837,9 @@ void unregister_conference_cli(void)
 	ast_cli_unregister(&cli_version);
 	ast_cli_unregister(&cli_restart);
 	ast_cli_unregister(&cli_list);
-#ifdef	KICK_MEMBER
-	ast_cli_unregister(&cli_kick);
-#endif
 	ast_cli_unregister(&cli_kickchannel);
-#ifdef	MUTE_MEMBER
-	ast_cli_unregister(&cli_mute);
-#endif
 	ast_cli_unregister(&cli_muteconference);
 	ast_cli_unregister(&cli_mutechannel);
-#ifdef	UNMUTE_MEMBER
-	ast_cli_unregister(&cli_unmute);
-#endif
 	ast_cli_unregister(&cli_unmuteconference);
 	ast_cli_unregister(&cli_unmutechannel);
 	ast_cli_unregister(&cli_play_sound);

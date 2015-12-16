@@ -1123,45 +1123,7 @@ void list_all(int fd)
 		ast_mutex_unlock(&conflist_lock);
 	}
 }
-#ifdef	KICK_MEMBER
-void kick_member(const char* confname, int user_id)
-{
-	// any conferences?
-	if (conflist)
-	{
-		// acquire mutex
-		ast_mutex_lock(&conflist_lock);
 
-		ast_conference *conf = conflist;
-
-		// loop through conf list
-		while (conf)
-		{
-			if (!strcasecmp((const char*)&(conf->name), confname))
-			{
-  				ast_conf_listentry *listentry;
-				// do the biz
-				ast_rwlock_rdlock(&conf->listheaders->lock);
-				for (listentry = conf->listheaders->memberlistheader.next; listentry != &conf->listheaders->memberlistheader; listentry = listentry->next)
-				  {
-					ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
-				    if (member->conf_id == user_id)
-				      {
-					ast_queue_frame(member->chan, &kick_frame);
-				      }
-				  }
-				ast_rwlock_unlock(&conf->listheaders->lock);
-				break;
-			}
-
-			conf = conf->next;
-		}
-
-		// release mutex
-		ast_mutex_unlock(&conflist_lock);
-	}
-}
-#endif
 void kick_all(void)
 {
         // any conferences?
@@ -1193,63 +1155,7 @@ void kick_all(void)
 	}
 
 }
-#ifdef	MUTE_MEMBER
-void mute_member(const char* confname, int user_id)
-{
-        // any conferences?
-	if (conflist)
-	{
-		// acquire mutex
-		ast_mutex_lock(&conflist_lock);
 
-		ast_conference *conf = conflist;
-
-		// loop through conf list
-		while (conf)
-		{
-			if (!strcasecmp((const char*)&(conf->name), confname))
-			{
-				ast_conf_listentry *listentry;
-				// do the biz
-				ast_rwlock_rdlock(&conf->listheaders->lock);
-				for (listentry = conf->listheaders->memberlistheader.next; listentry != &conf->listheaders->memberlistheader; listentry = listentry->next)
-				  {
-					ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
-				    if (member->conf_id == user_id)
-				      {
-#if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
-						*(speaker_scoreboard + member->score_id) = '\x00';
-#endif
-					      if (!member->mute_audio)
-					      {
-					      	member->mute_audio = 1;
-						remove_listentry(&member->speakerlistentry);
-						member->is_speaking = 0;
-					      }
-						manager_event(
-							EVENT_FLAG_CONF,
-							"ConferenceMemberMute",
-							"Channel: %s\r\n",
-#if	ASTERISK_SRC_VERSION < 1100
-							member->chan->name
-#else
-							ast_channel_name(member->chan)
-#endif
-						);
-				      }
-				  }
-				ast_rwlock_unlock(&conf->listheaders->lock);
-				break;
-			}
-
-			conf = conf->next;
-		}
-
-		// release mutex
-		ast_mutex_unlock(&conflist_lock);
-	}
-}
-#endif
 void mute_conference(const char* confname)
 {
         // any conferences?
@@ -1297,59 +1203,7 @@ void mute_conference(const char* confname)
 	}
 
 }
-#ifdef	UNMUTE_MEMBER
-void unmute_member(const char* confname, int user_id)
-{
-        // any conferences?
-	if (conflist)
-	{
-		// acquire mutex
-		ast_mutex_lock(&conflist_lock);
 
-		ast_conference *conf = conflist;
-
-		// loop through conf list
-		while (conf)
-		{
-			if (!strcasecmp((const char*)&(conf->name), confname))
-			{
-				ast_conf_listentry *listentry;
-				// do the biz
-				ast_rwlock_rdlock(&conf->listheaders->lock);
-				for (listentry = conf->listheaders->memberlistheader.next; listentry != &conf->listheaders->memberlistheader; listentry = listentry->next)
-				  {
-			  		ast_conf_member *member = (ast_conf_member *)((char*)listentry - offsetof(ast_conf_member, memberlistentry));
-				    if (member->conf_id == user_id)
-				      {
-					if (member->mute_audio)
-					{
-						member->mute_audio = 0;
-						add_listentry(&conf->listheaders->speakerlistheader, &member->speakerlistentry);
-					}
-						manager_event(
-							EVENT_FLAG_CONF,
-							"ConferenceMemberUnmute",
-							"Channel: %s\r\n",
-#if	ASTERISK_SRC_VERSION < 1100
-							member->chan->name
-#else
-							ast_channel_name(member->chan)
-#endif
-						);
-				      }
-				  }
-				ast_rwlock_unlock(&conf->listheaders->lock);
-				break;
-			}
-
-			conf = conf->next;
-		}
-
-		// release mutex
-		ast_mutex_unlock(&conflist_lock);
-	}
-}
-#endif
 void unmute_conference(const char* confname)
 {
         // any conferences?
@@ -1567,61 +1421,3 @@ int hash(const char *name)
 	}
 	return h;
 }
-
-#ifdef	KONFERENCE_COUNT
-#if	ASTERISK_SRC_VERSION == 104
-int count_exec(struct ast_channel* chan, void* data)
-#else
-int count_exec(struct ast_channel* chan, const char* data)
-#endif
-{
-	int res = 0;
-	ast_conference *conf;
-	int count;
-	char *localdata;
-	char val[80] = "0"; 
-	AST_DECLARE_APP_ARGS(args,
-		AST_APP_ARG(confno);
-		AST_APP_ARG(varname);
-	);
-	if (ast_strlen_zero(data)) {
-		ast_log(LOG_WARNING, "ConferenceCount requires an argument (conference number)\n");
-		return -1;
-	}
-
-	if (!(localdata = ast_strdupa(data))) {
-		return -1;
-	}
-
-	AST_STANDARD_APP_ARGS(args, localdata);
-	
-	ast_mutex_lock(&conflist_lock);
-
-	conf = find_conf(args.confno);
-
-	if (conf) {
-		count = conf->membercount;
-	} else
-		count = 0;
-
-	ast_mutex_unlock(&conflist_lock);
-
-	if (!ast_strlen_zero(args.varname)){
-		snprintf(val, sizeof(val), "%d",count);
-		pbx_builtin_setvar_helper(chan, args.varname, val);
-	} else {
-#if	ASTERISK_SRC_VERSION < 1100
-		if (chan->_state != AST_STATE_UP)
-#else
-		if (ast_channel_state(chan) != AST_STATE_UP)
-#endif
-			ast_answer(chan);
-#if	ASTERISK_SRC_VERSION < 1100
-		res = ast_say_number(chan, count, "", chan->language, (char *) NULL);
-#else
-		res = ast_say_number(chan, count, "", ast_channel_language(chan), (char *) NULL);
-#endif
-	}
-	return res;
-}
-#endif

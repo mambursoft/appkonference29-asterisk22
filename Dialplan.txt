@@ -74,19 +74,3 @@ exten => <ext>,<pri>,Konference(<confname>,<flags>,<optional args>,<more optiona
 
 	Finally, you can toggle whispering on/off at any time using the command
 	line interface to mute or unmute the spyer channel.
-
-The general syntax of KonferenceCount application is:
-
-	exten => <ext>,<pri>,KonferenceCount(confname,<variable>)
-
-	Examples
-
-	To play the conference count to the channel:
-
-	exten => _X.,1,KonferenceCount(textconf)
-
-	To put the conference count in a channel variable:
-
-	exten => _X.,1,KonferenceCount(textconf,testvar)
-
-

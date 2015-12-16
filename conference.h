@@ -103,14 +103,6 @@ struct ast_conference
 
 int hash(const char *channel_name);
 
-#ifdef	KONFERENCE_COUNT
-#if	ASTERISK_SRC_VERSION == 104
-int count_exec(struct ast_channel* chan, void* data);
-#else
-int count_exec(struct ast_channel* chan, const char* data);
-#endif
-#endif
-
 ast_conference* join_conference(ast_conf_member* member, char* conf_name, int max_users);
 
 // Find member, locked if found.
@@ -134,17 +126,7 @@ void list_members(int fd, const char* name);
 void list_conferences(int fd);
 void list_all(int fd);
 
-#ifdef	KICK_MEMBER
-void kick_member(const char* confname, int user_id);
-#endif
 void kick_all(void);
-
-#ifdef MUTE_MEMBER
-void mute_member(const char* confname, int user_id);
-#endif
-#ifdef UNMUTE_MEMBER
-void unmute_member(const char* confname, int user_id);
-#endif
 
 void mute_conference(const char* confname);
 void unmute_conference(const char* confname);

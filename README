@@ -80,7 +80,6 @@ interfacing with the manager API can monitor conferences:
 
 	* ConferenceDTMF: dtmf received
 	* ConferenceState: speaking state changed
-	* ConferenceSoundComplete: sound completed
 
 	* ConferenceMemberMute: mute member
 	* ConferenceMute: mute conference
