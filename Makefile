@@ -28,6 +28,8 @@ ifeq	($(ASTERISK_SRC_VERSION),)
   $(error Modify the version variable in the Makefile or set it on the command line)
 endif
 
+AST_MODULE_SELF_SYM = $(shell if [ $(ASTERISK_SRC_VERSION) -ge 1400 ] ; then echo __internal_app_konference_self ; fi)
+
 # asterisk include directory
 ASTERISK_INCLUDE_DIR = $(ASTERISK_SRC_DIR)/include
 
@@ -110,6 +112,10 @@ CPPFLAGS += -DCONFERENCE_TABLE_SIZE=$(CONFERENCE_TABLE_SIZE)
 CPPFLAGS += -DCACHE_CONF_FRAMES
 #CPPFLAGS += -DCHECK_THREAD_FREQUENCY
 CPPFLAGS += -DAC_USE_ULAW
+
+ifneq	($(AST_MODULE_SELF_SYM),)
+CPPFLAGS += -DAST_MODULE_SELF_SYM=$(AST_MODULE_SELF_SYM)
+endif
 
 #
 #

@@ -25,7 +25,11 @@
 
 static char *revision = REVISION;
 
+#if	ASTERISK_SRC_VERSION < 1400
 ASTERISK_FILE_VERSION(__FILE__, REVISION)
+#else
+ASTERISK_REGISTER_FILE()
+#endif
 
 #include "app_conference.h"
 #include "conference.h"
