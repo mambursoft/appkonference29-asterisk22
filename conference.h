@@ -88,7 +88,7 @@ struct ast_conference
 
 	// listener mix buffer
 #ifdef	VECTORS
-	char listenerBuffer[AST_CONF_BUFFER_SIZE] __attribute((aligned(16)));
+	char listenerBuffer[AST_CONF_BUFFER_SIZE] __attribute__ ((aligned(16)));
 #else
 	char listenerBuffer[AST_CONF_BUFFER_SIZE];
 #endif
