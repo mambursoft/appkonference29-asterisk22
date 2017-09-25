@@ -1272,9 +1272,9 @@ ast_conf_member *find_member(const char *chan)
 }
 
 #if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
-void play_sound_channel(const char *channel, char **file, int mute, int tone, int n)
+void play_sound_channel(const char *channel, char **file, int mute, int tone, int evnt, int n)
 #else
-void play_sound_channel(const char *channel, const char * const *file, int mute, int tone, int n)
+void play_sound_channel(const char *channel, const char * const *file, int mute, int tone, int evnt, int n)
 #endif
 {
 	ast_conf_member *member;
@@ -1298,6 +1298,8 @@ void play_sound_channel(const char *channel, const char * const *file, int mute,
 			}
 
 			member->muted = mute;
+
+			member->sound_event = evnt;
 
 		}
 		if (!--member->use_count && member->delete_flag)

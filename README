@@ -85,6 +85,7 @@ interfacing with the manager API can monitor conferences:
 	* ConferenceMute: mute conference
 	* ConferenceMemberUnmute: unmute member
 	* ConferenceUnmute: unmute conference
+	* ConferenceSoundComplete: play sound complete
 
 Benchmarking
 

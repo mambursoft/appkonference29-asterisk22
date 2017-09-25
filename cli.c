@@ -434,10 +434,11 @@ char *conference_unmutechannel(struct ast_cli_entry *e, int cmd, struct ast_cli_
 // play sound
 //
 static char conference_play_sound_usage[] =
-	"Usage: konference play sound <channel> (<sound-file>)+ [mute|tone]\n"
+	"Usage: konference play sound <channel> (<sound-file>)+ [mute|tone|evnt]\n"
 	"       Play sound(s) (<sound-file>)+ to conference member <channel>\n"
 	"       If mute is specified, all other audio is muted while the sound is played back\n"
-	"       If tone is specified, the sound is discarded if another sound is queued\n"
+	"       If tone is specified, all other audio is discarded while the sound is played back\n"
+	"       If evnt is specified, an event is generated after the the last sound is played back\n"
 ;
 
 #define CONFERENCE_PLAY_SOUND_CHOICES { "konference", "play", "sound", NULL }
@@ -473,8 +474,9 @@ char *conference_play_sound(struct ast_cli_entry *e, int cmd, struct ast_cli_arg
 
 	int mute = argc > 5 && !strcmp(argv[argc-1], "mute") ? 1 : 0;
 	int tone = argc > 5 && !strcmp(argv[argc-1], "tone") ? 1 : 0;
+	int evnt = argc > 5 && !strcmp(argv[argc-1], "evnt") ? 1 : 0;
 
-	play_sound_channel(channel, file, mute, tone, !mute && !tone ? argc - 4 : argc - 5);
+	play_sound_channel(channel, file, mute, tone, evnt, !mute && !tone && !evnt ? argc - 4 : argc - 5);
 
 	return SUCCESS;
 }

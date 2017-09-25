@@ -31,8 +31,10 @@ Current command line used by app_konference:
   usage: konference volume <conference name> (up|down)
 
 - konference play sound: play a sound to a conference member
-  usage: konference play sound <channel> (<sound-file>)+ [mute]
-  If mute is specified, all other audio is muted while the sound is played back.
+  usage: konference play sound <channel> (<sound-file>)+ [mute|tone|evnt]
+  If "mute" is specified, all other audio is muted while the sound is played back.
+  If "tone" is specified, all other audio is discarded while the sound is played back. 
+  If "evnt" is specified, an event is generated after the the last sound is played back.
 
 - konference stop sound: stop playing sounds to a conference member
   usage: konference stop sound <channel>

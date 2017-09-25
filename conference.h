@@ -132,9 +132,9 @@ void mute_conference(const char* confname);
 void unmute_conference(const char* confname);
 
 #if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
-void play_sound_channel(const char *channel, char **file, int mute, int tone, int n);
+void play_sound_channel(const char *channel, char **file, int mute, int tone, int evnt, int n);
 #else
-void play_sound_channel(const char *channel, const char * const *file, int mute, int tone, int n);
+void play_sound_channel(const char *channel, const char * const *file, int mute, int tone, int evnt, int n);
 #endif
 
 void stop_sound_channel(const char *channel);

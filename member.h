@@ -184,6 +184,9 @@ struct ast_conf_member
 	// For playing sounds
 	ast_conf_soundq *soundq;
 
+	// send event when sound ends
+	int sound_event;
+
 	// speaker mix buffer
 	char *speakerBuffer;
 

@@ -1560,6 +1560,24 @@ static struct ast_frame *get_next_soundframe(ast_conf_member *member)
 
 		if (!(member->soundq = toboot->next))
 		{
+			if (member->sound_event)
+			{
+				member->sound_event = 0;
+				manager_event(
+					EVENT_FLAG_CONF,
+					"ConferenceSoundComplete",
+					"ConferenceName: %s\r\n"
+					"Channel: %s\r\n"
+					"Sound: %s\r\n",
+					member->conf->name,
+#if	ASTERISK_SRC_VERSION < 1100
+					member->chan->name,
+#else
+					ast_channel_name(member->chan),
+#endif
+					toboot->name
+				);
+			}
 			member->muted = 0;
 			ast_free(toboot);
 			return NULL;
@@ -1600,6 +1618,8 @@ static void conf_sound_release(struct ast_channel *chan, void *data)
 	}
 
 	member->ready_for_outgoing = 1;
+
+	member->sound_event = 0;
 }
 
 static int conf_sound_generator(struct ast_channel *chan, void *data, int len, int samples)
