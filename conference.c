@@ -998,7 +998,7 @@ void list_conferences(int fd)
 		while (conf)
 		{
 			duration = (int)(ast_tvdiff_ms(ast_tvnow(),conf->time_entered) / 1000);
-			snprintf(duration_str, 10, "%02d:%02d:%02d",  duration / 3600, (duration % 3600) / 60, duration % 60);
+			snprintf(duration_str, 10, "%02u:%02u:%02u",  duration / 3600, (duration % 3600) / 60, duration % 60);
 			ast_cli(fd, "%-20.20s %-20d %-20d %-20.20s\n", conf->name, conf->membercount, conf->volume, duration_str);
 			conf = conf->next;
 		}
@@ -1046,7 +1046,7 @@ void list_members(int fd, const char *name)
 					else
 						strcpy(spy_str , "*");
 					duration = (int)(ast_tvdiff_ms(ast_tvnow(),member->time_entered) / 1000);
-					snprintf(duration_str, 10, "%02d:%02d:%02d",  duration / 3600, (duration % 3600) / 60, duration % 60);
+					snprintf(duration_str, 10, "%02u:%02u:%02u",  duration / 3600, (duration % 3600) / 60, duration % 60);
 					ast_cli(fd, "%-20d %-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-80s\n",
 #if	ASTERISK_SRC_VERSION < 1100
 					member->conf_id, member->flags, !member->mute_audio ? "Unmuted" : "Muted", volume_str, duration_str , spy_str, member->chan->name);
@@ -1104,7 +1104,7 @@ void list_all(int fd)
 				else
 					strcpy(spy_str , "*");
 				duration = (int)(ast_tvdiff_ms(ast_tvnow(),member->time_entered) / 1000);
-				snprintf(duration_str, 10, "%02d:%02d:%02d",  duration / 3600, (duration % 3600) / 60, duration % 60);
+				snprintf(duration_str, 10, "%02u:%02u:%02u",  duration / 3600, (duration % 3600) / 60, duration % 60);
 				ast_cli(fd, "%-20d %-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-80s\n",
 #if	ASTERISK_SRC_VERSION < 1100
 				member->conf_id, member->flags, !member->mute_audio ? "Unmuted" : "Muted", volume_str, duration_str , spy_str, member->chan->name);
