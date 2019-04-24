@@ -36,6 +36,9 @@
 
 /* asterisk includes */
 #include "asterisk.h"
+#ifdef	VIDEO
+#include "asterisk/dlinkedlists.h"
+#endif
 #include <asterisk/utils.h>
 #include <asterisk/pbx.h>
 #include <asterisk/module.h>

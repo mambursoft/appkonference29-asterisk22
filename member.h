@@ -193,6 +193,24 @@ struct ast_conf_member
 	// speaker mix frames
 	struct ast_frame *mixAstFrame;
 	conf_frame *mixConfFrame;
+#ifdef	VIDEO
+	// SFU flags
+	int sfu;
+
+	// SFU media routing vectors
+	struct {
+		/* index mapping where channel media is to be routed */
+		struct ast_vector_int to_conference;
+		/* index mapping where conference media is to be routed */
+		struct ast_vector_int to_channel;
+	} stream_map;
+
+	// SFU topology
+	struct ast_stream_topology *topology;
+
+	// SFU list entry
+	AST_RWDLLIST_ENTRY(ast_conf_member) sfu_entry;
+#endif
 };
 
 //

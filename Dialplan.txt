@@ -31,6 +31,9 @@ exten => <ext>,<pri>,Konference(<confname>,<flags>,<optional args>,<more optiona
 	Miscellaneous:
 	'a' : V + T
 
+        Selective forwarding options:
+        'Z' : video sfu
+
 	Future development (these are not implemented yet):
 	?
 

@@ -95,6 +95,10 @@ struct ast_conference
 	// listener mix frames
 	struct ast_frame *mixAstFrame;
 	conf_frame *mixConfFrame;
+#ifdef	VIDEO
+	// SFU list
+	AST_RWDLLIST_HEAD(sfu_list, ast_conf_member) sfu_list;
+#endif
 };
 
 //

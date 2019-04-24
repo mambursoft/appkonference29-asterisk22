@@ -705,7 +705,10 @@ static ast_conference* create_conf(char* name, ast_conf_member* member)
 	// add conference to conflist
 	conf->next = conflist;
 	conflist = conf;
-
+#ifdef	VIDEO
+	// init sfu list
+	AST_RWDLLIST_HEAD_INIT(&conf->sfu_list);
+#endif
 	return conf;
 }
 

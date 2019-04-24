@@ -23,6 +23,10 @@
 
 #include "asterisk/musiconhold.h"
 
+#ifdef	VIDEO
+#include "asterisk/stream.h"
+#endif
+
 #ifdef	CACHE_CONTROL_BLOCKS
 AST_MUTEX_DEFINE_STATIC(mbrblocklist_lock);
 
@@ -50,9 +54,291 @@ struct ast_frame hold_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = &hold_da
 struct ast_frame cont_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = &cont_data[AST_FRIENDLY_OFFSET], .datalen = 160};
 #endif
 
+#ifdef	VIDEO
+#define VIDEO_DESTINATIONS_MAX 16
+#define VIDEO_DESTINATION_PREFIX "conference_destination"
+#define VIDEO_DESTINATION_LEN strlen(VIDEO_DESTINATION_PREFIX)
+#define VIDEO_DESTINATION_SEPARATOR '_'
+
+static int is_video_source(const struct ast_stream *stream)
+{
+	if (ast_stream_get_state(stream) != AST_STREAM_STATE_REMOVED
+		&& ast_stream_get_type(stream) == AST_MEDIA_TYPE_VIDEO
+		&& strncmp(ast_stream_get_name(stream), VIDEO_DESTINATION_PREFIX,
+			VIDEO_DESTINATION_LEN)) {
+		return 1;
+	}
+
+	return 0;
+}
+
+static int is_video_destination(const struct ast_stream *stream, const char *source_channel_name, const char *source_stream_name)
+{
+	char *destination_video_name;
+	size_t destination_video_name_len;
+
+	if (ast_stream_get_state(stream) == AST_STREAM_STATE_REMOVED
+		|| ast_stream_get_type(stream) != AST_MEDIA_TYPE_VIDEO) {
+		return 0;
+	}
+
+	destination_video_name_len = VIDEO_DESTINATION_LEN + 1;
+	if (!ast_strlen_zero(source_channel_name)) {
+		destination_video_name_len += strlen(source_channel_name) + 1;
+		if (!ast_strlen_zero(source_stream_name)) {
+			destination_video_name_len += strlen(source_stream_name) + 1;
+		}
+
+		destination_video_name = ast_alloca(destination_video_name_len);
+		if (!ast_strlen_zero(source_stream_name)) {
+			snprintf(destination_video_name, destination_video_name_len, "%s%c%s%c%s",
+				VIDEO_DESTINATION_PREFIX, VIDEO_DESTINATION_SEPARATOR,
+				source_channel_name, VIDEO_DESTINATION_SEPARATOR,
+				source_stream_name);
+			return !strcmp(ast_stream_get_name(stream), destination_video_name);
+		}
+		snprintf(destination_video_name, destination_video_name_len, "%s%c%s",
+			VIDEO_DESTINATION_PREFIX, VIDEO_DESTINATION_SEPARATOR,
+			source_channel_name);
+	} else {
+		destination_video_name = VIDEO_DESTINATION_PREFIX;
+	}
+
+	return !strncmp(ast_stream_get_name(stream), destination_video_name, destination_video_name_len - 1);
+}
+
+static void map_source_to_destinations(const char *source_stream_name, const char *source_channel_name, size_t conference_stream_position, ast_conference *conf)
+{
+	ast_conf_member *participant;
+
+	AST_RWDLLIST_TRAVERSE(&conf->sfu_list, participant, sfu_entry)
+	{
+		int i;
+		struct ast_stream_topology *topology;
+
+		if (!strcmp(source_channel_name, ast_channel_name(participant->chan))) {
+			continue;
+		}
+
+		ast_channel_lock(participant->chan);
+		topology = ast_channel_get_stream_topology(participant->chan);
+
+		for (i = 0; i < ast_stream_topology_get_count(topology); ++i) {
+			struct ast_stream *stream;
+
+			stream = ast_stream_topology_get_stream(topology, i);
+
+			if (is_video_destination(stream, source_channel_name, source_stream_name)) {
+				AST_VECTOR_REPLACE(&participant->stream_map.to_channel, conference_stream_position, i);
+				break;
+			}
+		}
+		ast_channel_unlock(participant->chan);
+	}
+}
+
+static void conference_stream_topology_changed(ast_conference *conf)
+{
+	ast_conf_member *participant;
+	int video_source_count = 0;
+	
+	AST_RWDLLIST_TRAVERSE(&conf->sfu_list, participant, sfu_entry)
+	{
+		AST_VECTOR_DEFAULT(&participant->stream_map.to_channel, VIDEO_DESTINATIONS_MAX, -1);
+		AST_VECTOR_DEFAULT(&participant->stream_map.to_conference, VIDEO_DESTINATIONS_MAX, -1);
+	}
+
+	AST_RWDLLIST_TRAVERSE(&conf->sfu_list, participant, sfu_entry)
+	{
+		int i;
+		struct ast_stream_topology *topology;
+
+		ast_channel_lock(participant->chan);
+		topology = ao2_bump(ast_channel_get_stream_topology(participant->chan));
+		if (!topology) {
+			ast_channel_unlock(participant->chan);
+			continue;
+		}
+
+		for (i = 0; i < ast_stream_topology_get_count(topology); ++i) {
+			struct ast_stream *stream = ast_stream_topology_get_stream(topology, i);
+
+			if (is_video_source(stream)) {
+				AST_VECTOR_REPLACE(&participant->stream_map.to_conference, i, video_source_count);
+				map_source_to_destinations(ast_stream_get_name(stream), ast_channel_name(participant->chan),
+					video_source_count, conf);
+				video_source_count++;
+			}
+		}
+
+		ast_stream_topology_free(topology);
+		ast_channel_unlock(participant->chan);
+	}
+}
+
+static int append_source_streams(struct ast_stream_topology *destination, const char *channel_name, const struct ast_stream_topology *source)
+{
+	int i;
+
+	for (i = 0; i < ast_stream_topology_get_count(source); ++i) {
+		struct ast_stream *stream;
+		struct ast_stream *stream_clone;
+		char *stream_clone_name = NULL;
+
+		stream = ast_stream_topology_get_stream(source, i);
+		if (!is_video_source(stream)) {
+			continue;
+		}
+
+		if (ast_asprintf(&stream_clone_name, "%s_%s_%s", VIDEO_DESTINATION_PREFIX,
+			channel_name, ast_stream_get_name(stream)) < 0) {
+			return -1;
+		}
+
+		stream_clone = ast_stream_clone(stream, stream_clone_name);
+		ast_free(stream_clone_name);
+		if (!stream_clone) {
+			return -1;
+		}
+		if (ast_stream_topology_append_stream(destination, stream_clone) < 0) {
+			ast_stream_free(stream_clone);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static int append_all_streams(struct ast_stream_topology *destination, const struct ast_stream_topology *source)
+{
+	int i;
+	int destination_index = 0;
+
+	for (i = 0; i < ast_stream_topology_get_count(source); ++i) {
+		struct ast_stream *clone;
+		int added = 0;
+
+		clone = ast_stream_clone(ast_stream_topology_get_stream(source, i), NULL);
+		if (!clone) {
+			return -1;
+		}
+
+		while (destination_index < ast_stream_topology_get_count(destination)) {
+			struct ast_stream *stream = ast_stream_topology_get_stream(destination, destination_index);
+
+			destination_index++;
+
+			if (ast_stream_get_state(stream) == AST_STREAM_STATE_REMOVED) {
+				ast_stream_topology_set_stream(destination, destination_index - 1, clone);
+				added = 1;
+				break;
+			}
+		}
+
+		if (!added && ast_stream_topology_append_stream(destination, clone) < 0) {
+			ast_stream_free(clone);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static void sfu_topologies_on_join(ast_conf_member *joiner)
+{
+	ast_conference *conf = joiner->conf;
+
+	struct ast_stream_topology *joiner_video = ast_stream_topology_alloc();
+	if (!joiner_video) {
+		return;
+	}
+
+	ast_channel_lock(joiner->chan);
+	int res = append_source_streams(joiner_video, ast_channel_name(joiner->chan), ast_channel_get_stream_topology(joiner->chan));
+	joiner->topology = ast_stream_topology_clone(ast_channel_get_stream_topology(joiner->chan));
+	ast_channel_unlock(joiner->chan);
+
+	if (res || !joiner->topology) {
+		goto cleanup;
+	}
+
+	ast_conf_member *participant;
+
+	AST_RWDLLIST_TRAVERSE(&conf->sfu_list, participant, sfu_entry)
+	{
+		if (participant == joiner) {
+			continue;
+		}
+
+		ast_channel_lock(participant->chan);
+		res = append_source_streams(joiner->topology, ast_channel_name(participant->chan), ast_channel_get_stream_topology(participant->chan));
+		ast_channel_unlock(participant->chan);
+		if (res) {
+			goto cleanup;
+		}
+	}
+
+	ast_channel_request_stream_topology_change(joiner->chan, joiner->topology, NULL);
+
+	AST_RWDLLIST_TRAVERSE(&conf->sfu_list, participant, sfu_entry)
+	{
+		if (participant == joiner) {
+			continue;
+		}
+
+		if (append_all_streams(participant->topology, joiner_video)) {
+			goto cleanup;
+		}
+
+		ast_channel_request_stream_topology_change(participant->chan, participant->topology, NULL);
+	}
+
+cleanup:
+	ast_stream_topology_free(joiner_video);
+}
+
+static int remove_destination_streams(struct ast_stream_topology *topology, const char *channel_name)
+{
+	int i;
+	int stream_removed = 0;
+
+	for (i = 0; i < ast_stream_topology_get_count(topology); ++i) {
+		struct ast_stream *stream;
+
+		stream = ast_stream_topology_get_stream(topology, i);
+
+		if (is_video_destination(stream, channel_name, NULL)) {
+			ast_stream_set_state(stream, AST_STREAM_STATE_REMOVED);
+			stream_removed = 1;
+		}
+	}
+	return stream_removed;
+}
+
+static void sfu_topologies_on_leave(ast_conf_member *leaver)
+{
+	ast_conference *conf = leaver->conf;
+	ast_conf_member *participant;
+
+	AST_RWDLLIST_TRAVERSE(&conf->sfu_list, participant, sfu_entry)
+	{
+		if (!remove_destination_streams(participant->topology, ast_channel_name(leaver->chan))) {
+			continue;
+		}
+		ast_channel_request_stream_topology_change(participant->chan, participant->topology, NULL);
+	}
+
+	if (remove_destination_streams(leaver->topology, "")) {
+		ast_channel_request_stream_topology_change(leaver->chan, leaver->topology, NULL);
+	}
+}
+#endif
+
 // process an incoming frame.  Returns 0 normally, 1 if hangup was received.
 static int process_incoming(ast_conf_member *member, ast_conference *conf, struct ast_frame *f)
 {
+	int hangup = 0;
+
 	switch (f->frametype)
 	{
 		case AST_FRAME_VOICE:
@@ -61,9 +347,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 				|| member->muted
 				||  conf->membercount == 1)
 			{
-				// free the input frame
-				ast_frfree(f);
-				return 0;
+				break;
 			}
 #if	SILDET == 1 || SILDET == 2
 			// reset silence detection flag
@@ -153,6 +437,41 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 				queue_incoming_frame(member, f);
 			break;
 		}
+#ifdef	VIDEO
+		case AST_FRAME_VIDEO:
+                {
+			ast_conf_member *participant;
+
+			AST_RWDLLIST_RDLOCK(&conf->sfu_list);
+
+			int conf_stream_num = AST_VECTOR_GET(&member->stream_map.to_conference, f->stream_num);
+
+			if (conf_stream_num < 0)
+			{
+				AST_RWDLLIST_UNLOCK(&conf->sfu_list);
+				break;
+			}
+
+			AST_RWDLLIST_TRAVERSE(&conf->sfu_list, participant, sfu_entry)
+			{
+				if (participant == member) {
+					continue;
+				}
+
+				int member_stream_num = AST_VECTOR_GET(&participant->stream_map.to_channel, conf_stream_num);
+
+				if (member_stream_num < 0)
+				{
+					continue;
+				}
+
+				ast_write_stream(participant->chan, member_stream_num, f);
+			}
+
+			AST_RWDLLIST_UNLOCK(&conf->sfu_list);
+			break;
+                }
+#endif
 #if     ASTERISK_SRC_VERSION < 1110
 		case AST_FRAME_DTMF_BEGIN:
 		case AST_FRAME_NULL:
@@ -229,14 +548,56 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 		case AST_FRAME_CONTROL:
 		{
 #if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
-			if (f->subclass == AST_CONTROL_HANGUP)
+			switch (f->subclass)
 #else
-			if (f->subclass.integer == AST_CONTROL_HANGUP)
+			switch (f->subclass.integer)
 #endif
 			{
-				ast_frfree(f);
+				case AST_CONTROL_HANGUP:
+				{
+					hangup = 1;
+					break;
+				}
+#ifdef	VIDEO
+				case AST_CONTROL_STREAM_TOPOLOGY_CHANGED:
+				{
+					//ast_log(LOG_NOTICE, "%s ast_control_stream_topology_changed\n", ast_channel_name(member->chan));
+					AST_RWDLLIST_WRLOCK(&conf->sfu_list);
+					conference_stream_topology_changed(conf);
+					AST_RWDLLIST_UNLOCK(&conf->sfu_list);
+					break;
+				}
+				case AST_CONTROL_STREAM_TOPOLOGY_SOURCE_CHANGED:
+				{
+					//ast_log(LOG_NOTICE, "%s ast_control_stream_topology_source_changed\n", ast_channel_name(member->chan));
+					break;
+				}
+				case AST_CONTROL_VIDUPDATE:
+				{
+					//ast_log(LOG_NOTICE, "%s ast_control_vidupdate\n", ast_channel_name(member->chan));
+					ast_conf_member *participant;
 
-				return 1; // break while (42)
+					AST_RWDLLIST_RDLOCK(&conf->sfu_list);
+
+					AST_RWDLLIST_TRAVERSE(&conf->sfu_list, participant, sfu_entry)
+					{
+						if (participant == member) {
+							continue;
+						}
+
+						ast_indicate(participant->chan, AST_CONTROL_VIDUPDATE);
+					
+					}
+
+					AST_RWDLLIST_UNLOCK(&conf->sfu_list);
+					break;
+				}
+#endif
+				default:
+				{
+					//ast_log(LOG_NOTICE, "%s ast_control %d ??\n", ast_channel_name(member->chan), f->subclass.integer);
+					break;
+				}
 			}
 			break;
 		}
@@ -338,6 +699,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 		}
 		default:
 		{
+			//ast_log(LOG_NOTICE, "%s ast_frame %d ??\n", ast_channel_name(member->chan), f->frametype);
 			break;
 		}
 	}
@@ -345,7 +707,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 	// free the input frame
 	ast_frfree(f);
 
-	return 0;
+	return hangup;
 }
 
 // process outgoing frames for the channel
@@ -488,7 +850,19 @@ int member_exec(struct ast_channel* chan, const char* data)
 		pbx_builtin_setvar_helper(member->chan, "KONFERENCE", "SPYFAILED");
 		return 0;
 	}
-
+#ifdef	VIDEO
+	// handle video mode--join
+	if (member->sfu)
+	{
+		//ast_log(LOG_NOTICE, "%s sfu join\n", ast_channel_name(member->chan));
+		AST_VECTOR_DEFAULT(&member->stream_map.to_channel, VIDEO_DESTINATIONS_MAX, -1);
+		AST_VECTOR_DEFAULT(&member->stream_map.to_conference, VIDEO_DESTINATIONS_MAX, -1);
+		AST_RWDLLIST_WRLOCK(&conf->sfu_list);
+		AST_RWDLLIST_INSERT_HEAD(&conf->sfu_list, member, sfu_entry);
+		sfu_topologies_on_join(member);
+		AST_RWDLLIST_UNLOCK(&conf->sfu_list);
+	}
+#endif
 	// tell conference thread we're ready for frames
 	member->ready_for_outgoing = 1;
 
@@ -507,7 +881,11 @@ int member_exec(struct ast_channel* chan, const char* data)
 			// a frame has come in before the latency timeout
 			// was reached, so we process the frame
 
+#ifdef	VIDEO
+			if (!(f = ast_read_stream(chan)) || process_incoming(member, conf, f))
+#else
 			if (!(f = ast_read(chan)) || process_incoming(member, conf, f))
+#endif
 			{
 				// they probably want to hangup...
 				break;
@@ -541,7 +919,19 @@ int member_exec(struct ast_channel* chan, const char* data)
 		// process outgoing frames
 		process_outgoing(member);
 	}
-
+#ifdef	VIDEO
+	// handle video mode--leave
+	if (member->sfu)
+	{
+		//ast_log(LOG_NOTICE, "%s sfu leave\n", ast_channel_name(member->chan));
+		AST_RWDLLIST_WRLOCK(&conf->sfu_list);
+		sfu_topologies_on_leave(member);
+		AST_RWDLLIST_REMOVE(&conf->sfu_list, member, sfu_entry);
+		AST_RWDLLIST_UNLOCK(&conf->sfu_list);
+		AST_VECTOR_FREE(&member->stream_map.to_channel);
+		AST_VECTOR_FREE(&member->stream_map.to_conference);
+	}
+#endif
 	//
 	// clean up
 	//
@@ -716,7 +1106,7 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 	for (i = 0; i < strlen(flags); ++i)
 	{
 		{
-			// flags are L, l, a, T, V, D, A, R, M, x
+			// flags are L, l, a, T, V, D, A, R, M, x, Z
 			switch (flags[i])
 			{
 				// mute/no_recv options
@@ -760,6 +1150,11 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 			case 'x':
 				member->kick_conferees = 1;
 				break;
+#ifdef	VIDEO
+			case 'Z':
+                                member->sfu = 1;
+				break;
+#endif
 			default:
 				break;
 			}
