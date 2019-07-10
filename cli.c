@@ -782,6 +782,44 @@ char *conference_end(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
 	return SUCCESS;
 }
 
+#ifdef	VIDEO
+//
+// switch video source conference
+//
+static char conference_videoswitch_usage[] =
+	"Usage: konference videoswitch <channel name>\n"
+	"       Switches conference video source\n"
+;
+
+#define CONFERENCE_VIDEOSWITCH_CHOICES { "konference", "videoswitch", NULL }
+static char conference_videoswitch_summary[] = "Switch conference video source";
+
+static char conference_videoswitch_command[] = "konference videoswitch";
+char *conference_videoswitch(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a) {
+	static const char *const choices[] = CONFERENCE_VIDEOSWITCH_CHOICES;
+	NEWCLI_SWITCH(conference_videoswitch_command,conference_videoswitch_usage)
+
+	if (argc != 3)
+		return SHOWUSAGE;
+
+	const char *channel = argv[2];
+
+	ast_conf_member *member = find_member(channel);
+
+	if (member)
+	{
+		ast_queue_frame(member->chan, &vsrc_frame);
+
+		if (!--member->use_count && member->delete_flag)
+			ast_cond_signal(&member->delete_var);
+		ast_mutex_unlock(&member->lock);
+	}
+
+	return SUCCESS;
+}
+
+#endif
+
 //
 // cli initialization function
 //
@@ -804,6 +842,9 @@ static struct ast_cli_entry app_konference_commands[] = {
 	AST_CLI_DEFINE(conference_listenvolume, conference_listenvolume_summary),
 	AST_CLI_DEFINE(conference_volume, conference_volume_summary),
 	AST_CLI_DEFINE(conference_end, conference_end_summary),
+#ifdef	VIDEO
+	AST_CLI_DEFINE(conference_videoswitch, conference_videoswitch_summary),
+#endif
 };
 #endif
 

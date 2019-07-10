@@ -96,8 +96,12 @@ struct ast_conference
 	struct ast_frame *mixAstFrame;
 	conf_frame *mixConfFrame;
 #ifdef	VIDEO
+	// video mode
+	ac_video_mode video_mode;
 	// SFU list
 	AST_RWDLLIST_HEAD(sfu_list, ast_conf_member) sfu_list;
+	// video source
+	ast_conf_member *video_source;
 #endif
 };
 

@@ -55,14 +55,15 @@ There is no configuration file. Conferences are created on-the-fly.
 
 Dialplan syntax:
 
-Konference(NAME,FLAGS[,MAXUSERS][,TYPE][,SPY][,VADSTART][,VADCONTINUE])
+Konference(NAME,FLAGS,[MAXUSERS],[TYPE],[SPY],[VIDEO],[VADSTART],[VADCONTINUE])
 
 * NAME: whatever you want to identify the conference
-* FLAGS: dialplan flags, see Flags.txt for a comprehensive list
+* FLAGS: dialplan flags, see Dialplan.txt for a comprehensive list
 
 * MAXUSERS: limit conference participants to max_users
 * TYPE: conference type identifier
 * SPY: channel name to spy
+* VIDEO: video mode
 
 
 CLI Commands

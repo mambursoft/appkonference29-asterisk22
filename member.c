@@ -41,6 +41,9 @@ char kick_data[160+AST_FRIENDLY_OFFSET] = { [AST_FRIENDLY_OFFSET] = KICK };
 char stop_data[160+AST_FRIENDLY_OFFSET] = { [AST_FRIENDLY_OFFSET] = STOP };
 char hold_data[160+AST_FRIENDLY_OFFSET] = { [AST_FRIENDLY_OFFSET] = HOLD };
 char cont_data[160+AST_FRIENDLY_OFFSET] = { [AST_FRIENDLY_OFFSET] = CONT };
+#ifdef	VIDEO
+char vsrc_data[160+AST_FRIENDLY_OFFSET] = { [AST_FRIENDLY_OFFSET] = VSRC };
+#endif
 
 #if     ASTERISK_SRC_VERSION == 104
 struct ast_frame kick_frame = {.frametype = AST_FRAME_TEXT, .data = &kick_data[AST_FRIENDLY_OFFSET], .datalen = 160};
@@ -52,6 +55,9 @@ struct ast_frame kick_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = &kick_da
 struct ast_frame stop_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = &stop_data[AST_FRIENDLY_OFFSET], .datalen = 160};
 struct ast_frame hold_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = &hold_data[AST_FRIENDLY_OFFSET], .datalen = 160};
 struct ast_frame cont_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = &cont_data[AST_FRIENDLY_OFFSET], .datalen = 160};
+#ifdef	VIDEO
+struct ast_frame vsrc_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = &vsrc_data[AST_FRIENDLY_OFFSET], .datalen = 160};
+#endif
 #endif
 
 #ifdef	VIDEO
@@ -440,35 +446,59 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 #ifdef	VIDEO
 		case AST_FRAME_VIDEO:
                 {
-			ast_conf_member *participant;
-
-			AST_RWDLLIST_RDLOCK(&conf->sfu_list);
-
-			int conf_stream_num = AST_VECTOR_GET(&member->stream_map.to_conference, f->stream_num);
-
-			if (conf_stream_num < 0)
+			if (conf->video_mode == SFU)
 			{
-				AST_RWDLLIST_UNLOCK(&conf->sfu_list);
-				break;
-			}
+				ast_conf_member *participant;
 
-			AST_RWDLLIST_TRAVERSE(&conf->sfu_list, participant, sfu_entry)
-			{
-				if (participant == member) {
-					continue;
-				}
+				AST_RWDLLIST_RDLOCK(&conf->sfu_list);
 
-				int member_stream_num = AST_VECTOR_GET(&participant->stream_map.to_channel, conf_stream_num);
+				int conf_stream_num = AST_VECTOR_GET(&member->stream_map.to_conference, f->stream_num);
 
-				if (member_stream_num < 0)
+				if (conf_stream_num < 0)
 				{
-					continue;
+					AST_RWDLLIST_UNLOCK(&conf->sfu_list);
+					break;
 				}
 
-				ast_write_stream(participant->chan, member_stream_num, f);
+				AST_RWDLLIST_TRAVERSE(&conf->sfu_list, participant, sfu_entry)
+				{
+					if (participant == member) {
+						continue;
+					}
+
+					int member_stream_num = AST_VECTOR_GET(&participant->stream_map.to_channel, conf_stream_num);
+
+					if (member_stream_num < 0)
+					{
+						continue;
+					}
+
+					ast_write_stream(participant->chan, member_stream_num, f);
+				}
+
+				AST_RWDLLIST_UNLOCK(&conf->sfu_list);
+			} else if (conf->video_mode == SRC)
+			{
+				ast_conf_member *participant;
+
+				AST_RWDLLIST_RDLOCK(&conf->sfu_list);
+
+				if (conf->video_source == member)
+				{
+					ast_write(member->chan, f);
+
+					ast_clear_flag(f, AST_FRFLAG_HAS_TIMING_INFO);
+
+					AST_RWDLLIST_TRAVERSE(&conf->sfu_list, participant, sfu_entry)
+					{
+						if (participant != member)
+							ast_write(participant->chan, f);
+					}
+				}
+
+				AST_RWDLLIST_UNLOCK(&conf->sfu_list);
 			}
 
-			AST_RWDLLIST_UNLOCK(&conf->sfu_list);
 			break;
                 }
 #endif
@@ -574,22 +604,34 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 				}
 				case AST_CONTROL_VIDUPDATE:
 				{
-					//ast_log(LOG_NOTICE, "%s ast_control_vidupdate\n", ast_channel_name(member->chan));
-					ast_conf_member *participant;
-
-					AST_RWDLLIST_RDLOCK(&conf->sfu_list);
-
-					AST_RWDLLIST_TRAVERSE(&conf->sfu_list, participant, sfu_entry)
+					//ast_log(LOG_NOTICE, "%s ast_control_vidupdate %d\n", ast_channel_name(member->chan), conf->video_mode);
+					if (conf->video_mode == SFU)
 					{
-						if (participant == member) {
-							continue;
+						ast_conf_member *participant;
+
+						AST_RWDLLIST_RDLOCK(&conf->sfu_list);
+
+						AST_RWDLLIST_TRAVERSE(&conf->sfu_list, participant, sfu_entry)
+						{
+							if (participant == member) {
+								continue;
+							}
+
+							ast_indicate(participant->chan, AST_CONTROL_VIDUPDATE);
+						
 						}
 
-						ast_indicate(participant->chan, AST_CONTROL_VIDUPDATE);
-					
+						AST_RWDLLIST_UNLOCK(&conf->sfu_list);
+					} else if (conf->video_mode == SRC)
+					{
+						AST_RWDLLIST_RDLOCK(&conf->sfu_list);
+						if (conf->video_source)
+						{
+							ast_indicate(conf->video_source->chan, AST_CONTROL_VIDUPDATE);
+						}
+						AST_RWDLLIST_UNLOCK(&conf->sfu_list);
 					}
 
-					AST_RWDLLIST_UNLOCK(&conf->sfu_list);
 					break;
 				}
 #endif
@@ -683,6 +725,23 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 					}
 					break;
 				}
+#ifdef	VIDEO
+				case VSRC:
+				{
+					AST_RWDLLIST_WRLOCK(&conf->sfu_list);
+
+					if (member->conf->video_mode == SRC)
+					{
+						member->conf->video_source = member;
+					}
+
+					ast_indicate(member->chan, AST_CONTROL_VIDUPDATE);
+
+					AST_RWDLLIST_UNLOCK(&conf->sfu_list);
+
+					break;
+				}
+#endif
 				default:
 				{
 #if     ASTERISK_SRC_VERSION == 104
@@ -852,7 +911,7 @@ int member_exec(struct ast_channel* chan, const char* data)
 	}
 #ifdef	VIDEO
 	// handle video mode--join
-	if (member->sfu)
+	if (member->video_mode == SFU)
 	{
 		//ast_log(LOG_NOTICE, "%s sfu join\n", ast_channel_name(member->chan));
 		AST_VECTOR_DEFAULT(&member->stream_map.to_channel, VIDEO_DESTINATIONS_MAX, -1);
@@ -860,6 +919,12 @@ int member_exec(struct ast_channel* chan, const char* data)
 		AST_RWDLLIST_WRLOCK(&conf->sfu_list);
 		AST_RWDLLIST_INSERT_HEAD(&conf->sfu_list, member, sfu_entry);
 		sfu_topologies_on_join(member);
+		AST_RWDLLIST_UNLOCK(&conf->sfu_list);
+	} else if (member->video_mode ==SRC)
+	{
+		//ast_log(LOG_NOTICE, "%s sfu join\n", ast_channel_name(member->chan));
+		AST_RWDLLIST_WRLOCK(&conf->sfu_list);
+		AST_RWDLLIST_INSERT_HEAD(&conf->sfu_list, member, sfu_entry);
 		AST_RWDLLIST_UNLOCK(&conf->sfu_list);
 	}
 #endif
@@ -921,7 +986,7 @@ int member_exec(struct ast_channel* chan, const char* data)
 	}
 #ifdef	VIDEO
 	// handle video mode--leave
-	if (member->sfu)
+	if (member->video_mode == SFU)
 	{
 		//ast_log(LOG_NOTICE, "%s sfu leave\n", ast_channel_name(member->chan));
 		AST_RWDLLIST_WRLOCK(&conf->sfu_list);
@@ -930,6 +995,14 @@ int member_exec(struct ast_channel* chan, const char* data)
 		AST_RWDLLIST_UNLOCK(&conf->sfu_list);
 		AST_VECTOR_FREE(&member->stream_map.to_channel);
 		AST_VECTOR_FREE(&member->stream_map.to_conference);
+	} else if (member->video_mode == SRC)
+	{
+		//ast_log(LOG_NOTICE, "%s sfu leave\n", ast_channel_name(member->chan));
+		AST_RWDLLIST_WRLOCK(&conf->sfu_list);
+		AST_RWDLLIST_REMOVE(&conf->sfu_list, member, sfu_entry);
+		if (conf->video_source == member)
+			conf->video_source = 0;
+		AST_RWDLLIST_UNLOCK(&conf->sfu_list);
 	}
 #endif
 	//
@@ -1045,6 +1118,9 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 		static const char arg_max_users[] = "max_users";
 		static const char arg_conf_type[] = "type";
 		static const char arg_chanspy[] = "spy";
+#ifdef	VIDEO
+		static const char arg_video[] = "video";
+#endif
 
 		char *value = token;
 		const char *key = strsep(&value, "=");
@@ -1072,6 +1148,14 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 		} else if (!strncasecmp(key, arg_vad_prob_continue, sizeof(arg_vad_prob_continue) - 1))
 		{
 			member->vad_prob_continue = strtof(value, (char **)NULL);
+#endif
+#ifdef	VIDEO
+		} else if (!strncasecmp(key, arg_video, sizeof(arg_video) - 1))
+		{
+			if (!strncasecmp(value, "sfu", sizeof("sfu")))
+				member->video_mode = SFU;
+			else if (!strncasecmp(value, "src", sizeof("src")))
+				member->video_mode = SRC;
 #endif
 		} else
 		{
@@ -1106,7 +1190,7 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 	for (i = 0; i < strlen(flags); ++i)
 	{
 		{
-			// flags are L, l, a, T, V, D, A, R, M, x, Z
+			// flags are L, l, a, T, V, D, A, R, M, x
 			switch (flags[i])
 			{
 				// mute/no_recv options
@@ -1150,11 +1234,6 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 			case 'x':
 				member->kick_conferees = 1;
 				break;
-#ifdef	VIDEO
-			case 'Z':
-                                member->sfu = 1;
-				break;
-#endif
 			default:
 				break;
 			}

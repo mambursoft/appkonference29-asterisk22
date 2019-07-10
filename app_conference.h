@@ -288,13 +288,28 @@ static inline void remove_listentry(ast_conf_listentry *listentry)
 	listentry->prev->next = listentry->next;
 }
 
-enum msgs { KICK='K', PLAY='P', STOP='S', HOLD='H', CONT='C' };
+enum msgs {
+		KICK='K',
+		PLAY='P',
+		STOP='S',
+		HOLD='H',
+		CONT='C',
+#ifdef	VIDEO
+		VSRC = 'V'
+#endif
+};
 
 struct ast_frame kick_frame;
 struct ast_frame stop_frame;
 struct ast_frame hold_frame;
 struct ast_frame cont_frame;
+#ifdef	VIDEO
+struct ast_frame vsrc_frame;
+#endif
 
 struct ast_generator play_sound_generator;
+#ifdef	VIDEO
+typedef	enum { SFU = 1, SRC = 2 } ac_video_mode;
+#endif
 
 #endif

@@ -848,6 +848,16 @@ static void add_member(ast_conf_member *member, ast_conference *conf)
 	// set pointer to conference
 	member->conf = conf;
 
+#ifdef	VIDEO
+	// validate video mode
+	if (!conf->video_mode && member->video_mode)
+	{
+		conf->video_mode = member->video_mode;
+	} else if (member->video_mode && conf->video_mode != member->video_mode)
+	{
+		member->video_mode = 0;
+	}
+#endif
 	// release the conference lock
 	ast_rwlock_unlock(&conf->listheaders->lock);
 }

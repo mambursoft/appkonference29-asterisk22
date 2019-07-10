@@ -194,8 +194,8 @@ struct ast_conf_member
 	struct ast_frame *mixAstFrame;
 	conf_frame *mixConfFrame;
 #ifdef	VIDEO
-	// SFU flags
-	int sfu;
+	//  video mode
+	ac_video_mode video_mode;
 
 	// SFU media routing vectors
 	struct {

@@ -79,6 +79,10 @@ char *conference_volume(struct ast_cli_entry *, int, struct ast_cli_args *);
 
 char *conference_end(struct ast_cli_entry *, int, struct ast_cli_args *);
 
+#ifdef	VIDEO
+char *conference_videoswitch(struct ast_cli_entry *, int, struct ast_cli_args *);
+#endif
+
 #endif
 
 void register_conference_cli(void);
