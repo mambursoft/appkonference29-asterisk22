@@ -730,12 +730,11 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 				{
 					AST_RWDLLIST_WRLOCK(&conf->sfu_list);
 
-					if (member->conf->video_mode == SRC)
+					if (member->video_mode == SRC)
 					{
 						member->conf->video_source = member;
+						ast_indicate(member->chan, AST_CONTROL_VIDUPDATE);
 					}
-
-					ast_indicate(member->chan, AST_CONTROL_VIDUPDATE);
 
 					AST_RWDLLIST_UNLOCK(&conf->sfu_list);
 
@@ -920,9 +919,9 @@ int member_exec(struct ast_channel* chan, const char* data)
 		AST_RWDLLIST_INSERT_HEAD(&conf->sfu_list, member, sfu_entry);
 		sfu_topologies_on_join(member);
 		AST_RWDLLIST_UNLOCK(&conf->sfu_list);
-	} else if (member->video_mode ==SRC)
+	} else if (member->video_mode == SRC)
 	{
-		//ast_log(LOG_NOTICE, "%s sfu join\n", ast_channel_name(member->chan));
+		//ast_log(LOG_NOTICE, "%s src join\n", ast_channel_name(member->chan));
 		AST_RWDLLIST_WRLOCK(&conf->sfu_list);
 		AST_RWDLLIST_INSERT_HEAD(&conf->sfu_list, member, sfu_entry);
 		AST_RWDLLIST_UNLOCK(&conf->sfu_list);
@@ -997,7 +996,7 @@ int member_exec(struct ast_channel* chan, const char* data)
 		AST_VECTOR_FREE(&member->stream_map.to_conference);
 	} else if (member->video_mode == SRC)
 	{
-		//ast_log(LOG_NOTICE, "%s sfu leave\n", ast_channel_name(member->chan));
+		//ast_log(LOG_NOTICE, "%s src leave\n", ast_channel_name(member->chan));
 		AST_RWDLLIST_WRLOCK(&conf->sfu_list);
 		AST_RWDLLIST_REMOVE(&conf->sfu_list, member, sfu_entry);
 		if (conf->video_source == member)
