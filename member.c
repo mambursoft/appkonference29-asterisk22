@@ -25,6 +25,7 @@
 
 #ifdef	VIDEO
 #include "asterisk/stream.h"
+#include "pj/config_site.h"
 #endif
 
 #ifdef	CACHE_CONTROL_BLOCKS
@@ -61,7 +62,7 @@ struct ast_frame vsrc_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = &vsrc_da
 #endif
 
 #ifdef	VIDEO
-#define VIDEO_DESTINATIONS_MAX 16
+#define VIDEO_DESTINATIONS_MAX PJMEDIA_MAX_SDP_MEDIA
 #define VIDEO_DESTINATION_PREFIX "conference_destination"
 #define VIDEO_DESTINATION_LEN strlen(VIDEO_DESTINATION_PREFIX)
 #define VIDEO_DESTINATION_SEPARATOR '_'
@@ -634,6 +635,23 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 
 					break;
 				}
+#if	0
+				case AST_CONTROL_ANSWER:
+				{
+					ast_log(LOG_NOTICE, "%s ast_control_answer status: %d\n", ast_channel_name(member->chan), ast_channel_state(member->chan));
+					break;
+				}
+				case AST_CONTROL_PVT_CAUSE_CODE:
+				{
+					ast_log(LOG_NOTICE, "%s ast_control_pvt_cause_code status: %d data: %s\n", ast_channel_name(member->chan), ast_channel_state(member->chan), ((struct ast_control_pvt_cause_code *)f->data.ptr)->code);
+					break;
+				}
+				case AST_CONTROL_SRCCHANGE:
+				{
+					ast_log(LOG_NOTICE, "%s ast_control_srcchange\n", ast_channel_name(member->chan));
+					break;
+				}
+#endif
 #endif
 				default:
 				{

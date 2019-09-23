@@ -80,6 +80,7 @@ TARGET = app_konference.so
 INSTALL = install
 
 INCLUDE = -I$(ASTERISK_INCLUDE_DIR)
+#INCLUDE += -I$(ASTERISK_SRC_DIR)/third-party/pjproject/source/pjlib/include
 #DEBUG := -g
 
 #
