@@ -1012,6 +1012,7 @@ int member_exec(struct ast_channel* chan, const char* data)
 		AST_RWDLLIST_UNLOCK(&conf->sfu_list);
 		AST_VECTOR_FREE(&member->stream_map.to_channel);
 		AST_VECTOR_FREE(&member->stream_map.to_conference);
+		ast_stream_topology_free(member->topology);
 	} else if (member->video_mode == SRC)
 	{
 		//ast_log(LOG_NOTICE, "%s src leave\n", ast_channel_name(member->chan));
