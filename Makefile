@@ -46,9 +46,6 @@ REVISION = $(shell svnversion -n .)
 # cache_control_blocks ( 0 == OFF, 1 == ON )
 CACHE_CONTROL_BLOCKS ?= 1
 
-# cache_ast_frames ( 0 == OFF, 1 == ON )
-CACHE_AST_FRAMES ?= 1
-
 # score board ( 0 == OFF, 1 == ON )
 SPEAKER_SCOREBOARD ?= 1
 
@@ -144,9 +141,6 @@ endif
 # CPPFLAGS += -DAC_USE_ALAW
 #
 
-ifeq ($(CACHE_AST_FRAMES), 1)
-CPPFLAGS += -DCACHE_AST_FRAMES
-else
 #
 # Uncomment this if you want GSM
 #
@@ -170,7 +164,6 @@ else
 #
 # CPPFLAGS += -DAC_USE_G722
 #
-endif
 
 ifeq ($(CACHE_CONTROL_BLOCKS), 1)
 CPPFLAGS += -DCACHE_CONTROL_BLOCKS

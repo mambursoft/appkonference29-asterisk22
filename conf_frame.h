@@ -45,10 +45,6 @@ struct conf_frame
 	// array of converted versions for listeners
 	struct ast_frame* converted[AC_SUPPORTED_FORMATS];
 
-#ifdef  CACHE_AST_FRAMES
-	// who spoke this frame
-	ast_conf_member* owner;
-#endif
 	// who sent or gets this frame
 	ast_conf_member* member;
 

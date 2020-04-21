@@ -123,12 +123,7 @@ conf_frame* mix_frames(ast_conference* conf, conf_frame* frames_in, int speaker_
 			if (frames_in->member->read_format != AC_CONF)
 #endif
 				{
-#ifdef  CACHE_AST_FRAMES
-					astframe_cache_put(&frames_in->owner->incomingq.cache, frames_in->converted[frames_in->owner->read_format]);
-					frames_in->owner = NULL;
-#else
 					ast_frfree(frames_in->converted[frames_in->member->read_format]);
-#endif
 					frames_in->converted[frames_in->member->read_format] = NULL;
 				}
 		}
@@ -151,12 +146,7 @@ conf_frame* mix_frames(ast_conference* conf, conf_frame* frames_in, int speaker_
 			if (frames_in->next->member->read_format != AC_CONF)
 #endif
 				{
-#ifdef  CACHE_AST_FRAMES
-					astframe_cache_put(&frames_in->next->owner->incomingq.cache, frames_in->next->converted[frames_in->next->owner->read_format]);
-					frames_in->next->owner = NULL;
-#else
 					ast_frfree(frames_in->next->converted[frames_in->next->member->read_format]);
-#endif
 					frames_in->next->converted[frames_in->next->member->read_format] = NULL;
 				}
 		}
@@ -206,12 +196,7 @@ conf_frame* mix_single_speaker(ast_conference* conf, conf_frame* frames_in)
 		if (frames_in->member->read_format != AC_CONF)
 #endif
 		{
-#ifdef  CACHE_AST_FRAMES
-			astframe_cache_put(&frames_in->owner->incomingq.cache, frames_in->converted[frames_in->owner->read_format]);
-			frames_in->owner = NULL;
-#else
 			ast_frfree(frames_in->converted[frames_in->member->read_format]);
-#endif
 			frames_in->converted[frames_in->member->read_format] = NULL;
 		}
 	}
@@ -288,12 +273,7 @@ conf_frame* mix_multiple_speakers(
 			if (cf_spoken->member->read_format != AC_CONF)
 #endif
 			{
-#ifdef  CACHE_AST_FRAMES
-				astframe_cache_put(&cf_spoken->owner->incomingq.cache, cf_spoken->converted[cf_spoken->owner->read_format]);
-				cf_spoken->owner = NULL;
-#else
 				ast_frfree(cf_spoken->converted[cf_spoken->member->read_format]);
-#endif
 				cf_spoken->converted[cf_spoken->member->read_format] = NULL;
 			}
 		}
@@ -485,18 +465,6 @@ struct ast_frame* convert_frame(struct ast_trans_pvt* trans, struct ast_frame* f
 conf_frame* delete_conf_frame(conf_frame* cf)
 {
   int c;
-#ifdef	CACHE_AST_FRAMES
-	if (cf->owner)
-	{
-		astframe_cache_put(&cf->owner->incomingq.cache, cf->converted[cf->owner->read_format]);
-		if (cf->owner->read_format != AC_CONF)
-		{
-			cf->converted[cf->owner->read_format] = NULL;
-			ast_frfree(cf->fr);
-		}
-	}
-	else
-#endif
 	ast_frfree(cf->fr);
 	for (c = 1; c < AC_SUPPORTED_FORMATS; ++c)
 	{
@@ -535,11 +503,7 @@ conf_frame* create_conf_frame(ast_conf_member* member, struct ast_frame* fr)
 		ast_log(LOG_ERROR, "unable to allocate memory for conf frame\n");
 		return NULL;
 	}
-#ifdef  CACHE_AST_FRAMES
-	cf->owner = cf->member = member;
-#else
 	cf->member = member;
-#endif
 	cf->fr = fr;
 
 	return cf;

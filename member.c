@@ -891,11 +891,8 @@ static void process_outgoing(ast_conf_member *member)
 				sf->delivery = cf->delivery;
 
 				// free voice frame
-#ifdef  CACHE_AST_FRAMES
-				astframe_cache_put(&member->outgoingq.cache, cf);
-#else
 				ast_frfree(cf);
-#endif
+
 				// send sound frame
 				ast_write(member->chan, sf);
 
@@ -910,11 +907,7 @@ static void process_outgoing(ast_conf_member *member)
 		ast_write(member->chan, cf);
 
                 // free voice frame
-#ifdef  CACHE_AST_FRAMES
-		astframe_cache_put(&member->outgoingq.cache, cf);
-#else
 		ast_frfree(cf);
-#endif
 	}
 }
 
@@ -1558,23 +1551,14 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 	{
 		case AST_FORMAT_CONFERENCE:
 			member->read_format = AC_CONF;
-#ifdef	CACHE_AST_FRAMES
-			member->pkt_size = 320;
-#endif
 			break;
 
 		case AST_FORMAT_ULAW:
 			member->read_format = AC_ULAW;
-#ifdef	CACHE_AST_FRAMES
-			member->pkt_size = 160;
-#endif
 			break;
 #ifdef  AC_USE_ALAW
 		case AST_FORMAT_ALAW:
 			member->read_format = AC_ALAW;
-#ifdef	CACHE_AST_FRAMES
-			member->pkt_size = 160;
-#endif
 			break;
 #endif
 #ifdef	AC_USE_GSM
@@ -1660,17 +1644,6 @@ void delete_member(ast_conf_member* member)
 	{
 		ast_free(member->mixConfFrame);
 	}
-#ifdef  CACHE_AST_FRAMES
-	// cache frames
-	if (member->outgoingq.cache)
-	{
-		ast_frfree(member->outgoingq.cache);
-	}
-	if (member->incomingq.cache)
-	{
-		ast_frfree(member->incomingq.cache);
-	}
-#endif
 #if	SILDET == 1
 	if (member->dsp)
 	{
@@ -1750,59 +1723,12 @@ void queue_incoming_frame(ast_conf_member* member, struct ast_frame* fr)
 	//
 	// create new frame from passed data frame
 	//
-#ifdef  CACHE_AST_FRAMES
-	struct ast_frame *cf = astframe_cache_get(&member->incomingq.cache);
-	if (cf)
-	{    
-		AST_LIST_NEXT(cf, frame_list) = NULL;
-#if	ASTERISK_SRC_VERSION == 104
-		memcpy(cf->data, fr->data, fr->datalen);
-#else
-		memcpy(cf->data.ptr, fr->data.ptr, fr->datalen);
-#endif
-		cf->delivery = fr->delivery;
-		cf->ts = fr->ts;
-		cf->seqno = fr->seqno;
-		fr = cf;
-	}    
-	else
-	{
-		if (!(cf = ast_calloc_cache(1, sizeof(struct ast_frame) + AST_FRIENDLY_OFFSET + member->pkt_size)))
-		{
-			ast_log(LOG_ERROR, "unable to malloc incoming ast_frame\n");
-			return;
-		}
-		cf->mallocd_hdr_len = sizeof(struct ast_frame) + AST_FRIENDLY_OFFSET + member->pkt_size;
-		cf->frametype = fr->frametype;
-#if	ASTERISK_SRC_VERSION < 1300
-		cf->subclass = fr->subclass;
-#else
-		cf->subclass.format = ao2_bump(fr->subclass.format);
-#endif
-		cf->datalen = member->pkt_size;
-		cf->samples = 160;
-		cf->mallocd = AST_MALLOCD_HDR;
-		cf->offset = AST_FRIENDLY_OFFSET;
-#if	ASTERISK_SRC_VERSION == 104
-		cf->data = (char*)cf + sizeof(struct ast_frame) + AST_FRIENDLY_OFFSET;
-		memcpy(cf->data, fr->data, fr->datalen);
-#else
-		cf->data.ptr = (char*)cf + sizeof(struct ast_frame) + AST_FRIENDLY_OFFSET;
-		memcpy(cf->data.ptr, fr->data.ptr, fr->datalen);
-#endif
-		cf->delivery = fr->delivery;
-		cf->ts = fr->ts;
-		cf->seqno = fr->seqno;
-		cf->len = AST_CONF_FRAME_INTERVAL;
-		fr = cf;
-	}
-#else
 	if (!(fr = ast_frdup(fr)))
 	{
 		ast_log(LOG_ERROR, "unable to malloc incoming ast_frame\n");
 		return;
 	}
-#endif
+
 	//
 	// add new frame to members incoming frame queue
 	// (i.e. save this frame data, so we can distribute it in conference_exec later)
@@ -1850,24 +1776,6 @@ void queue_outgoing_frame(ast_conf_member* member, struct ast_frame* fr, struct 
 	//
 	// create new frame from passed data frame
 	//
-#ifdef  CACHE_AST_FRAMES
-	struct ast_frame *cf = astframe_cache_get(&member->outgoingq.cache);
-        if (cf)
-        {    
-		AST_LIST_NEXT(cf, frame_list) = NULL;
-#if	ASTERISK_SRC_VERSION == 104
-                memcpy(cf->data, fr->data, fr->datalen);
-#else
-                memcpy(cf->data.ptr, fr->data.ptr, fr->datalen);
-#endif
-		ast_copy_flags(cf, fr, AST_FRFLAG_HAS_TIMING_INFO);
-		cf->ts = fr->ts;
-		cf->len = fr->len;
-		cf->seqno = fr->seqno;
-                fr = cf;
-        }    
-	else 
-#endif
 	if (!(fr  = ast_frdup(fr)))
 	{
 		ast_log(LOG_ERROR, "unable to malloc outgoing ast_frame\n");
