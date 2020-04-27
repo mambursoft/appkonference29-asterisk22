@@ -431,7 +431,7 @@ void dealloc_conference(void)
 #endif
 
 #if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
-	if (speaker_scoreboard)
+	if (speaker_scoreboard > 0)
 		munmap(speaker_scoreboard, SPEAKER_SCOREBOARD_SIZE);
 #endif
 }

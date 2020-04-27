@@ -1173,7 +1173,7 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 #ifdef	CACHE_CONTROL_BLOCKS
 #ifdef	SPEAKER_SCOREBOARD
 		ast_mutex_lock(&speaker_scoreboard_lock);
-		score_id = last_score_id < SPEAKER_SCOREBOARD_SIZE ? ++last_score_id : 0;
+		score_id = last_score_id < SPEAKER_SCOREBOARD_SIZE - 1 ? ++last_score_id : 0;
 		ast_mutex_unlock(&speaker_scoreboard_lock);
 	}
 	// initialize score board identifier
