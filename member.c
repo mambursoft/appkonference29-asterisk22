@@ -503,30 +503,6 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 			break;
                 }
 #endif
-#if     ASTERISK_SRC_VERSION < 1110
-		case AST_FRAME_DTMF_BEGIN:
-		case AST_FRAME_NULL:
-		{
-#if     ASTERISK_SRC_VERSION < 1100
-			if (member->chan->generatordata == member)
-			{
-				member->chan->generatordata = NULL;
-				int res = member->chan->generator->generate(member->chan, member, 0, 0);
-				member->chan->generatordata = member;
-				if (res) ast_deactivate_generator(member->chan);
-			}
-#else
-			if (ast_channel_generatordata(member->chan) == member)
-			{
-				ast_channel_generatordata_set(member->chan, NULL);
-				int res = (ast_channel_generator(member->chan)->generate)(member->chan, member, 0, 0);
-				ast_channel_generatordata_set(member->chan, member);
-				if (res) ast_deactivate_generator(member->chan);
-			}
-#endif
-			break;
-		}
-#endif
 		case AST_FRAME_DTMF_END:
 		{
 			if (member->dtmf_relay)
@@ -1669,13 +1645,16 @@ void delete_member(ast_conf_member* member)
 	}
 
 	// clear all sounds
-#if     ASTERISK_SRC_VERSION < 1100
-	if (member->chan->generatordata == member)
-#else
-	if (ast_channel_generatordata(member->chan) == member)
-#endif
+	ast_conf_soundq *sound = member->soundq;
+	ast_conf_soundq *next;
+
+	while (sound)
 	{
-		ast_deactivate_generator(member->chan);
+		next = sound->next;
+		if (sound->stream)
+			ast_stopstream(member->chan);
+		ast_free(sound);
+		 sound = next;
 	}
 
 	// decrement listheader count

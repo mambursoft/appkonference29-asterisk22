@@ -307,7 +307,6 @@ struct ast_frame cont_frame;
 struct ast_frame vsrc_frame;
 #endif
 
-struct ast_generator play_sound_generator;
 #ifdef	VIDEO
 typedef	enum { SFU = 1, SRC = 2 } ac_video_mode;
 #endif
