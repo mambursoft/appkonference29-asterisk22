@@ -49,9 +49,6 @@ struct ast_conf_frameq
 	ast_mutex_t lock;
 	AST_LIST_HEAD_NOLOCK(, ast_frame) frames;
 	unsigned int count;
-#ifdef	CACHE_AST_FRAMES
-	struct ast_frame *cache;
-#endif
 };
 
 struct spy_list
