@@ -107,7 +107,10 @@ struct ast_conf_member
 
 	// output frame queue
 	ast_conf_frameq outgoingq;
-
+#ifdef	VIDEO
+	// video queue
+	ast_conf_frameq videoq;
+#endif
 	// relay dtmf to manager?
 	short dtmf_relay;
 
@@ -227,6 +230,12 @@ conf_frame* get_incoming_frame(ast_conf_member* member);
 // outgoing queue
 void queue_outgoing_frame(ast_conf_member* member, struct ast_frame* fr, struct timeval delivery);
 struct ast_frame* get_outgoing_frame(ast_conf_member* member);
+
+#ifdef	VIDEO
+// video queue
+void queue_video_frame(ast_conf_member* member, struct ast_frame* fr, int stream_num);
+struct ast_frame* get_video_frame(ast_conf_member* member);
+#endif
 
 void member_process_spoken_frames(ast_conference* conf,
 				  ast_conf_member *member,

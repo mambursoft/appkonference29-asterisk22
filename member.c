@@ -474,7 +474,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 						continue;
 					}
 
-					ast_write_stream(participant->chan, member_stream_num, f);
+					queue_video_frame(participant, f, member_stream_num);
 				}
 
 				AST_RWDLLIST_UNLOCK(&conf->sfu_list);
@@ -493,7 +493,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 					AST_RWDLLIST_TRAVERSE(&conf->sfu_list, participant, sfu_entry)
 					{
 						if (participant != member)
-							ast_write(participant->chan, f);
+							queue_video_frame(participant, f, 1);
 					}
 				}
 
@@ -854,7 +854,9 @@ static struct ast_frame *get_next_soundframe(ast_conf_member *member)
 static void process_outgoing(ast_conf_member *member)
 {
 	struct ast_frame *cf, *sf;
-
+//
+//	process audio
+//
 	while ((cf = get_outgoing_frame(member)))
 	{
 		// if we're playing sounds, we can just replace the frame with the
@@ -885,6 +887,17 @@ static void process_outgoing(ast_conf_member *member)
                 // free voice frame
 		ast_frfree(cf);
 	}
+#ifdef	VIDEO
+//
+//	process video
+//
+	while ((cf = get_video_frame(member)))
+	{
+		ast_write_stream(member->chan, cf->stream_num, cf);
+
+		ast_free(cf);
+	}
+#endif
 }
 
 //
@@ -1165,7 +1178,9 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 	ast_mutex_init(&member->lock);
 	ast_mutex_init(&member->incomingq.lock);
 	ast_mutex_init(&member->outgoingq.lock);
-
+#ifdef VIDEO
+	ast_mutex_init(&member->videoq.lock);
+#endif
 	// initialize cv
 	ast_cond_init(&member->delete_var, NULL);
 
@@ -1605,7 +1620,11 @@ void delete_member(ast_conf_member* member)
 	// outgoing frames
 	if ((fr = AST_LIST_FIRST(&member->outgoingq.frames)))
 		ast_frfree(fr);
-
+#ifdef VIDEO
+	// video frames
+	if ((fr = AST_LIST_FIRST(&member->videoq.frames)))
+		ast_frfree(fr);
+#endif
 	// speaker buffer
 	if (member->speakerBuffer)
 	{
@@ -1783,6 +1802,62 @@ void queue_outgoing_frame(ast_conf_member* member, struct ast_frame* fr, struct 
 
 	ast_mutex_unlock(&member->outgoingq.lock);
 }
+
+#ifdef	VIDEO
+//
+// video frame functions
+//
+
+struct ast_frame* get_video_frame(ast_conf_member* member)
+{
+	if (member->videoq.count)
+	{
+		ast_mutex_lock(&member->videoq.lock);
+
+		struct ast_frame* fr = AST_LIST_REMOVE_HEAD(&member->videoq.frames, frame_list);
+
+		// decrement frame count
+		member->videoq.count--;
+		ast_mutex_unlock(&member->videoq.lock);
+		return fr;
+	}
+
+	return NULL;
+}
+
+void queue_video_frame(ast_conf_member* member, struct ast_frame* fr, int stream_num)
+{
+	//
+	// create new frame from passed data frame
+	//
+	if (!(fr  = ast_frdup(fr)))
+	{
+		ast_log(LOG_ERROR, "unable to malloc outgoing ast_frame\n");
+		return;
+	}
+
+	fr->stream_num = stream_num;
+
+	//
+	// add new frame to members outgoing frame queue
+	//
+
+	ast_mutex_lock(&member->videoq.lock);
+
+	AST_LIST_INSERT_TAIL(&member->videoq.frames, fr, frame_list);
+
+	//
+	// drop a frame if more than AST_CONF_MAX_QUEUE
+	//
+	if (++member->videoq.count > AST_CONF_MAX_QUEUE)
+	{
+		ast_frfree(AST_LIST_REMOVE_HEAD(&member->videoq.frames, frame_list));
+		member->videoq.count--;
+	}
+
+	ast_mutex_unlock(&member->videoq.lock);
+}
+#endif
 
 void queue_frame_for_listener(
 	ast_conference* conf,
