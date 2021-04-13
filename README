@@ -88,6 +88,12 @@ interfacing with the manager API can monitor conferences:
 	* ConferenceUnmute: unmute conference
 	* ConferenceSoundComplete: play sound complete
 
+Text Messages
+
+	* joinSFU: conference join notification
+	* getWebSocketChannel: return websocket channel name 
+	* getSourceChannel: return source channel name
+
 Benchmarking
 
 It would be nice to have solid benchmarks to present, but a good size 

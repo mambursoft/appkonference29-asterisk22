@@ -26,6 +26,8 @@
 #ifdef	VIDEO
 #include "asterisk/stream.h"
 #include "pj/config_site.h"
+#include "asterisk/message.h"
+#include "asterisk/json.h"
 #endif
 
 #ifdef	CACHE_CONTROL_BLOCKS
@@ -66,6 +68,11 @@ struct ast_frame vsrc_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = &vsrc_da
 #define VIDEO_DESTINATION_PREFIX "conference_destination"
 #define VIDEO_DESTINATION_LEN strlen(VIDEO_DESTINATION_PREFIX)
 #define VIDEO_DESTINATION_SEPARATOR '_'
+
+#define JOIN_NOTIFICATION "{\"jsonrpc\": \"2.0\", \"method\": \"joinSFU\"}"
+#define JOIN_NOTIFICATION_LEN sizeof(JOIN_NOTIFICATION)
+
+struct ast_frame joinSFU_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = JOIN_NOTIFICATION, .datalen = JOIN_NOTIFICATION_LEN};
 
 static int is_video_source(const struct ast_stream *stream)
 {
@@ -637,6 +644,68 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 			}
 			break;
 		}
+#ifdef	VIDEO
+		case AST_FRAME_TEXT_DATA:
+		{
+
+			struct ast_msg_data *msg = f->data.ptr;
+
+			struct ast_json *text = ast_json_load_buf(ast_msg_data_get_attribute(msg, AST_MSG_DATA_ATTR_BODY), strlen(ast_msg_data_get_attribute(msg, AST_MSG_DATA_ATTR_BODY)), NULL);
+
+			if (!text)
+				break;
+
+			const char *method = ast_json_string_get(ast_json_object_get(text, "method"));
+			int id = ast_json_integer_get(ast_json_object_get(text, "id"));
+
+			if (!method || !id)
+				break;
+
+			char response[1024] = {0};
+			struct ast_frame response_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = response}; 
+
+			if (!strcmp(method, "getWebSocketChannel"))
+			{
+				// {"jsonrpc": "2.0", "method": "getWebChannel", "params": {}, "id": 1}
+				// {"jsonrpc": "2.0", "result": "PJSIP/webrtc_client-xxxxxxxx", "id": 1}
+
+				response_frame.datalen = sprintf(response, "{\"jsonrpc\": \"2.0\", \"result\": \"%s\", \"id\": %d}", ast_channel_name(member->chan), id);
+
+				ast_write(member->chan, &response_frame);
+			}
+			else if (!strcmp(method, "getSourceChannel"))
+			{
+				// {"jsonrpc": "2.0", "method": "getSourceChannel", "params": {"mid":"video-x"}, "id": 1}
+				// {"jsonrpc": "2.0", "result": "PJSIP/webrtc_client-xxxxxxxx", "id": 1}
+
+				struct ast_json *params = ast_json_object_get(text, "params");
+
+				if (!params)
+					break;
+
+				const char *mid = ast_json_string_get(ast_json_object_get(params, "mid"));
+
+				if (!mid)
+					break;
+
+				int stream_num = atoi(strchr(mid, '-')+1);
+
+				struct ast_stream *stream = ast_stream_topology_get_stream(member->topology, stream_num);
+
+				if (!stream)
+					break;
+
+				char source[32] = {0};
+				strncpy(source, ast_stream_get_name(stream)+VIDEO_DESTINATION_LEN+1, 28);
+
+				response_frame.datalen = sprintf(response, "{\"jsonrpc\": \"2.0\", \"result\": \"%s\", \"id\": %d}", source,  id);
+
+				ast_write(member->chan, &response_frame);
+			}
+
+			break;
+		}
+#endif
 		case AST_FRAME_TEXT:
 		{
 #if     ASTERISK_SRC_VERSION == 104
@@ -970,6 +1039,9 @@ int member_exec(struct ast_channel* chan, const char* data)
 		"ConferenceJoin",
 		"ConferenceName: %s\r\n"
 		"Type: %s\r\n"
+#ifdef	VIDEO
+		"Video: %d\r\n"
+#endif
 		"UniqueID: %s\r\n"
 		"Member: %d\r\n"
 #if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
@@ -983,6 +1055,9 @@ int member_exec(struct ast_channel* chan, const char* data)
 		"Count: %d\r\n",
 		conf->name,
 		member->type,
+#ifdef	VIDEO
+		!!ast_channel_get_default_stream(member->chan, AST_MEDIA_TYPE_VIDEO),
+#endif
 #if	ASTERISK_SRC_VERSION < 1100
 		member->chan->uniqueid,
 #else
@@ -1032,6 +1107,7 @@ int member_exec(struct ast_channel* chan, const char* data)
 		AST_RWDLLIST_INSERT_HEAD(&conf->sfu_list, member, sfu_entry);
 		sfu_topologies_on_join(member);
 		AST_RWDLLIST_UNLOCK(&conf->sfu_list);
+		ast_write(member->chan, &joinSFU_frame);
 	} else if (member->video_mode == SRC)
 	{
 		//ast_log(LOG_NOTICE, "%s src join\n", ast_channel_name(member->chan));

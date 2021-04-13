@@ -59,7 +59,7 @@ CHANNEL_TABLE_SIZE ?= 997
 CONFERENCE_TABLE_SIZE ?= 199
 
 # silence detection ( 0 = OFF 1 = libwebrtc 2 = libspeex )
-SILDET := 1
+SILDET := 2
 
 #
 # objects to build
