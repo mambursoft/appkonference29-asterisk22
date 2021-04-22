@@ -964,7 +964,7 @@ static void process_outgoing(ast_conf_member *member)
 	{
 		ast_write_stream(member->chan, cf->stream_num, cf);
 
-		ast_free(cf);
+		ast_frfree(cf);
 	}
 #endif
 }
