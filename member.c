@@ -363,7 +363,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 			{
 				break;
 			}
-#if	SILDET == 1 || SILDET == 2
+#if	 SILDET == 2
 			// reset silence detection flag
 			int is_silent_frame = 0;
 			//
@@ -373,18 +373,10 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 			{
 				// send the frame to the preprocessor
 				f = convert_frame(member->to_dsp, f, 1);
-#if	SILDET == 1
-#if	ASTERISK_SRC_VERSION == 104
-				if (!WebRtcVad_Process(member->dsp, AST_CONF_SAMPLE_RATE, f->data, AST_CONF_BLOCK_SAMPLES))
-#else
-				if (!WebRtcVad_Process(member->dsp, AST_CONF_SAMPLE_RATE, f->data.ptr, AST_CONF_BLOCK_SAMPLES))
-#endif
-#elif	SILDET == 2
 #if	ASTERISK_SRC_VERSION == 104
 				if (!speex_preprocess(member->dsp, f->data, NULL))
 #else
 				if (!speex_preprocess(member->dsp, f->data.ptr, NULL))
-#endif
 #endif
 				{
 					//
@@ -1391,13 +1383,7 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 			case 'l':
 				member->norecv_audio = 1;
 				break;
-#if	SILDET == 1
-				//Telephone connection
-			case 'a':
-			case 'T':
-				member->via_telephone = 1;
-				break;
-#elif	SILDET == 2
+#if	SILDET == 2
 				//Telephone connection
 			case 'a':
 				member->vad_flag = 1;
@@ -1436,28 +1422,7 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 	// if the user is coming in via the telephone,
 	// and is not listen-only
 	//
-#if	SILDET == 1
-	if (member->via_telephone)
-	{
-		// create a webrtc preprocessor
-
-		if (!WebRtcVad_Create(&member->dsp))
-		{
-			WebRtcVad_Init(member->dsp);
-#if	AST_CONF_VAD_MODE
-			WebRtcVad_set_mode(member->dsp, AST_CONF_VAD_MODE);
-#endif
-		}
-		else
-		{
-#if	ASTERISK_SRC_VERSION < 1100
-			ast_log(LOG_WARNING, "unable to initialize member dsp, channel => %s\n", chan->name);
-#else
-			ast_log(LOG_WARNING, "unable to initialize member dsp, channel => %s\n", ast_channel_name(chan));
-#endif
-		}
-	}
-#elif	SILDET == 2
+#if	SILDET == 2
 	if (member->via_telephone)
 	{
 		// create a speex preprocessor
@@ -1484,7 +1449,7 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 #endif	// SILDET
 
 	// set translation paths
-#if	SILDET == 1 || SILDET == 2
+#if	SILDET == 2
 
 	if (member->dsp)
 	{
@@ -1590,7 +1555,7 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 	}
 
 	// index for converted_frames array
-#if	SILDET == 1 || SILDET == 2
+#if	SILDET == 2
 
 #if	ASTERISK_SRC_VERSION < 1000
 	switch (member->dsp ? AST_FORMAT_CONFERENCE : chan->readformat)
@@ -1715,13 +1680,7 @@ void delete_member(ast_conf_member* member)
 	{
 		ast_free(member->mixConfFrame);
 	}
-#if	SILDET == 1
-	if (member->dsp)
-	{
-		WebRtcVad_Free(member->dsp);
-		ast_translator_free_path(member->to_dsp);
-	}
-#elif	SILDET == 2
+#if	SILDET == 2
 	if (member->dsp)
 	{
 		speex_preprocess_state_destroy(member->dsp);

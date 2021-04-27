@@ -58,16 +58,7 @@
 #include <asterisk/format_compatibility.h>
 #endif
 
-#if	SILDET == 1
-#include "libwebrtc/webrtc_vad.h"
-
-// number of frames to ignore after speech detected
-#define AST_CONF_FRAMES_TO_IGNORE 20
-
-// modes: quality 0, low bitrate 1, aggressive 2, very aggressive 3
-#define AST_CONF_VAD_MODE 0
-
-#elif	 SILDET == 2
+#if	 SILDET == 2
 #include "libspeex/speex_preprocess.h"
 
 // number of frames to ignore after speech detected

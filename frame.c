@@ -117,7 +117,7 @@ conf_frame* mix_frames(ast_conference* conf, conf_frame* frames_in, int speaker_
 		if ((frames_in->talk_volume = conf->volume + frames_in->member->talk_volume))
 		{
 			ast_frame_adjust_volume(frames_in->fr, frames_in->talk_volume > 0 ? frames_in->talk_volume + 1 : frames_in->talk_volume - 1);
-#if	SILDET == 1 || SILDET == 2
+#if	SILDET == 2
 			if (frames_in->member->read_format != AC_CONF && !frames_in->member->dsp)
 #else
 			if (frames_in->member->read_format != AC_CONF)
@@ -140,7 +140,7 @@ conf_frame* mix_frames(ast_conference* conf, conf_frame* frames_in, int speaker_
 		if ((frames_in->next->talk_volume = conf->volume + frames_in->next->member->talk_volume))
 		{
 			ast_frame_adjust_volume(frames_in->next->fr, frames_in->next->talk_volume > 0 ? frames_in->next->talk_volume + 1 : frames_in->next->talk_volume - 1);
-#if	SILDET == 1 || SILDET == 2
+#if	SILDET == 2
 			if (frames_in->next->member->read_format != AC_CONF && !frames_in->next->member->dsp)
 #else
 			if (frames_in->next->member->read_format != AC_CONF)
@@ -190,7 +190,7 @@ conf_frame* mix_single_speaker(ast_conference* conf, conf_frame* frames_in)
 	if ((frames_in->talk_volume = frames_in->member->talk_volume + conf->volume))
 	{
 		ast_frame_adjust_volume(frames_in->fr, frames_in->talk_volume > 0 ? frames_in->talk_volume + 1 : frames_in->talk_volume - 1);
-#if	SILDET == 1 || SILDET == 2
+#if	SILDET == 2
 		if (frames_in->member->read_format != AC_CONF && !frames_in->member->dsp)
 #else
 		if (frames_in->member->read_format != AC_CONF)
@@ -267,7 +267,7 @@ conf_frame* mix_multiple_speakers(
 		if (cf_spoken->member->talk_volume || conf->volume)
 		{
 			ast_frame_adjust_volume(cf_spoken->fr, cf_spoken->member->talk_volume + conf->volume > 0 ? cf_spoken->member->talk_volume + conf->volume + 1 : cf_spoken->member->talk_volume + conf->volume - 1);
-#if	SILDET == 1 || SILDET == 2
+#if	SILDET == 2
 			if (cf_spoken->member->read_format != AC_CONF && !cf_spoken->member->dsp)
 #else
 			if (cf_spoken->member->read_format != AC_CONF)

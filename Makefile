@@ -58,7 +58,7 @@ CHANNEL_TABLE_SIZE ?= 997
 # conference table size
 CONFERENCE_TABLE_SIZE ?= 199
 
-# silence detection ( 0 = OFF 1 = libwebrtc 2 = libspeex )
+# silence detection ( 0 = OFF 2 = libspeex )
 SILDET := 2
 
 #
@@ -176,11 +176,7 @@ endif
 # additional flag values for silence detection
 #
 
-ifeq ($(SILDET), 1)
-OBJS += libwebrtc/get_scaling_square.o libwebrtc/division_operations.o libwebrtc/energy.o libwebrtc/vad_core.o libwebrtc/vad_filterbank.o libwebrtc/vad_gmm.o libwebrtc/vad_sp.o libwebrtc/webrtc_vad.o
-INCS += libwebrtc/signal_processing_library.h libwebrtc/spl_inl.h libwebrtc/webrtc_vad.h libwebrtc/vad_core.h libwebrtc/vad_filterbank.h libwebrtc/vad_gmm.h libwebrtc/vad_sp.h
-CPPFLAGS += -Ilibwebrtc -DSILDET=1
-else ifeq ($(SILDET), 2)
+ifeq ($(SILDET), 2)
 OBJS += libspeex/preprocess.o libspeex/misc.o libspeex/smallft.o
 INCS += libspeex/speex_preprocess.h libspeex/smallft.h libspeex/misc.h
 CPPFLAGS += -Ilibspeex -DSILDET=2
