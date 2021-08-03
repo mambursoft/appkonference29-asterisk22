@@ -180,6 +180,7 @@ ifeq ($(SILDET), 2)
 OBJS += libspeex/preprocess.o libspeex/misc.o libspeex/smallft.o
 INCS += libspeex/speex_preprocess.h libspeex/smallft.h libspeex/misc.h
 CPPFLAGS += -Ilibspeex -DSILDET=2
+LIBS = -lm
 endif
 
 OSARCH=$(shell uname -s)
@@ -204,7 +205,7 @@ clean:
 $(OBJS): $(INCS)
 
 $(TARGET): $(OBJS)
-	$(CC) $(SOLINK) -o $@ $(OBJS)
+	$(CC) $(SOLINK) -o $@ $(OBJS) $(LIBS)
 
 install:
 	if [ -f $(TARGET) ]; then $(INSTALL) -m 755 $(TARGET) $(INSTALL_MODULES_DIR); fi
