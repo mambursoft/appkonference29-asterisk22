@@ -61,6 +61,9 @@ CONFERENCE_TABLE_SIZE ?= 199
 # silence detection ( 0 = OFF 2 = libspeex )
 SILDET := 2
 
+# video ( 0 = OFF 1 = ON)
+VIDEO := 0
+
 #
 # objects to build
 #
@@ -77,7 +80,6 @@ TARGET = app_konference.so
 INSTALL = install
 
 INCLUDE = -I$(ASTERISK_INCLUDE_DIR)
-#INCLUDE += -I$(ASTERISK_SRC_DIR)/third-party/pjproject/source/pjlib/include
 #DEBUG := -g
 
 #
@@ -110,7 +112,6 @@ CPPFLAGS += -DCONFERENCE_TABLE_SIZE=$(CONFERENCE_TABLE_SIZE)
 CPPFLAGS += -DCACHE_CONF_FRAMES
 #CPPFLAGS += -DCHECK_THREAD_FREQUENCY
 CPPFLAGS += -DAC_USE_ULAW
-#CPPFLAGS += -DVIDEO
 
 ifneq	($(AST_MODULE_SELF_SYM),)
 CPPFLAGS += -DAST_MODULE_SELF_SYM=$(AST_MODULE_SELF_SYM)
@@ -181,6 +182,15 @@ OBJS += libspeex/preprocess.o libspeex/misc.o libspeex/smallft.o
 INCS += libspeex/speex_preprocess.h libspeex/smallft.h libspeex/misc.h
 CPPFLAGS += -Ilibspeex -DSILDET=2
 LIBS = -lm
+endif
+
+#
+# additional flag values for video
+#
+
+ifeq ($(VIDEO), 1)
+CPPFLAGS += -DVIDEO
+INCLUDE += -I$(ASTERISK_SRC_DIR)/third-party/pjproject/source/pjlib/include
 endif
 
 OSARCH=$(shell uname -s)
