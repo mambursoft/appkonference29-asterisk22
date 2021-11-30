@@ -1048,7 +1048,7 @@ int member_exec(struct ast_channel* chan, const char* data)
 		conf->name,
 		member->type,
 #ifdef	VIDEO
-		!!ast_channel_get_default_stream(member->chan, AST_MEDIA_TYPE_VIDEO),
+		member->video_mode,
 #endif
 #if	ASTERISK_SRC_VERSION < 1100
 		member->chan->uniqueid,
