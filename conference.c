@@ -946,6 +946,9 @@ void remove_member(ast_conf_member* member, ast_conference* conf, char* conf_nam
 		"ConferenceLeave",
 		"ConferenceName: %s\r\n"
 		"Type:  %s\r\n"
+#ifdef  VIDEO
+		"Video: %d\r\n"
+#endif
 		"UniqueID: %s\r\n"
 		"Member: %d\r\n"
 		"Flags: %s\r\n"
@@ -957,6 +960,9 @@ void remove_member(ast_conf_member* member, ast_conference* conf, char* conf_nam
 		"Count: %d\r\n",
 		conf_name,
 		member->type,
+#ifdef  VIDEO
+		member->video_mode,
+#endif
 #if	ASTERISK_SRC_VERSION < 1100
 		member->chan->uniqueid,
 #else
