@@ -35,26 +35,7 @@
 #include <sys/time.h>
 #endif
 
-#if	ASTERISK_SRC_VERSION > 108 && ASTERISK_SRC_VERSION < 1300
-struct ast_format ast_format_conference = { .id = AST_FORMAT_CONFERENCE };
-struct ast_format ast_format_ulaw = { .id = AST_FORMAT_ULAW };
-#ifdef  AC_USE_ALAW
-struct ast_format ast_format_alaw = { .id = AST_FORMAT_ALAW };
-#endif
-#ifdef  AC_USE_GSM
-struct ast_format ast_format_gsm = { .id = AST_FORMAT_GSM };
-#endif
-#ifdef  AC_USE_SPEEX
-struct ast_format ast_format_speex = { .id = AST_FORMAT_SPEEX };
-#endif
-#ifdef  AC_USE_G729A
-struct ast_format ast_format_g729a = { .id = AST_FORMAT_G729A };
-#endif
-#ifdef  AC_USE_G722
-struct ast_format ast_format_slinear = { .id = AST_FORMAT_SLINEAR };
-struct ast_format ast_format_g722 = { .id = AST_FORMAT_G722 };
-#endif
-#endif
+
 
 //
 // static variables
@@ -548,67 +529,29 @@ static ast_conference* create_conf(char* name, ast_conf_member* member)
 	conf->from_slinear_paths[AC_CONF] = NULL;
 
 #ifdef	AC_USE_ULAW
-#if	ASTERISK_SRC_VERSION < 1000
-	conf->from_slinear_paths[AC_ULAW] = ast_translator_build_path(AST_FORMAT_ULAW, AST_FORMAT_CONFERENCE);
-#elif	ASTERISK_SRC_VERSION < 1300
-	conf->from_slinear_paths[AC_ULAW] = ast_translator_build_path(&ast_format_ulaw, &ast_format_conference);
-#else
 	conf->from_slinear_paths[AC_ULAW] = ast_translator_build_path(ast_format_ulaw, ast_format_conference);
-#endif
 #endif
 
 
 #ifdef	AC_USE_ALAW
-#if	ASTERISK_SRC_VERSION < 1000
-	conf->from_slinear_paths[AC_ALAW] = ast_translator_build_path(AST_FORMAT_ALAW, AST_FORMAT_CONFERENCE);
-#elif	ASTERISK_SRC_VERSION < 1300
-	conf->from_slinear_paths[AC_ALAW] = ast_translator_build_path(&ast_format_alaw, &ast_format_conference);
-#else
 	conf->from_slinear_paths[AC_ALAW] = ast_translator_build_path(ast_format_alaw, ast_format_conference);
-#endif
 #endif
 
 #ifdef	AC_USE_GSM
-#if	ASTERISK_SRC_VERSION < 1000
-	conf->from_slinear_paths[AC_GSM] = ast_translator_build_path(AST_FORMAT_GSM, AST_FORMAT_CONFERENCE);
-#elif	ASTERISK_SRC_VERSION < 1300
-	conf->from_slinear_paths[AC_GSM] = ast_translator_build_path(&ast_format_gsm, &ast_format_conference);
-#else
 	conf->from_slinear_paths[AC_GSM] = ast_translator_build_path(ast_format_gsm, ast_format_conference);
-#endif
 #endif
 
 #ifdef	AC_USE_SPEEX
-#if	ASTERISK_SRC_VERSION < 1000
-	conf->from_slinear_paths[AC_SPEEX] = ast_translator_build_path(AST_FORMAT_SPEEX, AST_FORMAT_CONFERENCE);
-#elif	ASTERISK_SRC_VERSION < 1300
-	conf->from_slinear_paths[AC_SPEEX] = ast_translator_build_path(&ast_format_speex, &ast_format_conference);
-#else
 	conf->from_slinear_paths[AC_SPEEX] = ast_translator_build_path(ast_format_speex, ast_format_conference);
-#endif
 #endif
 
 #ifdef AC_USE_G729A
-#if	ASTERISK_SRC_VERSION < 1000
-	conf->from_slinear_paths[AC_G729A] = ast_translator_build_path(AST_FORMAT_G729A, AST_FORMAT_CONFERENCE);
-#elif	ASTERISK_SRC_VERSION < 1300
-	conf->from_slinear_paths[AC_G729A] = ast_translator_build_path(&ast_format_g729a, &ast_format_conference);
-#else
 	conf->from_slinear_paths[AC_G729A] = ast_translator_build_path(ast_format_g729, ast_format_conference);
-#endif
 #endif
 
 #ifdef AC_USE_G722
-#if	ASTERISK_SRC_VERSION < 1000
-	conf->from_slinear_paths[AC_SLINEAR] = ast_translator_build_path(AST_FORMAT_SLINEAR, AST_FORMAT_CONFERENCE);
-	conf->from_slinear_paths[AC_G722] = ast_translator_build_path(AST_FORMAT_G722, AST_FORMAT_CONFERENCE);
-#elif	ASTERISK_SRC_VERSION < 1300
-	conf->from_slinear_paths[AC_SLINEAR] = ast_translator_build_path(&ast_format_slinear, &ast_format_conference);
-	conf->from_slinear_paths[AC_G722] = ast_translator_build_path(&ast_format_g722, &ast_format_conference);
-#else
 	conf->from_slinear_paths[AC_SLINEAR] = ast_translator_build_path(ast_format_slin, ast_format_conference);
 	conf->from_slinear_paths[AC_G722] = ast_translator_build_path(ast_format_g722, ast_format_conference);
-#endif
 #endif
 
 	//
@@ -904,11 +847,7 @@ void remove_member(ast_conf_member* member, ast_conference* conf, char* conf_nam
 			{
 				if (member == entry)
 				{
-#if	ASTERISK_SRC_VERSION == 104
-					AST_LIST_REMOVE_CURRENT(&spyee->spy_list.head, spy_list.entry);
-#else
 					AST_LIST_REMOVE_CURRENT(spy_list.entry);
-#endif
 					break;
 				}
 			}
@@ -920,11 +859,7 @@ void remove_member(ast_conf_member* member, ast_conference* conf, char* conf_nam
 			{
 				AST_LIST_REMOVE_HEAD(&entry->spy_list.head, spy_list.entry);
 				ast_queue_frame(entry->chan, &kick_frame);
-#if	ASTERISK_SRC_VERSION == 104
-				AST_LIST_REMOVE_CURRENT(&member->spy_list.head, spy_list.entry);
-#else
 				AST_LIST_REMOVE_CURRENT(spy_list.entry);
-#endif
 			}
 			AST_LIST_TRAVERSE_SAFE_END
 		}
@@ -963,30 +898,12 @@ void remove_member(ast_conf_member* member, ast_conference* conf, char* conf_nam
 #ifdef  VIDEO
 		member->video_mode,
 #endif
-#if	ASTERISK_SRC_VERSION < 1100
-		member->chan->uniqueid,
-#else
 		ast_channel_uniqueid(member->chan),
-#endif
 		member->conf_id,
 		member->flags,
-#if	ASTERISK_SRC_VERSION < 1100
-		member->chan->name,
-#else
 		ast_channel_name(member->chan),
-#endif
-#if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
-		member->chan->cid.cid_num ? member->chan->cid.cid_num : "unknown",
-		member->chan->cid.cid_name ? member->chan->cid.cid_name : "unknown",
-#else
-#if	ASTERISK_SRC_VERSION < 1100
-		member->chan->caller.id.number.str ? member->chan->caller.id.number.str : "unknown",
-		member->chan->caller.id.name.str ? member->chan->caller.id.name.str: "unknown",
-#else
 		S_COR(ast_channel_caller(member->chan)->id.number.valid, ast_channel_caller(member->chan)->id.number.str, "<unknown>"),
 		S_COR(ast_channel_caller(member->chan)->id.name.valid, ast_channel_caller(member->chan)->id.name.str, "<unknown>"),
-#endif
-#endif
 		(long)ast_tvdiff_ms(ast_tvnow(),member->time_entered) / 1000,
 		moderators,
 		membercount
@@ -1067,11 +984,7 @@ void list_members(int fd, const char *name)
 					duration = (int)(ast_tvdiff_ms(ast_tvnow(),member->time_entered) / 1000);
 					snprintf(duration_str, 10, "%02u:%02u:%02u",  duration / 3600, (duration % 3600) / 60, duration % 60);
 					ast_cli(fd, "%-20d %-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-80s\n",
-#if	ASTERISK_SRC_VERSION < 1100
-					member->conf_id, member->flags, !member->mute_audio ? "Unmuted" : "Muted", volume_str, duration_str , spy_str, member->chan->name);
-#else
 					member->conf_id, member->flags, !member->mute_audio ? "Unmuted" : "Muted", volume_str, duration_str , spy_str, ast_channel_name(member->chan));
-#endif
 				}
 
 				// release conference lock
@@ -1125,11 +1038,7 @@ void list_all(int fd)
 				duration = (int)(ast_tvdiff_ms(ast_tvnow(),member->time_entered) / 1000);
 				snprintf(duration_str, 10, "%02u:%02u:%02u",  duration / 3600, (duration % 3600) / 60, duration % 60);
 				ast_cli(fd, "%-20d %-20.20s %-20.20s %-20.20s %-20.20s %-20.20s %-80s\n",
-#if	ASTERISK_SRC_VERSION < 1100
-				member->conf_id, member->flags, !member->mute_audio ? "Unmuted" : "Muted", volume_str, duration_str , spy_str, member->chan->name);
-#else
 				member->conf_id, member->flags, !member->mute_audio ? "Unmuted" : "Muted", volume_str, duration_str , spy_str, ast_channel_name(member->chan));
-#endif
 			}
 
 			// release conference lock
@@ -1274,11 +1183,7 @@ ast_conf_member *find_member(const char *chan)
 	AST_LIST_LOCK(bucket);
 
 	AST_LIST_TRAVERSE(bucket, member, hash_entry)
-#if	ASTERISK_SRC_VERSION < 1100
-		if (!strcmp(member->chan->name, chan)) {
-#else
 		if (!strcmp(ast_channel_name(member->chan), chan)) {
-#endif
 			ast_mutex_lock(&member->lock);
 			member->use_count++;
 
@@ -1290,11 +1195,7 @@ ast_conf_member *find_member(const char *chan)
 	return member;
 }
 
-#if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
-void play_sound_channel(const char *channel, char **file, int mute, int tone, int evnt, int n)
-#else
 void play_sound_channel(const char *channel, const char * const *file, int mute, int tone, int evnt, int n)
-#endif
 {
 	ast_conf_member *member;
 
@@ -1305,11 +1206,7 @@ void play_sound_channel(const char *channel, const char * const *file, int mute,
 			while (n-- > 0) {
 
 				char play_data[160+AST_FRIENDLY_OFFSET] = { [AST_FRIENDLY_OFFSET] = PLAY };
-#if     ASTERISK_SRC_VERSION == 104
-				struct ast_frame play_frame = {.frametype = AST_FRAME_TEXT, .data = &play_data[AST_FRIENDLY_OFFSET], .datalen = 160};
-#else
 				struct ast_frame play_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = &play_data[AST_FRIENDLY_OFFSET], .datalen = 160};
-#endif
 				ast_copy_string(&play_data[AST_FRIENDLY_OFFSET+1], *file, 160-2);
 				ast_queue_frame(member->chan, &play_frame);
 

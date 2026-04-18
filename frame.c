@@ -281,11 +281,7 @@ conf_frame* mix_multiple_speakers(
 		if (!cf_spoken->member->spyee_channel_name)
 		{
 			// add the speaker's voice
-#if	ASTERISK_SRC_VERSION == 104
-			mix_slinear_frames(conf->listenerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data, AST_CONF_BLOCK_SAMPLES);
-#else
 			mix_slinear_frames(conf->listenerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
-#endif
 		} 
 		else
 		{
@@ -296,11 +292,7 @@ conf_frame* mix_multiple_speakers(
 			}
 			else
 			{
-#if     ASTERISK_SRC_VERSION == 104
-				mix_slinear_frames(spyee->whisper_frame->fr->data, cf_spoken->fr->data, AST_CONF_BLOCK_SAMPLES);
-#else
 				mix_slinear_frames(spyee->whisper_frame->fr->data.ptr, cf_spoken->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
-#endif
 			}
 		}
 
@@ -334,19 +326,11 @@ conf_frame* mix_multiple_speakers(
 			cf_sendFrames->mixed_buffer = cf_spoken->member->speakerBuffer + AST_FRIENDLY_OFFSET;
 
 			// subtract the speaker's voice
-#if	ASTERISK_SRC_VERSION == 104
-			unmix_slinear_frame(cf_sendFrames->mixed_buffer, conf->listenerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data, AST_CONF_BLOCK_SAMPLES);
-#else
 			unmix_slinear_frame(cf_sendFrames->mixed_buffer, conf->listenerBuffer + AST_FRIENDLY_OFFSET, cf_spoken->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
-#endif
 			// add whisper voice
 			if (cf_spoken->member->whisper_frame)
 			{
-#if	ASTERISK_SRC_VERSION == 104
-				mix_slinear_frames(cf_sendFrames->mixed_buffer, cf_spoken->member->whisper_frame->fr->data, AST_CONF_BLOCK_SAMPLES);
-#else
 				mix_slinear_frames(cf_sendFrames->mixed_buffer, cf_spoken->member->whisper_frame->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
-#endif
 				cf_spoken->member->whisper_frame = NULL; // reset whisper frame
 			}
 
@@ -381,11 +365,7 @@ conf_frame* mix_multiple_speakers(
 				cf_sendFrames->mixed_buffer = cf_spoken->member->speakerBuffer + AST_FRIENDLY_OFFSET;
 
 				// add the whisper voice
-#if	ASTERISK_SRC_VERSION == 104
-				mix_slinear_frames(cf_spoken->member->speakerBuffer + AST_FRIENDLY_OFFSET, whisper_frame->fr->data, AST_CONF_BLOCK_SAMPLES);
-#else
 				mix_slinear_frames(cf_spoken->member->speakerBuffer + AST_FRIENDLY_OFFSET, whisper_frame->fr->data.ptr, AST_CONF_BLOCK_SAMPLES);
-#endif
 
 				if (!(cf_sendFrames->fr = create_slinear_frame(&cf_sendFrames->member->mixAstFrame, cf_sendFrames->mixed_buffer)))
 					return NULL;
@@ -548,23 +528,13 @@ struct ast_frame* create_slinear_frame(struct ast_frame **f, char* data)
 			return NULL;
 		}
 		(*f)->frametype = AST_FRAME_VOICE;
-#if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
-		(*f)->subclass = AST_FORMAT_CONFERENCE;
-#elif	ASTERISK_SRC_VERSION < 1300
-		(*f)->subclass.integer = AST_FORMAT_CONFERENCE;
-#else
 		(*f)->subclass.format = ast_format_conference;
-#endif
 		(*f)->samples = AST_CONF_BLOCK_SAMPLES;
 		(*f)->offset = AST_FRIENDLY_OFFSET;
 		(*f)->datalen = AST_CONF_FRAME_DATA_SIZE;
 		(*f)->src = NULL;
 	}
-#if	ASTERISK_SRC_VERSION == 104
-	(*f)->data = data;
-#else
 	(*f)->data.ptr = data;
-#endif
 	return *f;
 }
 

@@ -204,11 +204,7 @@ struct ast_conf_member
 // function declarations
 //
 
-#if	ASTERISK_SRC_VERSION == 104
-int member_exec(struct ast_channel* chan, void* data);
-#else
 int member_exec(struct ast_channel* chan, const char* data);
-#endif
 
 ast_conf_member* create_member(struct ast_channel* chan, const char* data, char* conf_name, int* max_users);
 void delete_member(ast_conf_member* member);

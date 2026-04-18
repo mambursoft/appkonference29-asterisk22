@@ -48,19 +48,12 @@ char cont_data[160+AST_FRIENDLY_OFFSET] = { [AST_FRIENDLY_OFFSET] = CONT };
 char vsrc_data[160+AST_FRIENDLY_OFFSET] = { [AST_FRIENDLY_OFFSET] = VSRC };
 #endif
 
-#if     ASTERISK_SRC_VERSION == 104
-struct ast_frame kick_frame = {.frametype = AST_FRAME_TEXT, .data = &kick_data[AST_FRIENDLY_OFFSET], .datalen = 160};
-struct ast_frame stop_frame = {.frametype = AST_FRAME_TEXT, .data = &stop_data[AST_FRIENDLY_OFFSET], .datalen = 160};
-struct ast_frame hold_frame = {.frametype = AST_FRAME_TEXT, .data = &hold_data[AST_FRIENDLY_OFFSET], .datalen = 160};
-struct ast_frame cont_frame = {.frametype = AST_FRAME_TEXT, .data = &cont_data[AST_FRIENDLY_OFFSET], .datalen = 160};
-#else
 struct ast_frame kick_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = &kick_data[AST_FRIENDLY_OFFSET], .datalen = 160};
 struct ast_frame stop_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = &stop_data[AST_FRIENDLY_OFFSET], .datalen = 160};
 struct ast_frame hold_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = &hold_data[AST_FRIENDLY_OFFSET], .datalen = 160};
 struct ast_frame cont_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = &cont_data[AST_FRIENDLY_OFFSET], .datalen = 160};
 #ifdef	VIDEO
 struct ast_frame vsrc_frame = {.frametype = AST_FRAME_TEXT, .data.ptr = &vsrc_data[AST_FRIENDLY_OFFSET], .datalen = 160};
-#endif
 #endif
 
 #ifdef	VIDEO
@@ -373,11 +366,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 			{
 				// send the frame to the preprocessor
 				f = convert_frame(member->to_dsp, f, 1);
-#if	ASTERISK_SRC_VERSION == 104
-				if (!speex_preprocess(member->dsp, f->data, NULL))
-#else
 				if (!speex_preprocess(member->dsp, f->data.ptr, NULL))
-#endif
 				{
 					//
 					// we ignore the preprocessor's outcome if we've seen voice frames
@@ -395,11 +384,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 								"Channel: %s\r\n"
 								"Flags: %s\r\n"
 								"State: %s\r\n",
-#if	ASTERISK_SRC_VERSION < 1100
-								member->chan->name,
-#else
 								ast_channel_name(member->chan),
-#endif
 								member->flags,
 								"silent"
 							);
@@ -424,11 +409,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 							"Channel: %s\r\n"
 							"Flags: %s\r\n"
 							"State: %s\r\n",
-#if	ASTERISK_SRC_VERSION < 1100
-							member->chan->name,
-#else
 							ast_channel_name(member->chan),
-#endif
 							member->flags,
 							"speaking"
 						);
@@ -522,27 +503,11 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 					"Mute: %d\r\n",
 					conf->name,
 					member->type,
-#if	ASTERISK_SRC_VERSION < 1100
-					member->chan->uniqueid,
-					member->chan->name,
-#else
 					ast_channel_uniqueid(member->chan),
 					ast_channel_name(member->chan),
-#endif
-#if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
-					member->chan->cid.cid_num ? member->chan->cid.cid_num : "unknown",
-					member->chan->cid.cid_name ? member->chan->cid.cid_name : "unknown",
-					f->subclass,
-#else
-#if	ASTERISK_SRC_VERSION < 1100
-					member->chan->caller.id.number.str ? member->chan->caller.id.number.str : "unknown",
-					member->chan->caller.id.name.str ? member->chan->caller.id.name.str: "unknown",
-#else
 					S_COR(ast_channel_caller(member->chan)->id.number.valid, ast_channel_caller(member->chan)->id.number.str, "<unknown>"),
 					S_COR(ast_channel_caller(member->chan)->id.name.valid, ast_channel_caller(member->chan)->id.name.str, "<unknown>"),
-#endif
 					f->subclass.integer,
-#endif
 					conf->membercount,
 					member->flags,
 					member->mute_audio
@@ -553,11 +518,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 		}
 		case AST_FRAME_CONTROL:
 		{
-#if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
-			switch (f->subclass)
-#else
 			switch (f->subclass.integer)
-#endif
 			{
 				case AST_CONTROL_HANGUP:
 				{
@@ -700,11 +661,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 #endif
 		case AST_FRAME_TEXT:
 		{
-#if     ASTERISK_SRC_VERSION == 104
-			switch (((const char *)f->data)[0])
-#else
 			switch (((const char *)f->data.ptr)[0])
-#endif
 			{
 				case KICK:
 				{
@@ -714,21 +671,13 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 				}
 				case PLAY:
 				{
-#if	ASTERISK_SRC_VERSION < 1100
-					if (!ast_test_flag(member->chan, AST_FLAG_MOH))
-#else
 					if (!ast_test_flag(ast_channel_flags(member->chan), AST_FLAG_MOH))
-#endif
 					{
 						member->muted = 1;
 
 						ast_conf_soundq *newsound;
 						ast_conf_soundq **q;
-#if     ASTERISK_SRC_VERSION == 104
-						char *sound = (char*)f->data;
-#else
 						char *sound = (char*)f->data.ptr;
-#endif
 						newsound = ast_calloc(1, sizeof(ast_conf_soundq));
 						ast_copy_string(newsound->name, &sound[1], 160-2);
 						for (q=&member->soundq; *q; q = &((*q)->next));
@@ -738,11 +687,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 				}
 				case STOP:
 				{
-#if     ASTERISK_SRC_VERSION < 1100
-					if (!ast_test_flag(member->chan, AST_FLAG_MOH))
-#else
 					if (!ast_test_flag(ast_channel_flags(member->chan), AST_FLAG_MOH))
-#endif
 					{
 						member->muted = 0;
 
@@ -765,11 +710,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 				}
 				case HOLD:
 				{
-#if     ASTERISK_SRC_VERSION < 1100
-					if (!ast_test_flag(member->chan, AST_FLAG_MOH))
-#else
 					if (!ast_test_flag(ast_channel_flags(member->chan), AST_FLAG_MOH))
-#endif
 					{
 						member->muted = 1;
 						member->ready_for_outgoing = 0;
@@ -798,11 +739,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 				}
 				case CONT:
 				{
-#if     ASTERISK_SRC_VERSION < 1100
-					if (ast_test_flag(member->chan, AST_FLAG_MOH))
-#else
 					if (ast_test_flag(ast_channel_flags(member->chan), AST_FLAG_MOH))
-#endif
 					{
 						member->muted = 0;
 						member->ready_for_outgoing = 1;
@@ -829,13 +766,7 @@ static int process_incoming(ast_conf_member *member, ast_conference *conf, struc
 #endif
 				default:
 				{
-#if     ASTERISK_SRC_VERSION == 104
-					ast_log(LOG_NOTICE, "processing unknown msg text = %s channel = %s\n", (char *)f->data, member->chan->name);
-#elif	ASTERISK_SRC_VERSION < 1100
-					ast_log(LOG_NOTICE, "processing unknown msg text = %s channel = %s\n", (char *)f->data.ptr, member->chan->name);
-#else
 					ast_log(LOG_NOTICE, "processing unknown msg text = %s channel = %s\n", (char *)f->data.ptr, ast_channel_name(member->chan));
-#endif
 					break;
 				}
 			}
@@ -865,11 +796,7 @@ static struct ast_frame *get_next_soundframe(ast_conf_member *member)
 
 		if (!toboot->stream)
 		{
-#if	ASTERISK_SRC_VERSION < 1100
-			if ((toboot->stream = ast_openstream_full(member->chan, toboot->name, member->chan->language, 1)))
-#else
 			if ((toboot->stream = ast_openstream_full(member->chan, toboot->name, ast_channel_language(member->chan), 1)))
-#endif
 				continue;
 		}
 
@@ -890,11 +817,7 @@ static struct ast_frame *get_next_soundframe(ast_conf_member *member)
 					"Channel: %s\r\n"
 					"Sound: %s\r\n",
 					member->conf->name,
-#if	ASTERISK_SRC_VERSION < 1100
-					member->chan->name,
-#else
 					ast_channel_name(member->chan),
-#endif
 					toboot->name
 				);
 			}
@@ -965,11 +888,7 @@ static void process_outgoing(ast_conf_member *member)
 // main member thread function
 //
 
-#if	ASTERISK_SRC_VERSION == 104
-int member_exec(struct ast_channel* chan, void* data)
-#else
 int member_exec(struct ast_channel* chan, const char* data)
-#endif
 {
 	//
 	// If the call has not yet been answered, answer the call
@@ -1016,11 +935,7 @@ int member_exec(struct ast_channel* chan, const char* data)
 	ao2_ref(conf->listheaders, +1);
 
 	// add member to channel table
-#if	ASTERISK_SRC_VERSION < 1100
-	member->bucket = &(channel_table[hash(member->chan->name) % CHANNEL_TABLE_SIZE]);
-#else
 	member->bucket = &(channel_table[hash(ast_channel_name(member->chan)) % CHANNEL_TABLE_SIZE]);
-#endif
 
 	AST_LIST_LOCK(member->bucket);
 	AST_LIST_INSERT_HEAD(member->bucket, member, hash_entry);
@@ -1050,33 +965,15 @@ int member_exec(struct ast_channel* chan, const char* data)
 #ifdef	VIDEO
 		member->video_mode,
 #endif
-#if	ASTERISK_SRC_VERSION < 1100
-		member->chan->uniqueid,
-#else
 		ast_channel_uniqueid(member->chan),
-#endif
 		member->conf_id,
 #if	defined(SPEAKER_SCOREBOARD) && defined(CACHE_CONTROL_BLOCKS)
 		member->score_id,
 #endif
 		member->flags,
-#if	ASTERISK_SRC_VERSION < 1100
-		member->chan->name,
-#else
 		ast_channel_name(member->chan),
-#endif
-#if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
-		member->chan->cid.cid_num ? member->chan->cid.cid_num : "unknown",
-		member->chan->cid.cid_name ? member->chan->cid.cid_name : "unknown",
-#else
-#if	ASTERISK_SRC_VERSION < 1100
-		member->chan->caller.id.number.str ? member->chan->caller.id.number.str : "unknown",
-		member->chan->caller.id.name.str ? member->chan->caller.id.name.str: "unknown",
-#else
 		S_COR(ast_channel_caller(member->chan)->id.number.valid, ast_channel_caller(member->chan)->id.number.str, "<unknown>"),
 		S_COR(ast_channel_caller(member->chan)->id.name.valid, ast_channel_caller(member->chan)->id.name.str, "<unknown>"),
-#endif
-#endif
 		conf->moderators,
 		conf->membercount
 	);
@@ -1140,11 +1037,7 @@ int member_exec(struct ast_channel* chan, const char* data)
 		else if (left == 0)
 		{
 			// no frame has arrived yet
-#if	ASTERISK_SRC_VERSION < 1100
-			// ast_log(LOG_NOTICE, "no frame available from channel, channel => %s\n", chan->name);
-#else
 			// ast_log(LOG_NOTICE, "no frame available from channel, channel => %s\n", ast_channel_name(chan));
-#endif
 		}
 		else if (left < 0)
 		{
@@ -1152,11 +1045,7 @@ int member_exec(struct ast_channel* chan, const char* data)
 			ast_log(
 				LOG_NOTICE,
 				"an error occured waiting for a frame, channel => %s, error => %d\n",
-#if	ASTERISK_SRC_VERSION < 1100
-				chan->name, left
-#else
 				ast_channel_name(chan), left
-#endif
 			);
 			break;
 		}
@@ -1277,11 +1166,7 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 	}
 	else
 	{
-#if	ASTERISK_SRC_VERSION < 1100
-		ast_log(LOG_ERROR, "create_member unable to parse member data: channel name = %s, data = %s\n", chan->name, data);
-#else
 		ast_log(LOG_ERROR, "create_member unable to parse member data: channel name = %s, data = %s\n", ast_channel_name(chan), data);
-#endif
 		ast_free(member);
 		return NULL;
 	}
@@ -1439,11 +1324,7 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 		}
 		else
 		{
-#if	ASTERISK_SRC_VERSION < 1100
-			ast_log(LOG_WARNING, "unable to initialize member dsp, channel => %s\n", chan->name);
-#else
 			ast_log(LOG_WARNING, "unable to initialize member dsp, channel => %s\n", ast_channel_name(chan));
-#endif
 		}
 	}
 #endif	// SILDET
@@ -1453,62 +1334,22 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 
 	if (member->dsp)
 	{
-#if	ASTERISK_SRC_VERSION < 1000
-		member->to_dsp = ast_translator_build_path(AST_FORMAT_CONFERENCE, chan->readformat);
-#elif	ASTERISK_SRC_VERSION < 1100
-		member->to_dsp = ast_translator_build_path(&ast_format_conference, &chan->readformat);
-#elif	ASTERISK_SRC_VERSION < 1300
-		member->to_dsp = ast_translator_build_path(&ast_format_conference, ast_channel_readformat(chan));
-#else
 		member->to_dsp = ast_translator_build_path(ast_format_conference, ast_channel_readformat(chan));
-#endif
 	}
 	else
 	{
-#if	ASTERISK_SRC_VERSION < 1000
-		member->to_slinear = ast_translator_build_path(AST_FORMAT_CONFERENCE, chan->readformat);
-#elif	ASTERISK_SRC_VERSION < 1100
-		member->to_slinear = ast_translator_build_path(&ast_format_conference, &chan->readformat);
-#elif	ASTERISK_SRC_VERSION < 1300
-		member->to_slinear = ast_translator_build_path(&ast_format_conference, ast_channel_readformat(chan));
-#else
 		member->to_slinear = ast_translator_build_path(ast_format_conference, ast_channel_readformat(chan));
-#endif
 	}
 #else	// SILDET
 
-#if	ASTERISK_SRC_VERSION < 1000
-	member->to_slinear = ast_translator_build_path(AST_FORMAT_CONFERENCE, chan->readformat);
-#elif	ASTERISK_SRC_VERSION < 1100
-	member->to_slinear = ast_translator_build_path(&ast_format_conference, &chan->readformat);
-#elif	ASTERISK_SRC_VERSION < 1300
-	member->to_slinear = ast_translator_build_path(&ast_format_conference, ast_channel_readformat(chan));
-#else
 	member->to_slinear = ast_translator_build_path(ast_format_conference, ast_channel_readformat(chan));
-#endif
 
 #endif	// SILDET
 
-#if	ASTERISK_SRC_VERSION < 1000
-	member->from_slinear = ast_translator_build_path(chan->writeformat, AST_FORMAT_CONFERENCE);
-#elif	ASTERISK_SRC_VERSION < 1100
-	member->from_slinear = ast_translator_build_path(&chan->writeformat, &ast_format_conference);
-#elif	ASTERISK_SRC_VERSION < 1300
-	member->from_slinear = ast_translator_build_path(ast_channel_writeformat(chan), &ast_format_conference);
-#else
 	member->from_slinear = ast_translator_build_path(ast_channel_writeformat(chan), ast_format_conference);
-#endif
 
 	// index for converted_frames array
-#if	ASTERISK_SRC_VERSION < 1000
-	switch (chan->writeformat)
-#elif	ASTERISK_SRC_VERSION < 1100
-	switch (chan->writeformat.id)
-#elif	ASTERISK_SRC_VERSION < 1300
-	switch (ast_channel_writeformat(chan)->id)
-#else
 	switch (ast_format_compatibility_format2bitfield(ast_channel_writeformat(chan)))
-#endif
 	{
 		case AST_FORMAT_CONFERENCE:
 			member->write_format = AC_CONF;
@@ -1533,11 +1374,7 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 			break;
 #endif
 #ifdef AC_USE_G729A
-#if	ASTERISK_SRC_VERSION < 1300
-		case AST_FORMAT_G729A:
-#else
 		case AST_FORMAT_G729:
-#endif
 			member->write_format = AC_G729A;
 			break;
 #endif
@@ -1557,27 +1394,11 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 	// index for converted_frames array
 #if	SILDET == 2
 
-#if	ASTERISK_SRC_VERSION < 1000
-	switch (member->dsp ? AST_FORMAT_CONFERENCE : chan->readformat)
-#elif	ASTERISK_SRC_VERSION < 1100
-	switch (member->dsp ? AST_FORMAT_CONFERENCE : chan->readformat.id)
-#elif	ASTERISK_SRC_VERSION < 1300
-	switch (member->dsp ? AST_FORMAT_CONFERENCE : ast_channel_readformat(chan)->id)
-#else
 	switch (member->dsp ? AST_FORMAT_CONFERENCE : ast_format_compatibility_format2bitfield(ast_channel_readformat(chan)))
-#endif
 
 #else	// SILDET
 
-#if	ASTERISK_SRC_VERSION < 1000
-	switch (chan->readformat)
-#elif	ASTERISK_SRC_VERSION < 1100
-	switch (chan->readformat.id)
-#elif	ASTERISK_SRC_VERSION < 1300
-	switch (ast_channel_readformat(chan)->id)
-#else
 	switch (ast_format_compatibility_format2bitfield(ast_channel_readformat(chan)))
-#endif
 
 #endif	// SILDET
 	{
@@ -1604,11 +1425,7 @@ ast_conf_member* create_member(struct ast_channel *chan, const char* data, char*
 			break;
 #endif
 #ifdef AC_USE_G729A
-#if	ASTERISK_SRC_VERSION < 1300
-		case AST_FORMAT_G729A:
-#else
 		case AST_FORMAT_G729:
-#endif
 			member->read_format = AC_G729A;
 			break;
 #endif
@@ -1994,15 +1811,7 @@ void queue_silent_frame(
 
 	if (!qf)
 	{
-#if	ASTERISK_SRC_VERSION < 1000
-		struct ast_trans_pvt* trans = ast_translator_build_path(member->chan->writeformat, AST_FORMAT_CONFERENCE);
-#elif	ASTERISK_SRC_VERSION < 1100
-		struct ast_trans_pvt* trans = ast_translator_build_path(&member->chan->writeformat, &ast_format_conference);
-#elif	ASTERISK_SRC_VERSION < 1300
-		struct ast_trans_pvt* trans = ast_translator_build_path(ast_channel_writeformat(member->chan), &ast_format_conference);
-#else
 		struct ast_trans_pvt* trans = ast_translator_build_path(ast_channel_writeformat(member->chan), ast_format_conference);
-#endif
 		if (trans)
 		{
 			// translate the frame
@@ -2026,11 +1835,7 @@ void queue_silent_frame(
 	}
 	else
 	{
-#if	ASTERISK_SRC_VERSION < 1100
-		ast_log(LOG_ERROR, "unable to translate outgoing silent frame, channel => %s\n", member->chan->name);
-#else
 		ast_log(LOG_ERROR, "unable to translate outgoing silent frame, channel => %s\n", ast_channel_name(member->chan));
-#endif
 	}
 }
 

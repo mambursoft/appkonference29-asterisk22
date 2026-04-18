@@ -25,12 +25,6 @@
 
 static char *revision = REVISION;
 
-#if	ASTERISK_SRC_VERSION < 1400
-ASTERISK_FILE_VERSION(__FILE__, REVISION)
-#elif	ASTERISK_SRC_VERSION < 1500
-ASTERISK_REGISTER_FILE()
-#endif
-
 #include "app_conference.h"
 #include "conference.h"
 #include "cli.h"
@@ -48,14 +42,8 @@ ASTERISK_REGISTER_FILE()
  */
 
 static char *app = "Konference";
-static char *synopsis = "Channel Independent Conference";
-static char *descrip = "Channel Independent Conference Application";
 
-#if	ASTERISK_SRC_VERSION == 104 || ASTERISK_SRC_VERSION == 106
-static int app_konference_main(struct ast_channel* chan, void* data)
-#else
 static int app_konference_main(struct ast_channel* chan, const char* data)
-#endif
 {
 	int res;
 	struct ast_module_user *u;
@@ -97,7 +85,7 @@ static int load_module(void)
 
 	register_conference_cli();
 
-	res |= ast_register_application(app, app_konference_main, synopsis, descrip);
+	res |= ast_register_application_xml(app, app_konference_main);
 
 	return res;
 }

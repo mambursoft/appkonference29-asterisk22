@@ -29,33 +29,6 @@
 // function declarations
 //
 
-#ifndef AST_CLI_DEFINE
-
-int conference_version(int fd, int argc, char *argv[]);
-
-int conference_restart(int fd, int argc, char *argv[]);
-
-int conference_list(int fd, int argc, char *argv[]);
-int conference_kickchannel(int fd, int argc, char *argv[]);
-int conference_muteconference(int fd, int argc, char *argv[]);
-int conference_unmuteconference(int fd, int argc, char *argv[]);
-int conference_mutechannel(int fd, int argc, char *argv[]);
-int conference_unmutechannel(int fd, int argc, char *argv[]);
-
-int conference_play_sound(int fd, int argc, char *argv[]);
-int conference_stop_sounds(int fd, int argc, char *argv[]);
-
-int conference_stop_moh(int fd, int argc, char *argv[]);
-int conference_start_moh(int fd, int argc, char *argv[]);
-
-int conference_talkvolume(int fd, int argc, char *argv[]);
-int conference_listenvolume(int fd, int argc, char *argv[]);
-int conference_volume(int fd, int argc, char *argv[]);
-
-int conference_end(int fd, int argc, char *argv[]);
-
-#else
-
 char *conference_version(struct ast_cli_entry *, int, struct ast_cli_args *);
 
 char *conference_restart(struct ast_cli_entry *, int, struct ast_cli_args *);
@@ -81,8 +54,6 @@ char *conference_end(struct ast_cli_entry *, int, struct ast_cli_args *);
 
 #ifdef	VIDEO
 char *conference_videoswitch(struct ast_cli_entry *, int, struct ast_cli_args *);
-#endif
-
 #endif
 
 void register_conference_cli(void);
