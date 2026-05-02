@@ -97,7 +97,11 @@ static int load_module(void)
 
 	register_conference_cli();
 
+#if	ASTERISK_SRC_VERSION < 1600
 	res |= ast_register_application(app, app_konference_main, synopsis, descrip);
+#else
+	res |= ast_register_application_xml(app, app_konference_main);
+#endif
 
 	return res;
 }
