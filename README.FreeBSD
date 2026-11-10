@@ -1,0 +1,47 @@
+App_konference on FreeBSD
+=========================
+
+App_konference can be built and used on FreeBSD with Asterisk 20 LTS
+(official port net/asterisk20). No changes to the module source code are
+needed.
+
+A ready FreeBSD port, net/asterisk20-appkonference, is available at:
+
+    https://github.com/mambursoft/freebsd-asterisk20-appkonference
+
+It is tested on FreeBSD 15.1-RELEASE amd64 with asterisk20-20.22.0 (clang).
+
+Quick start
+-----------
+
+    git clone https://github.com/mambursoft/freebsd-asterisk20-appkonference
+    cp -R freebsd-asterisk20-appkonference/net/asterisk20-appkonference \
+          /usr/ports/net/
+    make -C /usr/ports/net/asterisk20-appkonference install clean
+
+Then add to /usr/local/etc/asterisk/modules.conf:
+
+    load => app_konference.so
+
+What the port does with the upstream Makefile
+---------------------------------------------
+
+The port adapts the Makefile at build time (post-patch), the source code is
+used as is:
+
+  - ASTERISK_SRC_DIR=/usr/local (installed Asterisk headers),
+    ASTERISK_SRC_VERSION=2000, INSTALL_MODULES_DIR is set by the port;
+  - CPPFLAGS += -DKQUEUE (BSD timing) and -DAC_USE_ALAW (ULAW + ALAW);
+  - CFLAGS/CPPFLAGS are appended to (not replaced), so the ports flags are
+    kept; the link step uses $(LDFLAGS);
+  - -fcommon for GCC 10+ and clang, -std=gnu89;
+  - the module is installed with the port's own install step, because the
+    upstream "install" target does not use DESTDIR.
+
+Note on chan_sip
+----------------
+
+In net/asterisk20 the legacy chan_sip is the "SIP" option and it is off by
+default. Enable it when building Asterisk if your dialplan uses SIP/ channels.
+
+Contact: Mambursoft, admin@voip.net.ua
